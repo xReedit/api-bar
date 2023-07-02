@@ -1,0 +1,2476 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model almacen {
+  idalmacen                                         Int             @id @default(autoincrement())
+  idorg                                             Int
+  idsede                                            Int
+  descripcion                                       String          @db.VarChar(50)
+  bodega                                            Int             @default(0)
+  imprimir_comanda                                  Int             @default(0)
+  estado                                            Int             @default(0)
+  solo_venta_interna                                Int             @default(0)
+  org                                               org             @relation(fields: [idorg], references: [idorg], onUpdate: Restrict, map: "almacen_FK")
+  almacen_ie                                        almacen_ie[]
+  distribuicion_distribuicion_idalmacen_deToalmacen distribuicion[] @relation("distribuicion_idalmacen_deToalmacen")
+  distribuicion_distribuicion_idalmacen_aToalmacen  distribuicion[] @relation("distribuicion_idalmacen_aToalmacen")
+
+  @@index([idorg], map: "almacen_FK")
+  @@index([idsede], map: "sede_fk_idx")
+}
+
+model almacen_ie {
+  idalmacen_ie         Int     @id @default(autoincrement())
+  idorg                Int
+  idsede               Int
+  idusuario            Int
+  tipo                 String  @db.VarChar(1)
+  fecha                String  @db.VarChar(30)
+  idalmacen            Int
+  idproducto_motivo_es Int
+  motivo               String  @db.Char(120)
+  estado               Int     @default(0)
+  almacen              almacen @relation(fields: [idalmacen], references: [idalmacen], onUpdate: Restrict, map: "almacen_ie_FK")
+  sede                 sede    @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "almacen_ie_FK_1")
+  org                  org     @relation(fields: [idorg], references: [idorg], onUpdate: Restrict, map: "almacen_ie_FK_2")
+
+  @@index([idalmacen], map: "almacen_ie_FK")
+  @@index([idsede], map: "almacen_ie_FK_1")
+  @@index([idorg], map: "almacen_ie_FK_2")
+}
+
+model almacen_ie_detalle {
+  idalmacen_ie_detalle Int    @id @default(autoincrement())
+  idalmacen_ie         Int
+  idp                  String @db.Char(10)
+  procede              Int
+  cantidad             String @db.VarChar(10)
+  estado               Int    @default(0)
+}
+
+model almacen_items {
+  idalmacen_items Int    @id @default(autoincrement())
+  idalmacen       Int
+  idproducto      Int
+  stock           String @db.VarChar(10)
+  f_ingreso       String @db.VarChar(50)
+  estado          Int    @default(0)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+model almacen_motivo_es {
+  idalmacen_motivo_es Int    @default(autoincrement())
+  motivo              String @db.Char(50)
+  tipo                Int
+  estado              Int    @default(0)
+
+  @@index([idalmacen_motivo_es], map: "idproducto_motivo_es")
+  @@ignore
+}
+
+model atm_retiros {
+  idatm_retiros                Int         @id @default(autoincrement())
+  idcliente                    Int
+  importe_solicita             String      @db.Char(10)
+  c_transaccion                String      @db.Char(10)
+  c_entrega                    String      @db.Char(10)
+  importe_total                String      @db.Char(10)
+  json_transaccion             Json
+  json_detalle                 Json
+  estado                       Boolean     @default(false)
+  fecha_hora_registro          DateTime    @db.DateTime(0)
+  idrepartidor                 Int?
+  last_id_repartidor_reasigno  Int?
+  check_pago_repartidor        String      @default("0") @db.Char(1)
+  json_entrega                 Json
+  pwa_delivery_tiempo_atendido String?     @db.VarChar(10)
+  pwa_estado                   String      @default("P") @db.VarChar(20)
+  cliente                      cliente     @relation(fields: [idcliente], references: [idcliente], onUpdate: Restrict, map: "atm_retiros_FK")
+  repartidor                   repartidor? @relation(fields: [idrepartidor], references: [idrepartidor], onDelete: Restrict, onUpdate: Restrict, map: "atm_retiros_FK_1")
+
+  @@index([idcliente], map: "atm_retiros_FK")
+  @@index([idrepartidor], map: "atm_retiros_FK_1")
+}
+
+model canal_plantilla_imgen {
+  idcanal_plantilla_imgen Int     @id @default(autoincrement())
+  url                     String  @db.Char(255)
+  titulo                  String  @db.VarChar(50)
+  estado                  Boolean @default(false)
+}
+
+model cargo {
+  idcargo      Int    @id @default(autoincrement())
+  idorg        Int
+  descripcion  String @db.VarChar(100)
+  remuneracion String @db.VarChar(10)
+  estado       Int    @default(0)
+}
+
+model carta {
+  idcarta     Int       @id @default(autoincrement())
+  idorg       Int
+  idsede      Int
+  idcategoria Int
+  fecha       String    @db.VarChar(25)
+  estado      Int       @default(0)
+  org         org       @relation(fields: [idorg], references: [idorg], onUpdate: Restrict, map: "carta_FK")
+  categoria   categoria @relation(fields: [idcategoria], references: [idcategoria], onUpdate: Restrict, map: "carta_FK_1")
+
+  @@index([idcategoria], map: "carta_FK_1")
+  @@index([idorg, idsede, idcategoria], map: "carta_idorg_IDX")
+  @@index([idsede, idcategoria], map: "carta_idsede_IDX")
+}
+
+model carta_lista {
+  idcarta_lista      String  @id @db.Char(50)
+  idcarta            Int
+  idseccion          Int
+  iditem             Int
+  precio             String  @db.VarChar(10)
+  cantidad           String  @db.Char(10)
+  cant_preparado     String  @db.Char(10)
+  sec_orden          Int
+  count_seleccionado Int?    @default(0)
+  estado             Int     @default(0)
+  is_visible_cliente Boolean @default(false)
+  ispromocion        String  @default("0") @db.Char(1)
+  idpromocion        Int?
+
+  @@index([idcarta], map: "carta_lista_idcarta_IDX")
+  @@index([iditem], map: "carta_lista_iditem_IDX")
+  @@index([idseccion, iditem, sec_orden], map: "carta_lista_idseccion_IDX")
+  @@index([sec_orden], map: "carta_lista_sec_orden_IDX")
+}
+
+model carta_lista_historial {
+  idcarta_lista_historial Int     @id @default(autoincrement())
+  idcarta_lista           Int
+  idcarta                 Int
+  idseccion               Int
+  iditem                  Int
+  precio                  String  @db.VarChar(10)
+  cantidad                String  @db.Char(10)
+  cant_preparado          String  @db.Char(10)
+  sec_orden               Int
+  fecha                   String? @db.VarChar(30)
+  estado                  Int     @default(0)
+}
+
+model categoria {
+  idcategoria     Int              @id @default(autoincrement())
+  idorg           Int
+  idsede          Int
+  descripcion     String           @db.VarChar(80)
+  hora_ini        String           @db.VarChar(25)
+  hora_fin        String           @db.VarChar(25)
+  visible_x_hora  Int              @default(0)
+  detalle         String           @db.VarChar(100)
+  estado          Int              @default(0)
+  dia_disponible  String           @db.Char(20)
+  visible_cliente String           @default("1") @db.Char(1)
+  accesible_mozo  String           @default("0") @db.Char(1)
+  url_carta       String?          @db.VarChar(255)
+  carta           carta[]
+  pedido_detalle  pedido_detalle[]
+
+  @@index([idorg, idsede], map: "categoria_idorg_IDX")
+}
+
+model ce {
+  idce                     Int     @id @default(autoincrement())
+  external_id              String? @db.VarChar(100)
+  idorg                    Int?
+  idsede                   Int?
+  idusuario                Int?
+  idcliente                Int?
+  idtipo_comprobante_serie Int?
+  nomcliente               String? @db.VarChar(250)
+  numero                   String? @db.VarChar(25)
+  fecha                    String? @db.VarChar(45)
+  hora                     String? @db.VarChar(45)
+  json_xml                 String? @db.LongText
+  total                    String? @db.VarChar(25)
+  estado_api               Int?    @default(0)
+  estado_sunat             Int?    @default(0)
+  anulado                  Int?    @default(0)
+  viene_facturador         Int?    @default(0)
+  msj                      String? @db.VarChar(200)
+  pdf                      Int?    @default(0)
+  xml                      Int?    @default(0)
+  cdr                      Int?    @default(0)
+  estado                   Int?    @default(0)
+  external_id_anulacion    String? @db.VarChar(100)
+  ticket_anulacion         String? @db.VarChar(100)
+  motivo_anulacion         String? @db.VarChar(200)
+  totales_json             String? @db.Text
+  idce_nota_credito        Int
+  num_nc                   String? @db.Char(20)
+  rpt_sunat                Json?
+  status_sunat             String? @default("0") @db.Char(1)
+  status_sunat_date        String? @db.Char(35)
+
+  @@index([idorg, idsede, idtipo_comprobante_serie], map: "ce_idorg_IDX")
+}
+
+model ce_nota_credito {
+  idce_nota_credito Int     @id @default(autoincrement())
+  idce              Int
+  external_id       String  @db.VarChar(100)
+  idsede            Int
+  fecha             String  @db.Char(20)
+  hora              String  @db.Char(20)
+  json_xml          Json
+  motivo            String  @db.VarChar(255)
+  msj               String  @db.VarChar(100)
+  pdf               Boolean
+  xml               Boolean
+  cdr               Boolean
+  estado            Boolean @default(false)
+  idusuario         Int
+  numero            String? @db.VarChar(100)
+}
+
+model ce_resumen {
+  idce_resumen   Int     @id @default(autoincrement())
+  idorg          Int?
+  idsede         Int?
+  idusuario      Int?
+  fecha_resumen  String? @db.VarChar(45)
+  fecha_envio    String? @db.VarChar(45)
+  ticket         String? @db.VarChar(100)
+  external_id    String? @db.VarChar(100)
+  estado_sunat   Int?    @default(0)
+  msj            String? @db.VarChar(200)
+  xml            Int?    @default(0)
+  cdr            Int?    @default(0)
+  estado         Int?    @default(0)
+  procesado      String  @default("0") @db.Char(1)
+  fecha_aceptado String? @db.VarChar(50)
+}
+
+model cierre_permiso_remoto {
+  idcierre_permiso_remoto Int     @id @default(autoincrement())
+  idsede                  Int
+  idusuario_admin         Int
+  idusuario_solicita      Int
+  importe                 String  @db.Char(20)
+  visto                   String  @default("0") @db.Char(1)
+  estado                  String  @default("0") @db.Char(1)
+  fecha                   String? @db.VarChar(50)
+  resultado               Json?
+  signo                   String? @db.Char(2)
+  diferencia              String? @db.Char(10)
+  importe_sistema         String? @db.Char(10)
+  enviado                 String  @default("0") @db.Char(1)
+
+  @@index([idusuario_admin], map: "keyidusario_admin")
+}
+
+model cliente {
+  idcliente                 Int           @id @default(autoincrement())
+  idorg                     Int
+  nombres                   String        @db.VarChar(150)
+  f_nac                     String?       @db.VarChar(35)
+  f_registro                String        @db.VarChar(30)
+  ruc                       String        @db.VarChar(20)
+  direccion                 String        @db.VarChar(255)
+  telefono                  String        @db.Char(20)
+  credito                   Int           @default(0)
+  estado                    Int           @default(0)
+  pwa_id                    String?       @db.VarChar(100)
+  pwa_data_session          Json?
+  pwa_data_usuario          Json?
+  pwa_sede_register         Int?
+  email                     String?       @db.VarChar(150)
+  pwa_code_verification     String?       @db.VarChar(100)
+  calificacion              Float?        @db.Float
+  pwa_last_pedido_calificar Int           @default(0)
+  dni_num_verificador       String?       @db.VarChar(3)
+  direccion_delivery_no_map Json?
+  referencia                String        @default("") @db.VarChar(200)
+  atm_retiros               atm_retiros[]
+  pedido                    pedido[]
+
+  @@index([idorg, nombres, ruc], map: "cliente_idorg_IDX")
+}
+
+model cliente_calificacion {
+  idcliente_calificacion Int @id @default(autoincrement())
+  idcliente              Int
+  idrepartidor           Int
+  calificacion           Int @db.TinyInt
+  idpedido               Int
+}
+
+model cliente_codigo_verificacion_tpm {
+  idcliente_codigo_verificacion_tpm Int    @id @default(autoincrement())
+  telefono                          String @db.VarChar(20)
+  pwa_code_verification             String @db.VarChar(10)
+}
+
+model cliente_pwa_direccion {
+  idcliente_pwa_direccion Int     @id @default(autoincrement())
+  idcliente               Int
+  direccion               String  @db.VarChar(200)
+  ciudad                  String  @db.VarChar(150)
+  departamento            String  @db.VarChar(200)
+  pais                    String  @db.VarChar(150)
+  titulo                  String  @db.VarChar(20)
+  latitude                Float?  @db.Float
+  longitude               Float?  @db.Float
+  estado                  Int     @default(0)
+  codigo                  String? @db.VarChar(50)
+  provincia               String? @db.VarChar(150)
+  referencia              String? @db.VarChar(200)
+  is_from_cliente         Boolean @default(true)
+  is_georreferencial      Boolean @default(true)
+  latitude_tpm            Float?  @db.Float
+}
+
+model cliente_sede {
+  idcliente_sede       Int                   @id @default(autoincrement())
+  idcliente            Int
+  idsede               Int
+  estado               Boolean               @default(false)
+  telefono             String?               @db.Char(20)
+  importe_consumo      String?               @db.Char(20)
+  idpedido_last        Int?                  @default(0)
+  cliente_paga_credito cliente_paga_credito?
+}
+
+model cliente_socketid {
+  idcliente            Int    @unique(map: "cliente_socketid_idcliente_IDX")
+  socketid             String @db.VarChar(50)
+  conectado            String @default("0") @db.Char(1)
+  key_suscripcion_push Json?
+}
+
+model cliente_solicita_atencion_mesa {
+  idcliente_solicita_atencion_mesa Int      @id @default(autoincrement())
+  idsede                           Int
+  fecha                            DateTime @db.DateTime(0)
+  num_mesa                         String   @db.Char(4)
+  atendido                         Boolean  @default(false)
+  idusuario                        Int
+}
+
+model colaborador {
+  idcolaborador        Int                    @id @default(autoincrement())
+  idorg                Int
+  idsede               Int
+  nombres              String                 @db.VarChar(200)
+  dni                  String                 @db.VarChar(20)
+  sexo                 String                 @db.Char(1)
+  correo               String                 @db.VarChar(100)
+  direccion            String                 @db.VarChar(200)
+  telefono             String                 @db.VarChar(30)
+  profesion            String?                @db.VarChar(100)
+  cuenta               String?                @db.VarChar(100)
+  f_nac                String                 @db.VarChar(30)
+  f_ingreso            String                 @db.VarChar(30)
+  estado               Int                    @default(0)
+  nom_banco            String?                @db.VarChar(60)
+  ciudad               String?                @db.VarChar(100)
+  provincia            String?                @db.VarChar(100)
+  apellidos            String?                @db.VarChar(120)
+  sede                 sede                   @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "colaborador_FK")
+  org                  org                    @relation(fields: [idorg], references: [idorg], onUpdate: Restrict, map: "colaborador_FK_1")
+  colaborador_contrato colaborador_contrato[]
+
+  @@index([idsede], map: "colaborador_FK")
+  @@index([idorg], map: "colaborador_FK_1")
+}
+
+model comando_voz {
+  idcomando_voz Int    @id @default(autoincrement())
+  comando       String @db.VarChar(255)
+  seccion       String @db.Char(25)
+  codigo_accion String @db.Char(5)
+  texto_default Json
+  estado        String @default("0") @db.Char(1)
+}
+
+model comercio_pre_registro {
+  idcomercio_pre_registro Int    @id @default(autoincrement())
+  fecha                   String @db.VarChar(50)
+  nom_comercio            String @db.VarChar(150)
+  info                    Json?
+  estado                  Int    @default(0)
+}
+
+model comision_intensidad_lluvia {
+  idcomision_intensidad_lluvia Int    @id @default(autoincrement())
+  mm_h                         String @db.VarChar(10)
+  descripcion                  String @db.VarChar(30)
+  costo                        String @db.VarChar(3)
+  costo_x_km_adicional         String @default("0") @db.VarChar(3)
+  estado                       Int    @default(0)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+model comisiones_visa {
+  comision_visa        String @db.VarChar(5)
+  comision_transaccion String @db.VarChar(5)
+  comision_papaya      String @db.VarChar(5)
+  igv                  String @db.VarChar(5)
+
+  @@ignore
+}
+
+model compra {
+  idcompra       Int       @id @default(autoincrement())
+  idorg          Int
+  idsede         Int
+  idtipo_pago    Int?
+  idalmacen      Int
+  f_compra       String    @db.VarChar(50)
+  f_registro     String    @db.VarChar(50)
+  a_pagar        String?   @db.VarChar(15)
+  total          String    @db.VarChar(10)
+  f_ultimo_pago  String?   @db.VarChar(30)
+  f_pago         String?   @db.VarChar(30)
+  idproveedor    Int
+  nota_de_compra String    @db.VarChar(150)
+  pagado         Int?      @default(0)
+  estado         Int       @default(0)
+  idusuario      Int?
+  fecha_hora     DateTime? @db.DateTime(0)
+
+  @@index([idalmacen], map: "compra_idalmacen_IDX")
+  @@index([idorg, idsede, idtipo_pago], map: "compra_idorg_IDX")
+  @@index([idproveedor, pagado], map: "compra_idproveedor_IDX")
+}
+
+model compra_items {
+  idcompra_items Int    @id @default(autoincrement())
+  idcompra       Int
+  idproducto     Int
+  cantidad       String @db.VarChar(10)
+  punitario      String @db.VarChar(10)
+  ptotal         String @db.VarChar(10)
+  estado         Int    @default(0)
+
+  @@index([idcompra, idproducto], map: "compra_items_idcompra_IDX")
+}
+
+model compra_pago {
+  idcompra_pago Int    @id @default(autoincrement())
+  idcompra      Int
+  idtipo_pago   Int
+  importe       String @db.VarChar(10)
+  estado        Int    @default(0)
+}
+
+model compra_pago_cuenta {
+  idcompra_pago_cuenta Int    @id @default(autoincrement())
+  idcompra             Int
+  fecha                String @db.VarChar(30)
+  importe              String @db.Char(10)
+  estado               Int    @default(0)
+}
+
+model conf_print {
+  idconf_print               Int     @id @default(autoincrement())
+  idorg                      Int
+  idsede                     Int
+  ip_print                   String  @db.VarChar(80)
+  num_copias                 Int
+  pie_pagina                 String  @db.VarChar(200)
+  pie_pagina_comprobante     String  @db.Char(255)
+  logo                       String  @db.VarChar(200)
+  var_margen_iz              Int     @default(0)
+  var_size_font              Int     @default(0)
+  var_size_font_tall_comanda Int?    @default(0)
+  estado                     Int     @default(0)
+  isprint_subtotales_comanda Boolean @default(true)
+  isprint_copy_short         Boolean @default(false)
+  isprint_all_short          Boolean @default(false)
+  isprint_all_delivery       Boolean @default(false)
+  pie_pagina_precuenta       String? @db.VarChar(255)
+  isprint_cpe_short          Boolean @default(true)
+}
+
+model conf_print_adicionales {
+  idconf_print_adicionales Int    @id @default(autoincrement())
+  idconf_print             Int
+  descripcion              String @db.VarChar(50)
+  importe                  String @db.VarChar(5)
+  idtipo_consumo           Int
+  idseccion                Int
+  nivel                    Int    @default(0)
+  estado                   Int    @default(0)
+}
+
+model conf_print_detalle {
+  idconf_print_detalle Int    @id @default(autoincrement())
+  idconf_print         Int
+  descripcion          String @db.VarChar(80)
+  porcentaje           String @db.VarChar(4)
+  es_impuesto          Int    @default(0)
+  activo               Int    @default(0)
+  estado               Int    @default(0)
+  idorg                Int?
+  idsede               Int?
+}
+
+model conf_print_otros {
+  conf_print_otros Int @id @default(autoincrement())
+  idorg            Int
+  idsede           Int
+  idtipo_otro      Int
+  idimpresora      Int
+  esalmacen        Int @default(0)
+  estado           Int @default(0)
+}
+
+model contable_gasto_fijo {
+  idcontable_gasto_fijo Int       @id @default(autoincrement())
+  idorg                 Int
+  idsede                Int
+  idtipo_gasto          Int
+  idtipo_gasto_detalle  Int
+  descripcion           String    @db.VarChar(150)
+  importe               String    @db.VarChar(10)
+  glosa                 String?   @db.VarChar(100)
+  cuotas                String    @db.VarChar(5)
+  cuotas_van            String    @default("0") @db.VarChar(5)
+  mes_ultimo_pago       Int?
+  dia_pago              String?   @db.VarChar(10)
+  fecha_registro        DateTime? @db.Date
+  fecha_baja            DateTime? @db.Date
+  estado                Int       @default(0)
+}
+
+model contable_gasto_fijo_detalle {
+  idcontable_gasto_fijo_detalle Int    @id @default(autoincrement())
+  idcontable_gasto_fijo         Int
+  fecha_registro                String @db.VarChar(50)
+  fecha_pago                    String @db.VarChar(30)
+  cuota                         String @db.VarChar(5)
+  importe                       String @db.VarChar(10)
+  doc                           String @db.VarChar(100)
+  estado                        Int    @default(0)
+}
+
+model contable_gasto_variable {
+  idcontable_gasto_variable Int    @id @default(autoincrement())
+  idorg                     Int
+  idsede                    Int
+  idtipo_gasto              Int
+  idtipo_gasto_detalle      Int
+  fecha_registro            String @db.VarChar(30)
+  fecha_pago                String @db.VarChar(30)
+  descripcion               String @db.VarChar(200)
+  importe                   String @db.VarChar(20)
+  estado                    Int    @default(0)
+}
+
+model contable_ingreso_otro {
+  idcontable_ingreso_otro Int    @id @default(autoincrement())
+  idorg                   Int
+  idsede                  Int
+  descripcion             String @db.VarChar(200)
+  idtipo_ingreso          Int
+  fecha_registro          String @db.VarChar(30)
+  fecha_ingreso           String @db.VarChar(30)
+  importe                 String @db.Char(10)
+  estado                  Int    @default(0)
+}
+
+model cpe_enviados {
+  idcpe_enviados Int     @id @default(autoincrement())
+  fecha_envio    String? @db.VarChar(45)
+  id_envio       Int?
+  ticket         String? @db.VarChar(45)
+  msj            String? @db.VarChar(100)
+  estado         Int?    @default(0)
+}
+
+model cpe_facturador {
+  idcpe_facturador Int    @id @default(autoincrement())
+  idorg            Int
+  idsede           Int
+  idcliente        Int
+  idusuario        Int
+  idce             Int?
+  idcomprobante    Int
+  num_comprobante  String @db.VarChar(30)
+  fecha            String @db.VarChar(50)
+  total            String @db.VarChar(10)
+  subtotal         String @db.VarChar(10)
+  igv              String @db.VarChar(10)
+  estado           Int    @default(0)
+}
+
+model cpe_facturador_detalle {
+  idcpe_facturador_detalle Int    @id @default(autoincrement())
+  idcpe_facturador         Int
+  iditem                   Int
+  descripcion              String @db.VarChar(255)
+  cantidad                 String @db.VarChar(5)
+  punitario                String @db.VarChar(10)
+  ptotal                   String @db.VarChar(10)
+  estado                   Int    @default(0)
+}
+
+model cpe_resumen_boletas {
+  idcpe_resumen_boletas Int     @id @default(autoincrement())
+  fecha                 String? @db.VarChar(45)
+  id                    String? @db.VarChar(10)
+  ticket                String? @db.VarChar(45)
+  msj                   String? @db.VarChar(100)
+  registrado            Int?    @default(0)
+  aceptado              Int?    @default(0)
+  estado                Int?    @default(0)
+}
+
+model cuenta_papaya {
+  idcuenta_papaya        Int                      @id @default(autoincrement())
+  banco                  String                   @db.VarChar(20)
+  numero                 String                   @db.VarChar(50)
+  logo_banco             String                   @db.VarChar(50)
+  estado                 Boolean                  @default(false)
+  sede_pago_confirmacion sede_pago_confirmacion[]
+}
+
+model distribuicion {
+  iddistribuicion                             Int                     @id @default(autoincrement())
+  idsede                                      Int
+  idusuario                                   Int
+  idalmacen_de                                Int
+  idalmacen_a                                 Int
+  idsede_a                                    Int
+  is_to_sede                                  Boolean                 @default(false)
+  fecha                                       String                  @db.Char(50)
+  detalle                                     String                  @db.VarChar(200)
+  estado                                      Boolean                 @default(false)
+  sede_distribuicion_idsedeTosede             sede                    @relation("distribuicion_idsedeTosede", fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_ibfk_1")
+  almacen_distribuicion_idalmacen_deToalmacen almacen                 @relation("distribuicion_idalmacen_deToalmacen", fields: [idalmacen_de], references: [idalmacen], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_ibfk_2")
+  almacen_distribuicion_idalmacen_aToalmacen  almacen                 @relation("distribuicion_idalmacen_aToalmacen", fields: [idalmacen_a], references: [idalmacen], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_ibfk_3")
+  sede_distribuicion_idsede_aTosede           sede                    @relation("distribuicion_idsede_aTosede", fields: [idsede_a], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_ibfk_4")
+  distribuicion_detalle                       distribuicion_detalle[]
+
+  @@index([idalmacen_a], map: "idalmace_a")
+  @@index([idalmacen_de], map: "idalmacen_de")
+  @@index([idsede], map: "idsede")
+  @@index([idsede_a], map: "idsede_a")
+}
+
+model distribuicion_detalle {
+  iddistribuicion_detalle Int            @id @default(autoincrement())
+  iddistribuicion         Int
+  idproducto_stock        Int
+  cantidad                String         @db.Char(5)
+  estado                  Boolean        @default(false)
+  descripcion             String?        @db.VarChar(150)
+  idproducto              Int?
+  distribuicion           distribuicion  @relation(fields: [iddistribuicion], references: [iddistribuicion], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_detalle_ibfk_1")
+  producto_stock          producto_stock @relation(fields: [idproducto_stock], references: [idproducto_stock], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_detalle_ibfk_2")
+
+  @@index([iddistribuicion], map: "iddistribuicion")
+  @@index([idproducto_stock], map: "idproducto_stock")
+}
+
+model encuesta_pregunta {
+  idencuesta_pregunta Int    @id @default(autoincrement())
+  idsede              Int    @default(0)
+  pregunta            String @db.VarChar(200)
+  obligatorio         Int    @default(0)
+  estado              Int    @default(0)
+}
+
+model encuesta_preguntas_usuario {
+  idencuesta_preguntas_usuario Int    @id @default(autoincrement())
+  pregunta                     String @db.VarChar(200)
+  estado                       Int    @default(0)
+  idorg                        Int?
+  idsede                       Int?
+}
+
+model encuesta_respuesta {
+  idencuesta_respuesta Int    @id @default(autoincrement())
+  descripcion          String @db.VarChar(20)
+  img                  String @db.VarChar(50)
+  estado               Int    @default(0)
+}
+
+model encuesta_resultados {
+  idencuesta_resultados Int    @id @default(autoincrement())
+  idencuesta_sede_conf  Int
+  fecha                 String @db.VarChar(60)
+  hora                  String @db.VarChar(30)
+  estado                Int    @default(0)
+}
+
+model encuesta_resultados_detalle {
+  idencuesta_resultados_detalle Int    @id @default(autoincrement())
+  idencuesta_resultados         Int
+  idencuesta_pregunta           Int
+  idencuesta_respuesta          Int
+  comentario                    String @db.VarChar(200)
+  iscomentario                  Int    @default(0)
+}
+
+model encuesta_sede_conf {
+  idencuesta_sede_conf Int     @id @default(autoincrement())
+  idorg                Int
+  idsede               Int
+  idusuario            Int
+  nombre               String? @db.VarChar(100)
+  fecha_creacion       String  @db.Char(30)
+  preguntas            Json
+  estado               Int     @default(0)
+  link                 String? @db.VarChar(150)
+}
+
+model frases {
+  idfrases Int    @id @default(autoincrement())
+  frase    String @db.VarChar(255)
+  autor    String @db.VarChar(100)
+  estado   Int    @default(0)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+model historial_error {
+  fecha    DateTime @db.Date
+  error    Json
+  origen   String   @db.Char(20)
+  resuelto Int      @default(0)
+
+  @@ignore
+}
+
+model ie_caja {
+  idie_caja    Int    @id @default(autoincrement())
+  idorg        Int
+  idsede       Int
+  idusuario    Int
+  tipo         Int
+  motivo       String @db.VarChar(255)
+  fecha        String @db.VarChar(30)
+  monto        String @db.VarChar(10)
+  cierre       Int    @default(0)
+  fecha_cierre String @db.VarChar(60)
+  estado       Int    @default(0)
+}
+
+model impresora {
+  idimpresora    Int    @id @default(autoincrement())
+  idorg          Int
+  idsede         Int
+  ip             String @db.VarChar(50)
+  descripcion    String @db.VarChar(50)
+  var_margen_iz  Int    @default(0)
+  var_size_font  Int    @default(0)
+  local          Int    @default(0)
+  minutos_pedido String @db.VarChar(10)
+  img64          Int    @default(0)
+  copia_local    Int    @default(0)
+  num_copias     Int    @default(0)
+  papel_size     Int?   @default(0)
+  estado         Int    @default(0)
+
+  @@index([idorg, idsede], map: "impresora_idorg_IDX")
+}
+
+model ingreso_varios {
+  idingreso_varios Int      @id @default(autoincrement())
+  idsede           Int
+  idusuario        Int
+  fecha            DateTime @db.DateTime(0)
+  idtipo_pago      Int
+  concepto         String   @db.VarChar(255)
+  importe          String   @db.Char(10)
+  estado           Boolean  @default(false)
+  idcliente        Int?
+  cierre           Boolean  @default(false)
+  nom_cliente      String?  @db.VarChar(100)
+  usuario          usuario  @relation(fields: [idusuario], references: [idusuario], onUpdate: Restrict, map: "ingreso_varios_FK")
+
+  @@index([idusuario], map: "ingreso_varios_FK")
+}
+
+model item {
+  iditem                    Int                         @id @default(autoincrement())
+  idorg                     Int
+  idsede                    Int
+  descripcion               String                      @db.VarChar(80)
+  precio                    String                      @db.VarChar(10)
+  costo                     String                      @db.VarChar(10)
+  detalle                   String                      @db.VarChar(255)
+  img                       String                      @db.VarChar(255)
+  subitem_cant_select       Int
+  subitem_required_select   Int                         @default(0)
+  estado                    Int                         @default(0)
+  pwa_habilitado_delivery   String                      @default("0") @db.VarChar(1)
+  is_visible_cliente        Boolean                     @default(false)
+  is_recomendacion          String                      @default("0") @db.Char(1)
+  item_producto_relacionado item_producto_relacionado[]
+
+  @@index([descripcion], map: "item_descripcion_IDX")
+  @@index([idorg, idsede], map: "item_idorg_IDX")
+}
+
+model item_cat_kiosko {
+  iditem_cat_kiosko Int    @id @default(autoincrement())
+  idorg             Int
+  idsede            Int
+  descripcion       String @db.VarChar(80)
+  estado            Int    @default(0)
+}
+
+model item_ingrediente {
+  iditem_ingrediente Int    @id @default(autoincrement())
+  iditem             Int
+  idporcion          Int    @default(0)
+  descripcion        String @db.VarChar(80)
+  cantidad           String @db.VarChar(10)
+  costo              String @db.VarChar(10)
+  estado             Int    @default(0)
+  necesario          String @default("0") @db.Char(1)
+}
+
+model item_kiosko {
+  iditem_kiosko     Int    @id @default(autoincrement())
+  iditem_cat_kiosko Int
+  stock             String @db.VarChar(10)
+  descripcion       String @db.VarChar(255)
+  cod_barra         String @db.VarChar(255)
+  pventa            String @db.VarChar(10)
+  estado            Int    @default(0)
+}
+
+model item_producto_relacionado {
+  iditem_producto_relacionado Int            @id @default(autoincrement())
+  idtipo_consumo              Int
+  iditem                      Int
+  idproducto_stock            Int
+  cantidad                    Int
+  estado                      Boolean        @default(false)
+  item                        item           @relation(fields: [iditem], references: [iditem], onDelete: NoAction, onUpdate: NoAction, map: "item")
+  producto_stock              producto_stock @relation(fields: [idproducto_stock], references: [idproducto_stock], onDelete: NoAction, onUpdate: NoAction, map: "producto_stock")
+  tipo_consumo                tipo_consumo   @relation(fields: [idtipo_consumo], references: [idtipo_consumo], onDelete: NoAction, onUpdate: NoAction, map: "tipo_consumo")
+
+  @@index([iditem], map: "item")
+  @@index([idproducto_stock], map: "producto_stock")
+  @@index([idtipo_consumo], map: "tipo_consumo")
+}
+
+model item_subitem {
+  iditem_subitem         Int    @id @default(autoincrement())
+  iditem_subitem_content Int
+  iditem                 Int
+  idporcion              Int
+  idproducto             Int
+  descripcion            String @db.VarChar(100)
+  cantidad               String @db.Char(4)
+  precio                 String @default("0") @db.VarChar(10)
+  estado                 Int    @default(0)
+
+  @@index([iditem], map: "item_subitem_iditem_IDX")
+  @@index([iditem_subitem_content], map: "item_subitem_iditem_subitem_content_IDX")
+  @@index([idporcion], map: "item_subitem_idporcion_IDX")
+  @@index([idproducto], map: "item_subitem_idproducto_IDX")
+}
+
+model item_subitem_content {
+  iditem_subitem_content  Int     @id @default(autoincrement())
+  iditem                  Int
+  idsede                  Int
+  titulo                  String  @db.VarChar(100)
+  estado                  Int     @default(0)
+  subitem_required_select Int     @default(0)
+  subitem_cant_select     Int     @default(0)
+  is_sum_cant_subitems    Int     @default(0)
+  compartido              String  @default("0") @db.Char(1)
+  show_cant_item          Int     @default(0) @db.TinyInt
+  controlable             Boolean @default(false)
+
+  @@index([iditem], map: "item_subitem_content_iditem_IDX")
+}
+
+model item_subitem_content_detalle {
+  iditem_subitem_content_detalle Int     @id @default(autoincrement())
+  iditem_subitem_content         Int
+  iditem                         Int
+  estado                         Int     @default(0)
+  subitem_cant_select            Int     @default(0)
+  subitem_required_select        Int     @default(0)
+  show_cant_item                 Boolean @default(false)
+  controlable                    Boolean @default(false)
+
+  @@index([estado], map: "item_subitem_content_detalle_estado_IDX")
+  @@index([iditem], map: "item_subitem_content_detalle_iditem_IDX")
+  @@index([iditem_subitem_content], map: "item_subitem_content_detalle_iditem_subitem_content_IDX")
+}
+
+model kardex {
+  idkardex       Int    @id @default(autoincrement())
+  idoperacion    String @db.VarChar(20)
+  idorg          Int
+  idsede         Int
+  idalmacen      Int
+  tipo_operacion Int
+  fecha          String @db.VarChar(30)
+  documento      String @db.VarChar(80)
+  idusuario      Int
+  estado         Int    @default(0)
+}
+
+model kardex_detalle {
+  idkardex_detalle Int    @id @default(autoincrement())
+  idkardex         Int
+  idoperacion      String @db.VarChar(20)
+  idp              Int
+  procede          Int
+  cantidad         String @db.VarChar(10)
+  stock_a_fecha    String @db.VarChar(10)
+  valor_unitario   String @db.VarChar(10)
+  estado           Int    @default(0)
+}
+
+model mesa_datos_facturacion_pwa {
+  idmesa_datos_facturacion_pwa Int      @id @default(autoincrement())
+  idsede                       Int
+  fecha                        DateTime @db.DateTime(0)
+  idcliente                    Int
+  num_mesa                     String   @db.Char(5)
+  datos                        Json
+  atendido                     String   @default("0") @db.Char(1)
+}
+
+model msj_canal {
+  idmsj_canal Int     @id @default(autoincrement())
+  canal       String  @db.VarChar(50)
+  costo       Int     @db.TinyInt
+  estado      Boolean @default(false)
+  descripcion String? @db.VarChar(200)
+}
+
+model msj_plantilla {
+  idmsj_plantilla Int     @id @default(autoincrement())
+  idmsj_canal     Int
+  titulo          String  @db.VarChar(50)
+  contenido       String  @db.Text
+  estado          Boolean @default(false)
+}
+
+model notificacion_cambios_sistema {
+  idnotificacion_cambios_sistema Int      @id @default(autoincrement())
+  fecha                          DateTime @db.Date
+  titulo                         String   @db.VarChar(90)
+  descripcion                    String   @db.VarChar(255)
+  imagen                         String   @db.VarChar(250)
+  estado                         Int      @default(0) @db.TinyInt
+}
+
+model orden_pedido {
+  idorden_pedido    Int     @id @default(autoincrement())
+  idsede            Int
+  fecha_registro    String  @db.VarChar(50)
+  fecha_entrega     String  @db.VarChar(50)
+  nota              String  @db.VarChar(150)
+  total             String  @db.Char(10)
+  adelanto          String? @db.Char(10)
+  idusuario         Int
+  cliente_nom       String? @db.VarChar(100)
+  cliente_telefono  String? @db.VarChar(20)
+  direccion_entrega String? @db.VarChar(150)
+  estado            Boolean @default(false)
+  detalle_json      Json?
+  numero            String? @db.VarChar(10)
+}
+
+model orden_pedido_adelanto {
+  idorden_pedido_adelanto Int     @id @default(autoincrement())
+  idorden_pedido          Int
+  concepto                String  @db.VarChar(150)
+  importe                 String  @db.Char(10)
+  estado                  Boolean @default(false)
+  fecha_hora              String? @db.VarChar(100)
+  idtipo_pago             Int
+  idusuario               Int?
+  isprocesado_caja        String? @default("0") @db.Char(1)
+}
+
+model orden_pedido_detalle {
+  idorden_pedido_detalle Int     @id @default(autoincrement())
+  idorden_pedido         Int
+  producto               String  @db.VarChar(255)
+  cantidad               String  @db.VarChar(10)
+  punitario              String  @db.VarChar(10)
+  total                  String  @db.VarChar(10)
+  estado                 Boolean @default(false)
+}
+
+model orden_pedido_notas {
+  idorden_pedido_notas Int     @id @default(autoincrement())
+  idorden_pedido       Int
+  nota                 String  @db.VarChar(250)
+  estado               Boolean @default(false)
+  fecha_hora           String? @db.VarChar(50)
+}
+
+model org {
+  idorg                Int                    @id @default(autoincrement())
+  idunico              Int
+  nombre               String                 @db.VarChar(200)
+  direccion            String                 @db.VarChar(200)
+  ruc                  String                 @db.VarChar(20)
+  telefono             String                 @db.VarChar(200)
+  email                String                 @db.VarChar(200)
+  estado               Int                    @default(0)
+  tipo_contribuyente   String                 @default("PJ") @db.VarChar(5)
+  almacen              almacen[]
+  almacen_ie           almacen_ie[]
+  carta                carta[]
+  colaborador          colaborador[]
+  colaborador_contrato colaborador_contrato[]
+  pedido               pedido[]
+}
+
+model pedido {
+  idpedido                        Int                        @id @default(autoincrement())
+  idorg                           Int
+  idsede                          Int
+  idcliente                       Int?
+  idusuario                       Int
+  idregistro_pago                 Int                        @default(0)
+  fecha                           String                     @db.VarChar(25)
+  hora                            String                     @db.VarChar(25)
+  fecha_hora                      DateTime                   @db.DateTime(0)
+  nummesa                         Int
+  numpedido                       Int?
+  correlativo_dia                 Int
+  reserva                         Int                        @default(0)
+  referencia                      String                     @default("") @db.VarChar(50)
+  total                           String                     @db.VarChar(10)
+  total_r                         String                     @db.Char(10)
+  total_total                     String?                    @db.VarChar(10)
+  solo_llevar                     Int                        @default(0)
+  idtipo_consumo                  Int
+  idcategoria                     Int
+  tiempo_atencion                 String                     @default("0") @db.VarChar(50)
+  val_color_despachado            String?                    @db.Char(1)
+  cierre                          Int                        @default(0)
+  motivo_anular                   String?                    @db.VarChar(80)
+  despachado                      Int                        @default(0)
+  subtotales_tachados             String                     @default("") @db.VarChar(250)
+  estado                          Int                        @default(0)
+  json_datos_delivery             String?                    @db.LongText
+  is_from_client_pwa              Int                        @default(0)
+  pwa_delivery_status             String                     @default("0") @db.Char(1)
+  idrepartidor                    Int?
+  pwa_estado                      String                     @default("P") @db.Char(1)
+  pwa_facturado                   Boolean                    @default(false)
+  pwa_is_delivery                 Boolean                    @default(false)
+  num_reasignaciones              Int                        @default(0)
+  last_id_repartidor_reasigno     Int?
+  pwa_delivery_tiempo_atendido    String                     @default("0") @db.VarChar(10)
+  flag_solicita_repartidor_papaya Boolean                    @default(false)
+  flag_abonado                    Boolean                    @default(false)
+  check_liquidado                 String                     @default("0") @db.Char(1)
+  check_pagado                    String                     @default("0") @db.Char(1)
+  check_pago_fecha                String                     @default("") @db.VarChar(50)
+  check_pago_repartidor           String                     @default("0") @db.Char(1)
+  flag_pedido_programado          Boolean                    @default(false)
+  fecha_hora_registro             DateTime?                  @db.DateTime(0)
+  flag_calificado                 Boolean                    @default(false)
+  confirmar_pago                  Boolean                    @default(false)
+  idpwa_pago_transaction          Int?
+  idregistra_scan_qr              Int?
+  is_precuenta                    Boolean                    @default(false)
+  is_printer                      Boolean                    @default(false)
+  flag_is_cliente                 Boolean?                   @default(false)
+  pwa_delivery_atendido           Boolean                    @default(false)
+  cliente                         cliente?                   @relation(fields: [idcliente], references: [idcliente], onDelete: Restrict, onUpdate: Restrict, map: "pedido_FK")
+  org                             org                        @relation(fields: [idorg], references: [idorg], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_1")
+  sede                            sede                       @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_2")
+  tipo_consumo                    tipo_consumo               @relation(fields: [idtipo_consumo], references: [idtipo_consumo], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_3")
+  pedido_repartidor_pagado        pedido_repartidor_pagado[]
+
+  @@index([correlativo_dia], map: "pedido_correlativo_dia_IDX")
+  @@index([idcategoria], map: "pedido_idcategoria_IDX")
+  @@index([idcliente], map: "pedido_idcliente_IDX")
+  @@index([idorg, idsede, idregistro_pago, idcategoria, idcliente, idusuario, idtipo_consumo], map: "pedido_idorg_IDX")
+  @@index([idregistro_pago], map: "pedido_idregistro_pago_IDX")
+  @@index([idregistro_pago, idusuario], map: "pedido_idregistro_pago_userIDX")
+  @@index([idrepartidor], map: "pedido_idrepartidor_IDX")
+  @@index([idsede], map: "pedido_idsede_IDX")
+  @@index([idtipo_consumo], map: "pedido_idtipo_consumo_IDX")
+  @@index([idusuario], map: "pedido_idusuario_IDX")
+  @@index([is_from_client_pwa, pwa_delivery_status], map: "pedido_is_from_client_pwa_IDX")
+  @@index([nummesa, numpedido], map: "pedido_nummesa_IDX")
+  @@index([numpedido], map: "pedido_numpedido_IDX")
+}
+
+model pedido_app_sede_last_week {
+  idsede           Int @id
+  cantidad_pedidos Int
+}
+
+model pedido_borrados {
+  idpedido_borrados Int    @id @default(autoincrement())
+  idpedido          Int
+  idpedido_detalle  Int
+  iditem            Int
+  idcarta_lista     String @db.Char(50)
+  idusuario         Int
+  idusuario_permiso Int
+  importe           String @db.VarChar(8)
+  fecha             String @db.VarChar(50)
+  hora              String @db.VarChar(20)
+  fecha_cierre      String @db.VarChar(30)
+  procede_tabla     Int
+  estado            Int    @default(0)
+  cantidad          Int    @default(0)
+}
+
+model pedido_cambios {
+  idpedido_cambios  Int    @id @default(autoincrement())
+  idpedido_detalle  Int
+  idusuario         Int
+  idusuario_permiso Int
+  fecha             String @db.VarChar(30)
+  hora              String @db.VarChar(30)
+  fecha_cierre      String @db.VarChar(30)
+  estado            Int    @default(0)
+}
+
+model pedido_correlativos {
+  idsede                 Int       @id
+  fecha                  DateTime  @db.Date
+  correlativo_dia        Int
+  last_id_pedido_cierre  Int       @default(0)
+  last_id_registro_pago  Int       @default(0)
+  correlativo_dia_ticket Int       @default(0)
+  fecha_ticket           DateTime? @db.Date
+}
+
+model pedido_detalle {
+  idpedido_detalle  Int          @id @default(autoincrement())
+  idpedido          Int
+  idtipo_consumo    Int
+  idcategoria       Int
+  idcarta_lista     String       @db.VarChar(20)
+  iditem            Int
+  idseccion         String       @db.Char(10)
+  cantidad          String       @db.VarChar(5)
+  punitario         String       @db.VarChar(5)
+  ptotal            String       @db.VarChar(5)
+  ptotal_r          String       @db.VarChar(5)
+  cantidad_r        String       @db.VarChar(5)
+  descripcion       String       @db.VarChar(200)
+  secambio          Int          @default(0)
+  borrado           Int          @default(0)
+  pagado            Int          @default(0)
+  procede           Int          @default(0)
+  procede_tabla     Int
+  estado_trigger    Int          @default(0)
+  idregistro_pago   Int          @default(0)
+  modificado        Int          @default(0)
+  despachado        Int          @default(0)
+  despachado_hora   String?      @db.VarChar(60)
+  despachado_tiempo String?      @db.VarChar(60)
+  pwa               Int          @default(0)
+  subitems          Json?
+  estado            Int          @default(0)
+  confirmar_pago    Boolean      @default(false)
+  iditem_subitem    Int?
+  tipo_consumo      tipo_consumo @relation(fields: [idtipo_consumo], references: [idtipo_consumo], onUpdate: Restrict, map: "pedido_detalle_FK_1")
+  categoria         categoria    @relation(fields: [idcategoria], references: [idcategoria], onUpdate: Restrict, map: "pedido_detalle_FK_2")
+
+  @@index([descripcion], map: "pedido_detalle_descripcion_IDX")
+  @@index([idcarta_lista], map: "pedido_detalle_idcarta_lista_IDX")
+  @@index([idcategoria], map: "pedido_detalle_idcategoria_IDX")
+  @@index([iditem], map: "pedido_detalle_iditem_IDX")
+  @@index([idpedido, idregistro_pago, idseccion, iditem, idcarta_lista, idcategoria, idtipo_consumo], map: "pedido_detalle_idpedido_IDX")
+  @@index([idseccion], map: "pedido_detalle_idseccion_IDX")
+  @@index([idtipo_consumo], map: "pedido_detalle_idtipo_consumo_IDX")
+  @@index([procede_tabla, procede], map: "pedido_detalle_procede_tabla_IDX")
+}
+
+model pedido_mandado {
+  idpedido_mandado             Int     @id @default(autoincrement())
+  idcliente                    Int
+  ciudad                       String  @db.VarChar(80)
+  fecha_hora                   String  @db.VarChar(50)
+  idtipo_vehiculo              Int?
+  idrepartidor                 Int?
+  pwa_estado                   String  @db.Char(1)
+  pedido_json                  Json
+  importe                      String  @db.VarChar(10)
+  estado                       Boolean @default(false)
+  ispedido_express             Boolean @default(false)
+  pwa_delivery_tiempo_atendido String  @default("0") @db.VarChar(50)
+}
+
+model pedido_mandado_bk {
+  idpedido_mandado_bk Int     @id @default(autoincrement())
+  obj                 Json
+  fecha_hora          String? @db.VarChar(100)
+}
+
+model pedido_pago {
+  idpedido_pago Int    @id @default(autoincrement())
+  idpedido      Int
+  idtipo_pago   Int
+  importe       String @db.VarChar(20)
+  estado        Int    @default(0)
+}
+
+model pedido_subtotales {
+  idpedido_subtotales Int    @id @default(autoincrement())
+  idpedido            Int
+  idorg               Int
+  idsede              Int
+  descripcion         String @db.VarChar(80)
+  importe             String @db.VarChar(10)
+  tachado             Int    @default(0)
+  estado              Int    @default(0)
+
+  @@index([idpedido, idorg, idsede], map: "pedido_subtotales_idpedido_IDX")
+}
+
+model pedido_time_line_entrega {
+  idpedido  Int  @id
+  time_line Json
+
+  @@index([idpedido], map: "pedido_time_line_entrega_idpedido_IDX")
+}
+
+model planilla {
+  idplanilla         Int    @id @default(autoincrement())
+  idorg              Int
+  idsede             Int
+  idcolaborador      Int
+  idcargo            Int
+  idplanilla_periodo Int
+  area               String @db.VarChar(100)
+  mes_activo         String @db.Char(20)
+  mes_cierre         String @db.VarChar(30)
+  mes_ingreso        String @db.VarChar(30)
+  fecha_baja         String @db.VarChar(30)
+  estado             Int    @default(0)
+}
+
+model planilla_detalle {
+  idplanilla_detalle Int    @id @default(autoincrement())
+  idplanilla         Int
+  fecha              String @db.VarChar(30)
+  tipo               Int
+  descripcion        String @db.VarChar(200)
+  importe            String @db.Char(10)
+  mes_activo         String @db.VarChar(20)
+  estado             Int    @default(0)
+}
+
+model planilla_periodo {
+  idplanilla_periodo Int    @id @default(autoincrement())
+  descripcion        String @db.VarChar(50)
+  dias               String @db.VarChar(5)
+  estado             Int    @default(0)
+}
+
+model porcion {
+  idporcion             Int     @id @default(autoincrement())
+  idorg                 Int
+  idsede                Int
+  idproducto_de         Int
+  descripcion           String  @db.VarChar(180)
+  peso                  String  @db.VarChar(10)
+  stock                 String  @db.VarChar(10)
+  estado                Int     @default(0)
+  flag_last_date_salida String? @db.Char(30)
+}
+
+model porcion_historial {
+  idporcion_historial Int    @id @default(autoincrement())
+  tipo_movimiento     String @db.Char(20)
+  fecha               String @db.Char(30)
+  hora                String @db.Char(15)
+  cantidad            String @db.Char(5)
+  idusuario           Int
+  idporcion           Int
+  idsede              Int
+  estado              String @default("0") @db.Char(1)
+}
+
+model print_server_detalle {
+  idprint_server_detalle    Int    @id @default(autoincrement())
+  idorg                     Int
+  idsede                    Int
+  idprint_server_estructura Int
+  descripcion_doc           String @db.VarChar(20)
+  detalle_json              Json
+  fecha                     String @db.VarChar(30)
+  hora                      String @db.VarChar(30)
+  idusuario                 Int
+  impreso                   Int    @default(0)
+  error                     Int    @default(0)
+  estado                    Int    @default(0)
+  isreserva                 Int    @default(0) @db.TinyInt
+
+  @@index([idorg, idsede, idprint_server_estructura, impreso], map: "print_server_detalle_idorg_IDX")
+}
+
+model print_server_estructura {
+  idprint_server_estructura Int     @id @default(autoincrement())
+  tipo_documento            Int
+  nom_documento             String  @db.VarChar(25)
+  estructura_json           String  @db.MediumText
+  estructura_json_pwa       String  @db.Text
+  v                         String? @db.VarChar(3)
+  estado                    Int     @default(0)
+}
+
+model produccion_producto {
+  idproduccion_producto       Int                           @id @default(autoincrement())
+  fecha                       String                        @db.Char(30)
+  idusuario                   Int
+  idsede                      Int
+  detalle                     String                        @db.VarChar(255)
+  estado                      Boolean                       @default(false)
+  usuario                     usuario                       @relation(fields: [idusuario], references: [idusuario], onDelete: NoAction, onUpdate: NoAction, map: "produccion_producto_ibfk_1")
+  sede                        sede                          @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "produccion_producto_ibfk_2")
+  produccion_producto_detalle produccion_producto_detalle[]
+
+  @@index([idsede], map: "idsede")
+  @@index([idusuario], map: "idusuario")
+}
+
+model produccion_producto_detalle {
+  idproduccion_producto_detalle Int                 @id @default(autoincrement())
+  idproduccion_producto         Int
+  idproducto_stock              Int
+  cantidad                      String              @db.Char(5)
+  descripcion                   String              @db.VarChar(150)
+  estado                        Boolean             @default(false)
+  produccion_producto           produccion_producto @relation(fields: [idproduccion_producto], references: [idproduccion_producto], onDelete: NoAction, onUpdate: NoAction, map: "produccion_producto_detalle_ibfk_1")
+  producto_stock                producto_stock      @relation(fields: [idproducto_stock], references: [idproducto_stock], onDelete: NoAction, onUpdate: NoAction, map: "produccion_producto_detalle_ibfk_2")
+
+  @@index([idproduccion_producto], map: "idproduccion_producto")
+  @@index([idproducto_stock], map: "idproducto_stock")
+}
+
+model producto {
+  idproducto            Int     @id @default(autoincrement())
+  idorg                 Int
+  idsede                Int
+  descripcion           String  @db.VarChar(150)
+  codigo_barra          String  @db.VarChar(255)
+  precio                String  @db.VarChar(10)
+  precio_unitario       String  @db.VarChar(25)
+  precio_venta          String  @db.VarChar(10)
+  idproducto_familia    String  @db.Char(10)
+  stock_minimo          String  @db.VarChar(10)
+  stock                 Int     @default(0)
+  enlazar               Int     @default(0)
+  estado                Int     @default(0)
+  img                   String  @db.VarChar(255)
+  flag_last_date_salida String? @db.Char(30)
+  venta_x_peso          String? @default("0") @db.Char(1)
+
+  @@index([idorg, idsede], map: "producto_idorg_IDX")
+}
+
+model producto_familia {
+  idproducto_familia String @id @db.Char(10)
+  idorg              Int
+  idsede             Int
+  descripcion        String @db.VarChar(80)
+  idimpresora        Int    @default(0)
+  estado             Int    @default(0)
+  img                String @db.VarChar(100)
+
+  @@index([idsede], map: "producto_familia_idsede_IDX")
+}
+
+model producto_historial {
+  idproducto_historial Int    @id @default(autoincrement())
+  tipo_movimiento      String @db.Char(20)
+  fecha                String @db.Char(30)
+  hora                 String @db.Char(15)
+  cantidad             String @db.Char(5)
+  idusuario            Int
+  idproducto           Int
+  idsede               Int
+  estado               String @default("0") @db.Char(1)
+  idalmacen            Int?
+}
+
+model producto_historial_precio {
+  idproducto_historial_precio Int    @id @default(autoincrement())
+  idorg                       Int
+  idsede                      Int
+  idproducto                  Int
+  fecha                       String @db.VarChar(35)
+  precio                      String @db.VarChar(10)
+  idproveedor                 Int
+  estado                      Int    @default(0)
+}
+
+model producto_stock {
+  idproducto                  Int
+  idalmacen                   Int
+  stock                       String                        @db.Char(5)
+  estado                      Int                           @default(0)
+  idproducto_stock            Int                           @id @default(autoincrement())
+  flag_last_date_salida       String?                       @db.Char(30)
+  distribuicion_detalle       distribuicion_detalle[]
+  item_producto_relacionado   item_producto_relacionado[]
+  produccion_producto_detalle produccion_producto_detalle[]
+
+  @@index([idalmacen], map: "idalmacen")
+  @@index([idalmacen], map: "producto_stock_idalmacen_IDX")
+  @@index([idproducto], map: "producto_stock_idproducto_IDX")
+}
+
+model promocion {
+  idpromocion       Int                 @id @default(autoincrement())
+  idpromocion_lista Int
+  parametros        Json
+  idsede            Int
+  estado            Boolean             @default(false)
+  fecha_registro    String?             @db.Char(30)
+  idusuario         Int?
+  img               String?             @db.Char(50)
+  activo            String              @default("1") @db.Char(1)
+  promocion_lista   promocion_lista     @relation(fields: [idpromocion_lista], references: [idpromocion_lista], onDelete: NoAction, onUpdate: NoAction, map: "idpromoccion_lista_key")
+  sede              sede                @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "idsede_key")
+  usuario           usuario?            @relation(fields: [idusuario], references: [idusuario], onDelete: Restrict, onUpdate: Restrict, map: "promocion_FK")
+  promocion_detalle promocion_detalle[]
+
+  @@index([idpromocion_lista], map: "idpromoccion_lista_key")
+  @@index([idsede], map: "idsede_key")
+  @@index([idusuario], map: "promocion_FK")
+}
+
+model promocion_detalle {
+  idpromocion_detalle Int       @id @default(autoincrement())
+  idpromocion         Int
+  tipo                String    @db.Char(20)
+  iditem              Int?
+  porc_descuento      String    @db.Char(10)
+  cantidad            String    @db.Char(10)
+  estado              Boolean   @default(false)
+  idproducto_stock    Int?
+  idseccion           Int?
+  precio              String?   @db.VarChar(10)
+  precio_final        String?   @db.Char(10)
+  cantidad_x          String?   @db.Char(10)
+  descripcion         String?   @db.VarChar(150)
+  idimpresora         Int?
+  iditem_subitem      Int?
+  promocion           promocion @relation(fields: [idpromocion], references: [idpromocion], onDelete: NoAction, onUpdate: NoAction, map: "idpromocion_key")
+
+  @@index([idpromocion], map: "idpromocion_key")
+}
+
+model promocion_gif {
+  idpromocion_gif String  @id @db.Char(2)
+  titulo          String  @db.Char(50)
+  img             String  @db.Char(100)
+  estado          Boolean @default(false)
+}
+
+model promocion_lista {
+  idpromocion_lista Int         @id @default(autoincrement())
+  titulo            String      @db.Char(50)
+  descripcion       String      @db.VarChar(255)
+  estado            Boolean     @default(false)
+  nxn               String      @default("0") @db.Char(1)
+  promocion         promocion[]
+}
+
+model proveedor {
+  idproveedor Int     @id @default(autoincrement())
+  idorg       Int
+  idsede      Int
+  descripcion String  @db.VarChar(150)
+  dni         String  @db.VarChar(20)
+  direccion   String  @db.VarChar(250)
+  estado      Int     @default(0)
+  telefono    String? @db.VarChar(50)
+}
+
+model pwa_cliente {
+  idpwa_cliente Int    @id @default(autoincrement())
+  idsession     String @db.Char(150)
+  nombres       String @db.Char(150)
+  f_nac         String @db.Char(50)
+  f_registro    String @db.Char(50)
+  dni           String @db.Char(20)
+  direccion     Int
+  telefono      String @db.Char(20)
+  pwa_data      Json
+  estado        Int    @default(0)
+  idorg         Int
+  idsede        Int
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+model pwa_pago_purchasenumber {
+  purchasenumber Int
+
+  @@ignore
+}
+
+model pwa_pago_transaction {
+  idpwa_pago_transaction Int     @id @default(autoincrement())
+  idorg                  Int
+  idsede                 Int
+  idregistro_pago        Int?    @default(0)
+  purchasenumber         String  @db.Char(15)
+  fecha                  String  @db.VarChar(50)
+  importe                String? @db.VarChar(50)
+  data_cliente           Json
+  data_transaction       Json
+  data_operacion         Json?
+  data_pedido            Json?
+  estado                 Int     @default(0)
+  importe_neto           String? @db.VarChar(10)
+  abonado                Int     @default(0) @db.TinyInt
+  anulado                Int     @default(0) @db.TinyInt
+
+  @@index([idregistro_pago], map: "pwa_pago_transaction_idregistro_pago_IDX")
+}
+
+model pwa_reglas_app {
+  idpwa_reglas_app Int    @id @default(autoincrement())
+  descripcion      String @db.VarChar(150)
+  estado           Int    @default(0)
+  img              String @db.VarChar(20)
+}
+
+model registra_scan_qr {
+  idregistra_scan_qr Int     @id @default(autoincrement())
+  fecha              String  @db.Char(30)
+  idsede             Int
+  canal              String  @db.VarChar(30)
+  cierre             Boolean @default(false)
+  estado             Boolean @default(false)
+}
+
+model registro_pago {
+  idregistro_pago          Int    @id @default(autoincrement())
+  idorg                    Int
+  idsede                   Int
+  idcliente                Int
+  idusuario                Int
+  idusuario_permiso        Int
+  idtipo_consumo           Int
+  idtipo_comprobante_serie Int    @default(0)
+  idce                     Int?
+  correlativo              String @db.VarChar(15)
+  external_id_comprobante  String @db.VarChar(150)
+  fecha                    String @db.VarChar(80)
+  total                    String @db.Char(10)
+  fecha_cierre             String @db.VarChar(80)
+  cierre                   Int    @default(0)
+  motivo_anular            String @db.VarChar(180)
+  estado                   Int    @default(0)
+  from_pwa                 String @default("0") @db.VarChar(1)
+  confirmado               String @default("0") @db.VarChar(1)
+  data_pago_pwa            Json
+
+  @@index([cierre], map: "registro_pago_cierre_IDX")
+  @@index([fecha, idsede], map: "registro_pago_fecha_IDX")
+  @@index([idcliente], map: "registro_pago_idcliente_IDX")
+  @@index([idorg, idsede], map: "registro_pago_idorg_IDX")
+  @@index([idsede], map: "registro_pago_idsede_IDX")
+  @@index([idtipo_comprobante_serie, idce, idtipo_consumo], map: "registro_pago_idtipo_comprobante_serie_IDX")
+  @@index([idusuario], map: "registro_pago_idusuario_IDX")
+}
+
+model registro_pago_cpe {
+  idregistro_pago_cpe     Int     @id @default(autoincrement())
+  idregistro_pago         Int
+  external_id_comprobante String? @db.VarChar(150)
+  codsunat                String? @db.VarChar(3)
+  fecha                   String? @db.VarChar(45)
+  jsonxml                 String  @db.Text
+  registrado              Int?    @default(0)
+  aceptado                Int?    @default(0)
+  anulado                 Int?    @default(0)
+  viene_facturador        Int     @default(0)
+  estado                  Int     @default(0)
+}
+
+model registro_pago_cpe_error {
+  idregistro_pago_cpe_error Int    @id @default(autoincrement())
+  idregistro_pago           Int
+  jsonxml                   String @db.Text
+  estado                    Int    @default(0)
+}
+
+model registro_pago_detalle {
+  idregistro_pago_detalle Int     @id @default(autoincrement())
+  idregistro_pago         Int
+  idtipo_pago             Int
+  importe                 String  @db.Char(10)
+  pagado                  String? @default("0") @db.Char(10)
+  estado                  Int     @default(0)
+  flag_pagado             String? @default("0") @db.Char(1)
+
+  @@index([idregistro_pago], map: "registro_pago_detalle_idregistro_pago_IDX")
+  @@index([idtipo_pago], map: "registro_pago_detalle_idtipo_pago_IDX")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+model registro_pago_pedido {
+  idregistro_pago  Int
+  idpedido         Int
+  idpedido_detalle Int
+  cantidad         String  @db.VarChar(10)
+  total            String  @db.VarChar(10)
+  estado           Int     @default(0)
+  confirmar_pago   Boolean @default(false)
+
+  @@index([idpedido, idpedido_detalle], map: "registro_pago_pedido_idpedido_IDX")
+  @@index([idregistro_pago], map: "registro_pago_pedido_idregistro_pago_IDX")
+  @@ignore
+}
+
+model registro_pago_subtotal {
+  idregistro_pago_subtotal Int    @id @default(autoincrement())
+  idregistro_pago          Int
+  idorg                    Int
+  idsede                   Int
+  descripcion              String @db.VarChar(50)
+  importe                  String @db.Char(10)
+  tachado                  Int    @default(0)
+  cierre                   Int    @default(0)
+  estado                   Int    @default(0)
+
+  @@index([idregistro_pago], map: "registro_pago_subtotal_idregistro_pago_IDX")
+}
+
+model regla_carta {
+  idregla_carta     Int @id @default(autoincrement())
+  idorg             Int
+  idsede            Int
+  idcategoria       Int
+  idseccion         Int
+  idseccion_detalle Int
+  estado            Int @default(0)
+}
+
+model repartidor {
+  idrepartidor             Int                        @id @default(autoincrement())
+  nombre                   String                     @db.VarChar(100)
+  apellido                 String                     @db.VarChar(100)
+  ciudad                   String                     @db.VarChar(100)
+  codigo_postal            String                     @db.VarChar(100)
+  f_registro               String                     @db.VarChar(50)
+  dni                      String                     @db.VarChar(10)
+  telefono                 String                     @db.VarChar(20)
+  pwa_code_verification    String                     @db.Text
+  estado                   Int                        @default(0)
+  usuario                  String                     @db.VarChar(50)
+  pass                     String?                    @db.VarChar(50)
+  efectivo_mano            String                     @default("0") @db.VarChar(10)
+  position_now             Json?
+  online                   Boolean                    @default(false)
+  ocupado                  Boolean                    @default(false)
+  calificacion             Float                      @default(0) @db.Float
+  pedidos_atendidos        Int                        @default(0)
+  pedidos_reasignados      Int                        @default(0) @db.TinyInt
+  socketid                 String?                    @db.VarChar(50)
+  pedido_por_aceptar       Json?
+  flag_paso_pedido         Int                        @default(0)
+  idsede_suscrito          Int?
+  cuenta                   String                     @db.VarChar(200)
+  last_notification        DateTime?                  @db.DateTime(0)
+  solicita_liberar_pedido  Boolean                    @default(false)
+  pedido_paso_va           Boolean                    @default(false)
+  time_line                Json?
+  atm_retiros              atm_retiros[]
+  pedido_repartidor_pagado pedido_repartidor_pagado[]
+}
+
+model repartidor_calificacion {
+  idrepartidor_calificacion Int @id @default(autoincrement())
+  idrepartidor              Int
+  idcliente                 Int
+  idpedido                  Int
+  calificacion              Int @db.TinyInt
+}
+
+model repartidor_pedido_entregado {
+  idrepartidor_pedido_entregado Int       @id @default(autoincrement())
+  idrepartidor                  Int
+  idpedido                      Int
+  idcliente                     Int
+  idsede                        Int
+  comercio_afiliado             Boolean?  @db.Bit(1)
+  fecha                         DateTime? @db.DateTime(0)
+  operacion                     Json
+  estado                        Boolean   @default(dbgenerated("b'0'")) @db.Bit(1)
+}
+
+model seccion {
+  idseccion          Int     @id @default(autoincrement())
+  idorg              Int
+  idsede             Int
+  descripcion        String  @db.VarChar(80)
+  imprimir           Int     @default(0)
+  idimpresora        Int     @default(1)
+  sec_orden          Int
+  ver_stock_cero     Int     @default(0)
+  estado             Int     @default(0)
+  img                String  @db.VarChar(255)
+  is_visible_cliente Boolean @default(false)
+  idimpresora_otro   Int     @default(0)
+  idpromocion        Int?
+  idseccion_vinculo  String? @db.Char(15)
+  ispromocion        Boolean @default(false)
+  idimpresoras       String? @db.Char(15)
+
+  @@index([descripcion], map: "seccion_descripcion_IDX")
+  @@index([idimpresora], map: "seccion_idimpresora_IDX")
+  @@index([idorg, idsede], map: "seccion_idorg_IDX")
+  @@index([sec_orden], map: "seccion_sec_orden_IDX")
+}
+
+model sede {
+  idsede                                              Int                            @id @default(autoincrement())
+  idorg                                               Int
+  nombre                                              String                         @db.VarChar(255)
+  ciudad                                              String                         @db.VarChar(100)
+  direccion                                           String?                        @db.VarChar(255)
+  telefono                                            String                         @default("") @db.VarChar(30)
+  eslogan                                             String                         @default("") @db.VarChar(80)
+  mesas                                               String                         @default("0") @db.VarChar(4)
+  maximo_pedidos_x_hora                               Int                            @default(100)
+  authorization_api_comprobante                       String                         @db.Char(255)
+  id_api_comprobante                                  String?                        @db.VarChar(5)
+  facturacion_e_activo                                Int                            @default(0)
+  logo64                                              String?                        @db.LongText
+  ubigeo                                              String?                        @db.VarChar(25)
+  codigo_del_domicilio_fiscal                         String?                        @db.VarChar(25)
+  sys_local                                           Int?                           @default(0)
+  ip_server_local                                     String?                        @db.VarChar(80)
+  finicio                                             String?                        @db.VarChar(25)
+  tipo                                                String?                        @db.VarChar(25)
+  sufijo                                              String?                        @db.VarChar(5)
+  pwa                                                 Int                            @default(0)
+  pwa_time_limit                                      Int                            @default(3)
+  url_api_fac                                         String                         @db.VarChar(100)
+  estado                                              Int                            @default(0)
+  latitude                                            Decimal?                       @db.Decimal(10, 8)
+  longitude                                           Decimal?                       @db.Decimal(11, 8)
+  pwa_msj_ini                                         String                         @default("") @db.VarChar(250)
+  pwa_time_min_despacho                               Int?
+  pwa_time_max_despacho                               Int?
+  pwa_requiere_gps                                    String                         @default("0") @db.Char(1)
+  pwa_delivery_img                                    String?                        @db.VarChar(100)
+  provincia                                           String?                        @db.VarChar(100)
+  departamento                                        String?                        @db.VarChar(100)
+  codigo_postal                                       String?                        @db.VarChar(50)
+  tiempo_aprox_entrega                                String?                        @db.VarChar(100)
+  dias_atienden                                       String?                        @db.VarChar(20)
+  pwa_habilitar_delivery_app                          Int                            @default(0)
+  pwa_comercio_afiliado                               Boolean                        @default(true)
+  pwa_delivery_importe_min                            Int                            @default(10) @db.TinyInt
+  pwa_delivery_servicio_propio                        Boolean                        @default(false)
+  pwa_delivery_comercio_online                        Int                            @default(0) @db.TinyInt
+  pwa_delivery_habilitar_recojo_local                 String                         @default("0") @db.Char(1)
+  pwa_delivery_acepta_yape                            Boolean                        @default(true)
+  pwa_delivery_hablitar_calc_costo_servicio           Boolean                        @default(true)
+  pwa_delivery_comercio_solidaridad                   Boolean                        @default(false)
+  pwa_delivery_acepta_tarjeta                         Boolean                        @default(true)
+  pwa_delivery_comision_fija_no_afiliado              Float                          @default(0) @db.Float
+  pwa_min_despacho                                    Int                            @default(10) @db.TinyInt
+  pwa_delivery_comercio_paga_entrega                  Boolean                        @default(false)
+  pwa_delivery_habilitar_llamar_repartidor_papaya     Boolean                        @default(true)
+  pwa_delivery_telefono_notifica_pedido               String?                        @db.VarChar(30)
+  pwa_delivery_monto_acumla                           Int                            @default(60) @db.TinyInt
+  pwa_delivery_habilitar_pedido_programado            Boolean                        @default(false)
+  pwa_delivery_reparto_solo_app                       Boolean                        @default(false)
+  last_date_pago                                      String                         @db.VarChar(50)
+  comsion_entrega                                     Int                            @default(5) @db.TinyInt
+  costo_restobar_fijo_mensual                         String                         @default("99.9") @db.VarChar(10)
+  pwa_habilitar_busqueda_mapa                         Int                            @default(1) @db.TinyInt
+  calificacion                                        Float                          @default(0) @db.Float
+  isprinter_socket                                    Int                            @default(0) @db.TinyInt
+  pwa_delivery_habilitar_calc_costo_servicio_solo_app Boolean                        @default(false)
+  pwa_pedido_programado_solo_del_dia                  Boolean                        @default(false)
+  pwa_orden_pagado                                    Int                            @default(0) @db.TinyInt
+  email_cierre                                        String?                        @db.VarChar(250)
+  pwa_acepta_reservas                                 Int                            @default(0) @db.TinyInt
+  pwa_show_item_view_mercado                          Int                            @default(0) @db.TinyInt
+  pwa_acepta_reserva_desde                            String?                        @db.VarChar(10)
+  c_dias                                              String                         @default("24") @db.VarChar(2)
+  uf_pago                                             String?                        @db.VarChar(20)
+  mostar_alert_pago                                   Int                            @default(1) @db.TinyInt
+  idsede_plan_contratado                              Int?
+  umf_pago                                            String?                        @db.VarChar(20)
+  num_dias_facturacion                                Int                            @default(28) @db.TinyInt
+  tipo_contribuyente                                  String                         @default("PJ") @db.VarChar(5)
+  img_mini                                            String?                        @db.VarChar(100)
+  metodo_pago_aceptados                               String?                        @db.Char(20)
+  speech_disabled                                     Boolean                        @default(false)
+  simbolo_moneda                                      String                         @default("S/.") @db.Char(8)
+  nick_carta                                          String?                        @db.VarChar(200)
+  link_carta                                          String?                        @db.VarChar(200)
+  habilita_verificacion_cpe                           String                         @default("0") @db.Char(1)
+  zona_delivery                                       String                         @db.VarChar(100)
+  ruc_cpe                                             String?                        @db.Char(12)
+  razonsocial_cpe                                     String?                        @db.VarChar(255)
+  metodo_pago_aceptados_chatbot                       String?                        @db.VarChar(100)
+  almacen_ie                                          almacen_ie[]
+  cliente_paga_credito                                cliente_paga_credito[]
+  colaborador                                         colaborador[]
+  colaborador_contrato_detalle                        colaborador_contrato_detalle[]
+  distribuicion_distribuicion_idsedeTosede            distribuicion[]                @relation("distribuicion_idsedeTosede")
+  distribuicion_distribuicion_idsede_aTosede          distribuicion[]                @relation("distribuicion_idsede_aTosede")
+  pedido                                              pedido[]
+  pedido_repartidor_pagado                            pedido_repartidor_pagado[]
+  produccion_producto                                 produccion_producto[]
+  promocion                                           promocion[]
+  sede_plan_contratado                                sede_plan_contratado?          @relation(fields: [idsede_plan_contratado], references: [idsede_plan_contratado], onDelete: Restrict, onUpdate: Restrict, map: "sede_FK")
+  sede_pago_servicio                                  sede_pago_servicio[]
+
+  @@index([idsede_plan_contratado], map: "sede_FK")
+}
+
+model sede_calificacion {
+  idsede_calificacion Int     @id @default(autoincrement())
+  idsede              Int
+  idcliente           Int
+  idpedido            Int
+  calificacion        Boolean
+  comentario          String  @db.VarChar(200)
+  estado              Boolean @default(false)
+  notificado          Boolean
+}
+
+model sede_categoria {
+  idsede_categoria Int     @id @default(autoincrement())
+  descripcion      String  @db.VarChar(100)
+  estado           Int     @default(0)
+  img              String  @db.VarChar(100)
+  orden            Boolean @default(false)
+  visible          Boolean @default(false)
+  color_fondo      String? @db.VarChar(20)
+}
+
+model sede_config_service_delivery {
+  idsede_config_service_delivery Int     @id @default(autoincrement())
+  codigo_postal                  String  @db.VarChar(10)
+  ciudad                         String  @db.VarChar(100)
+  c_minimo                       Float   @default(2) @db.Float
+  c_km                           Float   @default(0.5) @db.Float
+  c_minimo_base                  Float   @default(0) @db.Float
+  c_km_base                      Float   @default(0) @db.Float
+  estado                         Int     @default(0)
+  options                        Json?
+  centro                         Json?
+  radio                          Int?
+  id_api_clima_ciudad            String  @default("0") @db.VarChar(20)
+  is_rain                        Boolean @default(false)
+  c_servicio_mandado             Float   @default(0) @db.Float
+  icons_entrega                  Json?
+  isreserva                      Int     @default(1) @db.TinyInt
+  comand_costo                   Json?
+  dia_cambios                    Boolean @default(false)
+}
+
+model sede_cupon {
+  idsede_cupon    Int    @id @default(autoincrement())
+  idsede          Int
+  descripcion     String @db.VarChar(100)
+  sub_descripcion String @db.VarChar(100)
+  f_ini           String @db.VarChar(30)
+  f_fin           String @db.VarChar(30)
+  importe         String @db.VarChar(5)
+  opciones        Json
+  estado          Int    @default(0)
+}
+
+model sede_datos_msj {
+  idsede_datos_msj Int     @id @default(autoincrement())
+  idsede           Int
+  count_correo     Int
+  count_sms        Int
+  logo             String  @db.Text
+  link_accion      String  @db.VarChar(255)
+  estado           Boolean @default(false)
+}
+
+model sede_descuento {
+  idsede_descuento Int     @id @default(autoincrement())
+  idsede           Int
+  descripcion      String  @db.VarChar(50)
+  f_desde          String  @db.VarChar(50)
+  f_fin            String  @db.VarChar(50)
+  numero_pedidos   Int     @default(0)
+  estado           Boolean @default(false)
+  solo_app         Boolean @default(true)
+}
+
+model sede_descuento_detalle {
+  idsede_descuento_detalle Int     @id @default(autoincrement())
+  idsede_descuento         Int
+  tipo                     Boolean
+  id                       String  @db.VarChar(10)
+  descripcion              String  @db.VarChar(100)
+  porcentaje               Boolean
+  estado                   Boolean @default(false)
+}
+
+model sede_detalle_pago {
+  idsede_detalle_pago Int     @id @default(autoincrement())
+  idsede              Int
+  fecha               String  @db.VarChar(30)
+  importe             String  @db.VarChar(10)
+  descripcion         String  @db.VarChar(50)
+  estado              Boolean @default(false)
+}
+
+model sede_horario_trabajo {
+  idsede_horario_trabajo Int     @id @default(autoincrement())
+  idsede                 Int
+  de                     String  @db.VarChar(20)
+  a                      String  @db.VarChar(20)
+  estado                 Boolean @default(dbgenerated("b'0'")) @db.Bit(1)
+  numdia                 String? @db.Char(20)
+  desdia                 String? @db.VarChar(80)
+}
+
+model sede_meta {
+  idsede_meta Int    @id @default(autoincrement())
+  idorg       Int
+  idsede      Int
+  diaria      String @db.VarChar(10)
+  mensual     String @db.VarChar(10)
+  anual       String @db.VarChar(10)
+  fecha       String @db.VarChar(30)
+  estado      Int    @default(0)
+}
+
+model sede_pago_confirmacion {
+  idsede_pago_confirmacion Int           @id @default(autoincrement())
+  idsede                   Int
+  fecha                    String        @db.VarChar(50)
+  idcuenta_papaya          Int
+  n_operacion              String        @db.VarChar(50)
+  comentario               String        @db.VarChar(200)
+  visto                    Boolean       @default(false)
+  importe                  String?       @db.VarChar(10)
+  confirmado               Boolean       @default(false)
+  estado                   Boolean       @default(false)
+  ispago_tarjeta           Boolean       @default(false)
+  data_pago_tarjeta        Json?
+  data_subtotales          Json?
+  importe_facturar         String?       @db.VarChar(10)
+  external_id              String?       @db.VarChar(100)
+  ufm_pago_reset           String?       @db.VarChar(30)
+  no_confirmado            Boolean       @default(false)
+  cuenta_papaya            cuenta_papaya @relation(fields: [idcuenta_papaya], references: [idcuenta_papaya], onDelete: NoAction, onUpdate: NoAction, map: "idcuenta_papaya")
+
+  @@index([idcuenta_papaya], map: "idcuenta_papaya")
+}
+
+model sede_pago_servicio {
+  idsede_pago_servicio Int    @id @default(autoincrement())
+  idsede               Int
+  f_corte              String @db.VarChar(20)
+  importe              String @db.VarChar(10)
+  importe_tarjetas     String @db.VarChar(10)
+  dias_mora            String @db.VarChar(5)
+  importe_mora         String @db.VarChar(10)
+  neto_pagar           String @db.VarChar(10)
+  f_pago               String @db.VarChar(20)
+  estado               Int    @default(0)
+  sede                 sede   @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "idsede")
+
+  @@index([idsede], map: "idsede")
+}
+
+model sede_plan_contratado {
+  idsede_plan_contratado Int     @id @default(autoincrement())
+  descripcion            String  @db.VarChar(30)
+  importe                String  @db.VarChar(10)
+  estado                 Boolean @default(false)
+  comision               String? @db.VarChar(10)
+  sede                   sede[]
+}
+
+model sede_socketid {
+  idsede               Int    @id
+  socketid             String @db.VarChar(50)
+  conectado            String @default("0") @db.Char(1)
+  key_suscripcion_push Json?
+
+  @@index([idsede], map: "sede_sockedid_idsede_IDX")
+  @@index([socketid], map: "sede_sockedid_socketid_IDX")
+}
+
+model sede_subcategoria {
+  idsede_subcategoria Int    @id @default(autoincrement())
+  idsede_categoria    Int
+  descripcion         String @db.VarChar(100)
+  estado              Int    @default(0)
+}
+
+model sede_subcategoria_suscrito {
+  idsede_subcategoria_suscrito Int @id @default(autoincrement())
+  idsede                       Int
+  idsede_subcategoria          Int
+  estado                       Int @default(0)
+}
+
+model socket_client {
+  idsocket_client Int    @id @default(autoincrement())
+  idcliente       String @db.Char(50)
+  socket_id       String @db.Char(50)
+  estado          Int    @default(0)
+}
+
+model sys_const {
+  llave      String   @id @db.VarChar(30)
+  value      String   @db.VarChar(200)
+  estado     Int      @default(0)
+  comentario String?  @db.VarChar(100)
+  aplica     Int      @default(0) @db.TinyInt
+  orden      Boolean?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+model system {
+  idsede Int
+  token  String @db.Text
+
+  @@ignore
+}
+
+model ticket_rapido {
+  idticket_rapido        Int       @id @default(autoincrement())
+  idsede                 Int
+  idusuario              Int
+  fecha                  DateTime  @db.DateTime(0)
+  total                  String    @db.Char(10)
+  estado                 String    @default("0") @db.Char(1)
+  correlativo_ticket_dia Int       @default(0)
+  cierre                 String?   @default("0") @db.Char(1)
+  fecha_cierre           DateTime? @db.DateTime(0)
+  asignada_caja          String    @default("0") @db.Char(1)
+}
+
+model ticket_rapido_detalle {
+  idticket_rapido_detalle Int    @id @default(autoincrement())
+  idticket_rapido         Int
+  iditem                  Int
+  cantidad                String @db.Char(5)
+  total                   String @db.Char(10)
+  estado                  String @default("0") @db.Char(1)
+}
+
+model tipo_comprobante {
+  idtipo_comprobante Int     @id @default(autoincrement())
+  descripcion        String  @db.VarChar(50)
+  codsunat           String  @db.VarChar(10)
+  inicial            String  @db.VarChar(5)
+  tipo_documento     String  @db.VarChar(3)
+  requiere_cliente   Int     @default(0)
+  estado             Int     @default(0)
+  img                String? @db.Char(15)
+}
+
+model tipo_comprobante_serie {
+  idtipo_comprobante_serie    Int    @id @default(autoincrement())
+  idtipo_comprobante          Int
+  idorg                       Int
+  idsede                      Int
+  serie                       String @default("0") @db.Char(5)
+  correlativo                 Int
+  facturacion_correlativo_api Int    @default(0)
+  estado                      Int    @default(0)
+}
+
+model tipo_consumo {
+  idtipo_consumo            Int                         @id @default(autoincrement())
+  idorg                     Int
+  idsede                    Int
+  descripcion               String                      @db.VarChar(30)
+  titulo                    String                      @db.VarChar(50)
+  estado                    Int                         @default(0)
+  idimpresora               Int                         @default(0) @db.TinyInt
+  habilitado_chatbot        String?                     @default("1") @db.Char(1)
+  item_producto_relacionado item_producto_relacionado[]
+  pedido                    pedido[]
+  pedido_detalle            pedido_detalle[]
+}
+
+model tipo_cosnumo_img {
+  idtipo_cosnumo_img Int     @id @default(autoincrement())
+  descripcion        String  @db.Char(10)
+  img                String  @db.Char(20)
+  estado             Boolean @default(false)
+}
+
+model tipo_descuento {
+  idtipo_descuento Int     @id @default(autoincrement())
+  descripcion      String  @db.VarChar(50)
+  data             Json
+  estado           Boolean @default(false)
+}
+
+model tipo_gasto {
+  idtipo_gasto Int    @id @default(autoincrement())
+  descripcion  String @db.VarChar(20)
+  estado       Int    @default(0)
+}
+
+model tipo_gasto_detalle {
+  idtipo_gasto_detalle Int    @id @default(autoincrement())
+  idtipo_gasto         Int
+  descripcion          String @db.VarChar(50)
+  estado               Int    @default(0)
+}
+
+model tipo_ingreso {
+  idtipo_ingreso Int    @id @default(autoincrement())
+  descripcion    String @db.VarChar(100)
+  estado         Int    @default(0)
+}
+
+model tipo_otro {
+  idtipo_otro Int    @id
+  descripcion String @db.VarChar(50)
+  estado      Int    @default(0)
+}
+
+model tipo_pago {
+  idtipo_pago                  Int                            @id @default(autoincrement())
+  descripcion                  String                         @db.VarChar(30)
+  limite                       Int                            @default(0)
+  requiere_cliente             String?                        @default("0") @db.Char(1)
+  img                          String                         @db.VarChar(100)
+  estado                       Int                            @default(0)
+  orden                        Boolean                        @default(false)
+  habilitado_chatbot           String?                        @default("0") @db.Char(1)
+  cliente_paga_credito_detalle cliente_paga_credito_detalle[]
+}
+
+model tipo_vehiculo {
+  idtipo_vehiculo Int     @id @default(autoincrement())
+  descripcion     String  @db.VarChar(25)
+  img             String  @db.VarChar(50)
+  estado          Boolean @default(false)
+  costo_adicional Float   @default(0) @db.Float
+}
+
+model us_cpc {
+  idus_cpc   Int    @id @default(autoincrement())
+  idusuario  Int
+  ruc        String @db.VarChar(25)
+  nombre_cpc String @db.VarChar(250)
+  telefono   String @db.VarChar(25)
+  direccion  String @db.VarChar(100)
+  ciudad     String @db.VarChar(100)
+  ubigeo     String @db.VarChar(50)
+  f_registro String @db.VarChar(50)
+  estado     Int    @default(0)
+}
+
+model us_cpc_sedes {
+  idus_cpc_sedes Int    @id @default(autoincrement())
+  idus_cpc       Int
+  idorg          Int
+  idsede         Int
+  estado         Int    @default(0)
+  serie          String @db.VarChar(10)
+  nomsede        String @db.VarChar(150)
+  userid         String @db.VarChar(10)
+  ciudad         String @db.VarChar(100)
+  razonsocial    String @db.VarChar(200)
+  ruc            String @db.VarChar(20)
+  mes_inicio     String @db.VarChar(25)
+}
+
+model us_home_opciones {
+  codigo     String @id @db.VarChar(5)
+  num_opcion Int
+  titulo     String @db.VarChar(80)
+  url_pas    String @db.VarChar(100)
+  img        String @db.VarChar(200)
+  idgrupo    Int
+  estado     Int    @default(0)
+}
+
+model usuario {
+  idusuario                    Int                            @id @default(autoincrement())
+  idorg                        Int
+  idsede                       Int
+  nombres                      String                         @db.VarChar(255)
+  cargo                        String                         @db.VarChar(80)
+  usuario                      String                         @db.VarChar(20)
+  pass                         String                         @db.VarChar(20)
+  acc                          String                         @db.VarChar(255)
+  per                          String                         @db.VarChar(50)
+  estado                       Int                            @default(0)
+  super                        Int                            @default(0)
+  rol                          Int?                           @default(0)
+  nuevo                        Int?                           @default(0)
+  idalmacen                    Int                            @default(0)
+  estadistica                  Int                            @default(0)
+  pacman                       Boolean                        @default(false)
+  last_notificacion_change_sys String?                        @db.Char(30)
+  isbot                        String?                        @default("0") @db.Char(1)
+  cliente_paga_credito_detalle cliente_paga_credito_detalle[]
+  ingreso_varios               ingreso_varios[]
+  produccion_producto          produccion_producto[]
+  promocion                    promocion[]
+
+  @@index([idorg, idsede], map: "usuario_idorg_IDX")
+  @@index([nombres, cargo, usuario], map: "usuario_nombres_IDX")
+}
+
+model usuario_bitacora_cierre {
+  idusuario_bitacora_cierre Int     @id @default(autoincrement())
+  idorg                     Int
+  idsede                    Int
+  idusuario                 Int
+  fecha                     String  @db.Char(65)
+  detalle_cierre            String? @db.LongText
+  numintentos               Int     @default(0)
+  idusuario_supervisor      Int
+  estado                    Int     @default(0)
+  cierre                    Int     @default(0)
+  detalle_titulo            Json?
+}
+
+model usuario_tipo {
+  idusuario_tipo Int    @id @default(autoincrement())
+  descripcion    String @db.VarChar(30)
+  acc            String @db.VarChar(80)
+  estado         Int    @default(0)
+}
+
+model rrhh_rol {
+  idrrhh_rol                   Int                            @id @default(autoincrement())
+  descripcion                  String                         @db.VarChar(30)
+  estado                       String                         @default("0") @db.Char(1)
+  idsede                       Int?                           @default(0)
+  colaborador_contrato_detalle colaborador_contrato_detalle[]
+}
+
+model colaborador_contrato {
+  idcolaborador_contrato       Int                            @id @default(autoincrement())
+  idcolaborador                Int
+  fecha_registro               String                         @db.Char(20)
+  fecha_empieza                String                         @db.Char(20)
+  estado                       String                         @default("0") @db.Char(1)
+  activo                       String                         @default("0") @db.Char(1)
+  idorg                        Int?
+  colaborador                  colaborador                    @relation(fields: [idcolaborador], references: [idcolaborador], onDelete: NoAction, onUpdate: NoAction, map: "colaborador")
+  org                          org?                           @relation(fields: [idorg], references: [idorg], onDelete: Restrict, onUpdate: Restrict, map: "colaborador_contrato_FK")
+  colaborador_contrato_detalle colaborador_contrato_detalle[]
+
+  @@index([idcolaborador], map: "colaborador")
+  @@index([idorg], map: "colaborador_contrato_FK")
+}
+
+model colaborador_contrato_detalle {
+  idcolaborador_contrato_detalle Int                  @id @default(autoincrement())
+  idcolaborador_contrato         Int
+  idsede_trabajo                 Int
+  idrrhh_rol                     Int
+  horas                          String               @db.Char(20)
+  unidad_horas                   String               @db.Char(20)
+  dias                           String               @db.Char(20)
+  unidad_remuneracion            String               @db.Char(20)
+  importe                        String               @db.Char(20)
+  estado                         String               @default("0") @db.Char(1)
+  colaborador_contrato           colaborador_contrato @relation(fields: [idcolaborador_contrato], references: [idcolaborador_contrato], onDelete: NoAction, onUpdate: Restrict, map: "id_contrado")
+  rrhh_rol                       rrhh_rol             @relation(fields: [idrrhh_rol], references: [idrrhh_rol], onDelete: NoAction, onUpdate: NoAction, map: "rol")
+  sede                           sede                 @relation(fields: [idsede_trabajo], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "sede")
+
+  @@index([idcolaborador_contrato], map: "id_contrado")
+  @@index([idrrhh_rol], map: "rol")
+  @@index([idsede_trabajo], map: "sede")
+}
+
+model cliente_paga_credito {
+  idcliente_paga_credito       Int                            @id @default(autoincrement())
+  idcliente                    Int
+  idsede                       Int
+  importe                      String                         @db.Char(10)
+  debe                         String                         @db.Char(10)
+  estado                       String                         @default("0") @db.Char(1)
+  fecha                        String?                        @db.Char(35)
+  cliente_sede                 cliente_sede                   @relation(fields: [idcliente_paga_credito], references: [idcliente_sede], onUpdate: Restrict, map: "cliente_paga_credito_FK")
+  sede                         sede                           @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "cliente_paga_credito_ibfk_2")
+  cliente_paga_credito_detalle cliente_paga_credito_detalle[]
+
+  @@index([idsede], map: "cliente_paga_credito_ibfk_2")
+  @@index([idcliente], map: "idcliente")
+}
+
+model cliente_paga_credito_detalle {
+  idcliente_paga_credito_detalle Int                  @id @default(autoincrement())
+  idcliente_paga_credito         Int
+  fecha_hora                     String               @db.Char(35)
+  importe                        String               @db.Char(10)
+  observaciones                  String               @db.VarChar(200)
+  estado                         String               @default("0") @db.Char(1)
+  idusuario                      Int?
+  idtipo_pago                    Int?
+  tipo_pago                      tipo_pago?           @relation(fields: [idtipo_pago], references: [idtipo_pago], onDelete: Restrict, onUpdate: Restrict, map: "cliente_paga_credito_detalle_FK")
+  usuario                        usuario?             @relation(fields: [idusuario], references: [idusuario], onDelete: Restrict, onUpdate: Restrict, map: "cliente_paga_credito_detalle_FK_1")
+  cliente_paga_credito           cliente_paga_credito @relation(fields: [idcliente_paga_credito], references: [idcliente_paga_credito], onDelete: NoAction, onUpdate: NoAction, map: "idcliente_paga_credito")
+
+  @@index([idtipo_pago], map: "cliente_paga_credito_detalle_FK")
+  @@index([idusuario], map: "cliente_paga_credito_detalle_FK_1")
+  @@index([idcliente_paga_credito], map: "idcliente_paga_credito")
+}
+
+model pedido_repartidor_pagado {
+  idpedido_repartidor_pagado Int        @id @default(autoincrement())
+  idrepartidor               Int
+  idsede                     Int
+  idpedido                   Int
+  fecha                      String     @db.VarChar(30)
+  estado                     String     @default("0") @db.Char(1)
+  idusuario                  Int?
+  pedido                     pedido     @relation(fields: [idpedido], references: [idpedido], onUpdate: Restrict, map: "pedido_repartidor_pagado_FK")
+  sede                       sede       @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "pedido_repartidor_pagado_FK_1")
+  repartidor                 repartidor @relation(fields: [idrepartidor], references: [idrepartidor], onUpdate: Restrict, map: "pedido_repartidor_pagado_FK_2")
+
+  @@index([idpedido], map: "pedido_repartidor_pagado_FK")
+  @@index([idsede], map: "pedido_repartidor_pagado_FK_1")
+  @@index([idrepartidor], map: "pedido_repartidor_pagado_FK_2")
+}
+
+model sede_costo_delivery {
+  idsede_costo_delivery Int     @id @default(autoincrement())
+  idsede                Int
+  parametros            Json
+  estado                String  @default("0") @db.Char(1)
+  ciudades              String? @db.VarChar(100)
+}

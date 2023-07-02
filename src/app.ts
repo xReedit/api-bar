@@ -8,7 +8,7 @@ const app = express()
 app.use(cors());
 app.use(express.json());
 
-app.use('/restobar', routes)
+app.use('/api-restobar', routes)
 
 app.listen(20223, () =>
     console.log('REST API server ready at: http://localhost:20223'),

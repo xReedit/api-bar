@@ -75,7 +75,10 @@ LIMIT 1;`;
 router.get("/horarios/:idsede", async (req, res) => {
     const { idsede } = req.params;
     const rpt = await prisma.categoria.findMany({
-        where: { idsede: Number(idsede)},
+        where: { AND: {
+            idsede: Number(idsede),
+            estado: 0
+        }},
         select: {
             idcategoria: true,
             idsede: true,
@@ -233,27 +236,20 @@ from ce
  		and TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ${numero}
  	) and json_xml != ''`
 
-    console.log('rpt', rpt);
-    console.log('rpt.length ', rpt.length);
-
     if ( rpt.length > 0 ) {
         const external_id = rpt[0].external_id
         const datosReceptor = rpt[0].datos.datos_del_cliente_o_receptor
-        console.log('datosReceptor', datosReceptor.numero_documento);
-        console.log('¿data.dni', dni);
+        
         if (datosReceptor.numero_documento === dni ) {
-            // enviamos el comprobante
-            console.log('enviar comprobante ====');   
+            // enviamos el comprobante            
             const _rpt = {
                 success: true,
                 external_id: external_id
             }
 
-            console.log('_rpt', _rpt);
             res.status(200).send(_rpt);         
 
         } else {
-            console.log('error');            
             res.status(500).send({
                 success: false
             }); 

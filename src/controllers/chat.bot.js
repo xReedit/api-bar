@@ -3,6 +3,17 @@ var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cook
     if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
     return cooked;
 };
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -139,7 +150,6 @@ router.get("/horarios/:idsede", function (req, res) { return __awaiter(void 0, v
             case 0:
                 idsede = req.params.idsede;
                 return [4 /*yield*/, prisma.categoria.findMany({
-                        where: { idsede: Number(idsede) },
                         select: {
                             idcategoria: true,
                             idsede: true,
@@ -150,6 +160,12 @@ router.get("/horarios/:idsede", function (req, res) { return __awaiter(void 0, v
                             dia_disponible: true,
                             visible_cliente: true,
                             url_carta: true
+                        },
+                        where: {
+                            AND: {
+                                idsede: Number(idsede),
+                                estado: 0
+                            }
                         }
                     })];
             case 1:
@@ -347,25 +363,17 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero', function 
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["select external_id, cast(json_xml as JSON) datos, numero\nfrom ce\n where idsede = ", " \n \tand (substring_index(numero,'-', 1)=", "\n \t\tand TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ", "\n \t) and json_xml != ''"], ["select external_id, cast(json_xml as JSON) datos, numero\nfrom ce\n where idsede = ", " \n \tand (substring_index(numero,'-', 1)=", "\n \t\tand TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ", "\n \t) and json_xml != ''"])), idsede, serie, numero)];
             case 1:
                 rpt = _a.sent();
-                console.log('rpt', rpt);
-                console.log('rpt.length ', rpt.length);
                 if (rpt.length > 0) {
                     external_id = rpt[0].external_id;
                     datosReceptor = rpt[0].datos.datos_del_cliente_o_receptor;
-                    console.log('datosReceptor', datosReceptor.numero_documento);
-                    console.log('¿data.dni', dni);
                     if (datosReceptor.numero_documento === dni) {
-                        // enviamos el comprobante
-                        console.log('enviar comprobante ====');
                         _rpt = {
                             success: true,
                             external_id: external_id
                         };
-                        console.log('_rpt', _rpt);
                         res.status(200).send(_rpt);
                     }
                     else {
-                        console.log('error');
                         res.status(500).send({
                             success: false
                         });
@@ -472,6 +480,24 @@ router.post('/create-config-delivery', function (req, res, next) { return __awai
             case 0:
                 dataBody = req.body;
                 return [4 /*yield*/, prisma.sede_costo_delivery.create({
+                        data: dataBody
+                    })];
+            case 1:
+                rpt = _a.sent();
+                res.status(200).send(rpt);
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
+// from bot - guardar en chatbot_cliente los datos para ser recuperados en la tienda en linea
+router.post('/create-history-chatbot-cliente', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var dataBody, rpt;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                dataBody = __assign(__assign({}, req.body), { fecha: new Date().toISOString().slice(0, 19).replace('T', ' ') });
+                return [4 /*yield*/, prisma.chatbot_cliente.create({
                         data: dataBody
                     })];
             case 1:

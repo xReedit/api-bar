@@ -18,7 +18,7 @@ router.get("/get-sede/:idsede", async (req, res) => {
             idorg: true,
             nombre: true,
             direccion: true,
-            ciudad: true,
+            ciudad: true,            
             telefono: true,
             latitude: true,
             longitude: true,            
@@ -75,10 +75,6 @@ LIMIT 1;`;
 router.get("/horarios/:idsede", async (req, res) => {
     const { idsede } = req.params;
     const rpt = await prisma.categoria.findMany({
-        where: { AND: {
-            idsede: Number(idsede),
-            estado: 0
-        }},
         select: {
             idcategoria: true,
             idsede: true,
@@ -89,8 +85,15 @@ router.get("/horarios/:idsede", async (req, res) => {
             dia_disponible: true,
             visible_cliente: true,
             url_carta: true,
-        }
-    })
+        },
+        where: { 
+            AND: {
+                idsede: Number(idsede),
+                estado: 0
+            }
+        }        
+    })    
+
     res.status(200).send(rpt);
 });
 
@@ -348,4 +351,18 @@ router.post('/create-config-delivery', async (req: any, res, next) => {
 
 })
 
+// from bot - guardar en chatbot_cliente los datos para ser recuperados en la tienda en linea
+router.post('/create-history-chatbot-cliente', async (req: any, res, next) => {
+    const dataBody = { ...req.body, fecha: new Date().toISOString().slice(0, 19).replace('T', ' ')}
+    const rpt = await prisma.chatbot_cliente.create({
+        data: dataBody
+    })
+
+    res.status(200).send(rpt);
+    prisma.$disconnect();
+})
+
+
+
 export default router;
+

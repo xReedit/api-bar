@@ -47,21 +47,21 @@ router.get("/get-sede/:idsede", async (req, res) => {
 router.get("/cliente/:telefono", async (req, res) => {
     const { telefono } = req.params;
     const rpt = await prisma.$queryRaw`
-        SELECT c.idcliente, c.nombres, c.direccion, c.telefono, cast(COALESCE(cpd.idcliente_pwa_direccion,0) as char) pwa_direccion
-    ,cast(CONCAT('[',
-      GROUP_CONCAT(JSON_OBJECT(
-      	'idcliente_pwa_direccion', cpd.idcliente_pwa_direccion,
+        SELECT c.idcliente, c.nombres, c.direccion, c.telefono, cast(COALESCE(cpd.idcliente_pwa_direccion,0) as char) pwa_direccion,
+    JSON_ARRAYAGG(
+        JSON_OBJECT(
+        'idcliente_pwa_direccion', cpd.idcliente_pwa_direccion,
         'direccion', cpd.direccion,
         'referencia', cpd.referencia,
         'latitude', cpd.latitude,
-        'longitude', cpd.longitude
-      ) order by cpd.idcliente_pwa_direccion desc)
-    ,']') as json) as direcciones
+        'longitude', cpd.longitude 
+        )
+    ) AS direcciones
 FROM cliente c
-inner JOIN (
+left JOIN (
 		select cp.idcliente, cp.idcliente_pwa_direccion, cp.direccion, cp.referencia, cp.latitude, cp.longitude 
 		from cliente_pwa_direccion cp
-		order by cp.idcliente_pwa_direccion desc
+		order by cp.idcliente_pwa_direccion desc		
 	) cpd USING (idcliente)
 WHERE REPLACE(c.telefono, ' ', '') = REPLACE(${telefono}, ' ', '')
 GROUP by SOUNDEX(c.nombres)

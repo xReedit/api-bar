@@ -227,17 +227,20 @@ order by cantidad_seccion desc limit 2`
 
 // obnter el comprobante electronico
 router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero', async (req: any, res) => {    
-    const { idsede } = req.params;
-    const { dni } = req.params;
-    const { serie } = req.params;
-    const { numero } = req.params;
+    const { idsede, dni, serie, numero, fecha } = req.params;
+    // const { dni } = req.params;
+    // const { serie } = req.params;
+    // const { numero } = req.params;
+    // const { fecha } = req.params;
 
+    const whereNumber = fecha !== '' ?
+        `and (substring_index(numero,'-', 1)=${serie} and TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ${numero}`
+             : `and fecha = ${fecha}`
     const rpt = <any>await prisma.$queryRaw`select external_id, cast(json_xml as JSON) datos, numero
 from ce
  where idsede = ${idsede} 
- 	and (substring_index(numero,'-', 1)=${serie}
- 		and TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ${numero}
- 	) and json_xml != ''`
+ 	${whereNumber}
+ 	) and json_xml != '' limit 1`
 
     if ( rpt.length > 0 ) {
         const external_id = rpt[0].external_id
@@ -361,6 +364,42 @@ router.post('/create-history-chatbot-cliente', async (req: any, res, next) => {
     res.status(200).send(rpt);
     prisma.$disconnect();
 })
+
+router.get("/get-user-bot/:idsede", async (req, res) => {
+    const { idsede } = req.params;
+    const rpt = await prisma.usuario.findMany({
+        where: { AND: {
+            idsede: Number(idsede),
+            isbot: '1'
+        }},
+        select: {
+            idusuario: true,
+            nombres: true,
+        }
+    }
+)
+
+    res.status(200).send(rpt);
+    prisma.$disconnect();
+})
+
+// cambiar nombre del cliente
+router.put('/change-name-cliente', async (req: any, res, next) => {
+    const dataBody = { ...req.body}
+    const rpt = await prisma.cliente.update({
+        data: {
+            nombres: dataBody.nombres,
+        },
+        where: {
+            idcliente: Number(dataBody.idcliente)
+        }
+    })
+
+    res.status(200).send(rpt);
+    prisma.$disconnect();
+})
+
+
 
 
 

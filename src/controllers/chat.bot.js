@@ -352,17 +352,17 @@ router.get("/get-seccion-mas-piden/:idsede", function (req, res) { return __awai
 }); });
 // obnter el comprobante electronico
 router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, dni, serie, numero, rpt, external_id, datosReceptor, _rpt;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var _a, idsede, dni, serie, numero, fecha, whereNumber, rpt, external_id, datosReceptor, _rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                idsede = req.params.idsede;
-                dni = req.params.dni;
-                serie = req.params.serie;
-                numero = req.params.numero;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["select external_id, cast(json_xml as JSON) datos, numero\nfrom ce\n where idsede = ", " \n \tand (substring_index(numero,'-', 1)=", "\n \t\tand TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ", "\n \t) and json_xml != ''"], ["select external_id, cast(json_xml as JSON) datos, numero\nfrom ce\n where idsede = ", " \n \tand (substring_index(numero,'-', 1)=", "\n \t\tand TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ", "\n \t) and json_xml != ''"])), idsede, serie, numero)];
+                _a = req.params, idsede = _a.idsede, dni = _a.dni, serie = _a.serie, numero = _a.numero, fecha = _a.fecha;
+                whereNumber = fecha !== '' ?
+                    "and (substring_index(numero,'-', 1)=".concat(serie, " and TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ").concat(numero)
+                    : "and fecha = ".concat(fecha);
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["select external_id, cast(json_xml as JSON) datos, numero\nfrom ce\n where idsede = ", " \n \t", "\n \t) and json_xml != '' limit 1"], ["select external_id, cast(json_xml as JSON) datos, numero\nfrom ce\n where idsede = ", " \n \t", "\n \t) and json_xml != '' limit 1"])), idsede, whereNumber)];
             case 1:
-                rpt = _a.sent();
+                rpt = _b.sent();
                 if (rpt.length > 0) {
                     external_id = rpt[0].external_id;
                     datosReceptor = rpt[0].datos.datos_del_cliente_o_receptor;
@@ -499,6 +499,53 @@ router.post('/create-history-chatbot-cliente', function (req, res, next) { retur
                 dataBody = __assign(__assign({}, req.body), { fecha: new Date().toISOString().slice(0, 19).replace('T', ' ') });
                 return [4 /*yield*/, prisma.chatbot_cliente.create({
                         data: dataBody
+                    })];
+            case 1:
+                rpt = _a.sent();
+                res.status(200).send(rpt);
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
+router.get("/get-user-bot/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rpt;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                return [4 /*yield*/, prisma.usuario.findMany({
+                        where: { AND: {
+                                idsede: Number(idsede),
+                                isbot: '1'
+                            } },
+                        select: {
+                            idusuario: true,
+                            nombres: true
+                        }
+                    })];
+            case 1:
+                rpt = _a.sent();
+                res.status(200).send(rpt);
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
+// cambiar nombre del cliente
+router.put('/change-name-cliente', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var dataBody, rpt;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                dataBody = __assign({}, req.body);
+                return [4 /*yield*/, prisma.cliente.update({
+                        data: {
+                            nombres: dataBody.nombres
+                        },
+                        where: {
+                            idcliente: Number(dataBody.idcliente)
+                        }
                     })];
             case 1:
                 rpt = _a.sent();

@@ -246,12 +246,14 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', as
 
     if ( rpt.length > 0 ) {
         const external_id = rpt[0].f0
+        const numero_comprobante = rpt[0].f1
         // const datosReceptor = rpt[0].datos.datos_del_cliente_o_receptor
         
         // enviamos el comprobante            
         const _rpt = {
             success: true,
-            external_id: external_id
+            external_id: external_id,
+            numero_comprobante: numero_comprobante
         }
         res.status(200).send(_rpt);
 

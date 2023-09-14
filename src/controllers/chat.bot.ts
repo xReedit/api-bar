@@ -1,5 +1,6 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
+import { fechaGuionASlash } from "../utils/utils";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -226,40 +227,43 @@ order by cantidad_seccion desc limit 2`
 })
 
 // obnter el comprobante electronico
-router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero', async (req: any, res) => {    
-    const { idsede, dni, serie, numero, fecha } = req.params;
-    // const { dni } = req.params;
-    // const { serie } = req.params;
-    // const { numero } = req.params;
-    // const { fecha } = req.params;
+router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', async (req: any, res) => {    
+    let { idsede, dni, serie, numero, fecha } = req.params;
+    const isSearchByFecha = fecha !== '' || fecha !== '0' ? true : false    
+        
+    fecha = isSearchByFecha ?  fechaGuionASlash(fecha) : ''    
 
-    const whereNumber = fecha !== '' ?
-        `and (substring_index(numero,'-', 1)=${serie} and TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ${numero}`
-             : `and fecha = ${fecha}`
-    const rpt = <any>await prisma.$queryRaw`select external_id, cast(json_xml as JSON) datos, numero
-from ce
- where idsede = ${idsede} 
- 	${whereNumber}
- 	) and json_xml != '' limit 1`
+    const _dataSend = {
+        idsede: Number(idsede),
+        dni: dni,
+        serie: serie,
+        numero: numero,
+        fecha: fecha,
+        isSearchByFecha: isSearchByFecha ?  1 : 0
+    }
+
+    const rpt: any = await prisma.$queryRaw`call procedure_chatbot_getidexternal_comprobante(${JSON.stringify(_dataSend)})`
 
     if ( rpt.length > 0 ) {
-        const external_id = rpt[0].external_id
-        const datosReceptor = rpt[0].datos.datos_del_cliente_o_receptor
+        const external_id = rpt[0].f0
+        // const datosReceptor = rpt[0].datos.datos_del_cliente_o_receptor
         
-        if (datosReceptor.numero_documento === dni ) {
-            // enviamos el comprobante            
-            const _rpt = {
-                success: true,
-                external_id: external_id
-            }
-
-            res.status(200).send(_rpt);         
-
-        } else {
-            res.status(500).send({
-                success: false
-            }); 
+        // enviamos el comprobante            
+        const _rpt = {
+            success: true,
+            external_id: external_id
         }
+        res.status(200).send(_rpt);
+
+        // if (datosReceptor.numero_documento === dni ) {
+
+        //     res.status(200).send(_rpt);         
+
+        // }
+    } else {
+        res.status(500).send({
+            success: false
+        }); 
     }
 
     

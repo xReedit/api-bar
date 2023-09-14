@@ -76,6 +76,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
+var utils_1 = require("../utils/utils");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -351,33 +352,40 @@ router.get("/get-seccion-mas-piden/:idsede", function (req, res) { return __awai
     });
 }); });
 // obnter el comprobante electronico
-router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, dni, serie, numero, fecha, whereNumber, rpt, external_id, datosReceptor, _rpt;
+router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, dni, serie, numero, fecha, isSearchByFecha, _dataSend, rpt, external_id, _rpt;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _a = req.params, idsede = _a.idsede, dni = _a.dni, serie = _a.serie, numero = _a.numero, fecha = _a.fecha;
-                whereNumber = fecha !== '' ?
-                    "and (substring_index(numero,'-', 1)=".concat(serie, " and TRIM(LEADING '0' FROM substring_index(numero,'-', -1)) = ").concat(numero)
-                    : "and fecha = ".concat(fecha);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["select external_id, cast(json_xml as JSON) datos, numero\nfrom ce\n where idsede = ", " \n \t", "\n \t) and json_xml != '' limit 1"], ["select external_id, cast(json_xml as JSON) datos, numero\nfrom ce\n where idsede = ", " \n \t", "\n \t) and json_xml != '' limit 1"])), idsede, whereNumber)];
+                isSearchByFecha = fecha !== '' || fecha !== '0' ? true : false;
+                fecha = isSearchByFecha ? (0, utils_1.fechaGuionASlash)(fecha) : '';
+                _dataSend = {
+                    idsede: Number(idsede),
+                    dni: dni,
+                    serie: serie,
+                    numero: numero,
+                    fecha: fecha,
+                    isSearchByFecha: isSearchByFecha ? 1 : 0
+                };
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["call procedure_chatbot_getidexternal_comprobante(", ")"], ["call procedure_chatbot_getidexternal_comprobante(", ")"])), JSON.stringify(_dataSend))];
             case 1:
                 rpt = _b.sent();
                 if (rpt.length > 0) {
-                    external_id = rpt[0].external_id;
-                    datosReceptor = rpt[0].datos.datos_del_cliente_o_receptor;
-                    if (datosReceptor.numero_documento === dni) {
-                        _rpt = {
-                            success: true,
-                            external_id: external_id
-                        };
-                        res.status(200).send(_rpt);
-                    }
-                    else {
-                        res.status(500).send({
-                            success: false
-                        });
-                    }
+                    external_id = rpt[0].f0;
+                    _rpt = {
+                        success: true,
+                        external_id: external_id
+                    };
+                    res.status(200).send(_rpt);
+                    // if (datosReceptor.numero_documento === dni ) {
+                    //     res.status(200).send(_rpt);         
+                    // }
+                }
+                else {
+                    res.status(500).send({
+                        success: false
+                    });
                 }
                 // res.status(200).send(rpt);
                 prisma.$disconnect();

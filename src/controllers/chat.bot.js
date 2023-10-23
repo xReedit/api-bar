@@ -353,7 +353,7 @@ router.get("/get-seccion-mas-piden/:idsede", function (req, res) { return __awai
 }); });
 // obnter el comprobante electronico
 router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, dni, serie, numero, fecha, isSearchByFecha, _dataSend, rpt, external_id, _rpt;
+    var _a, idsede, dni, serie, numero, fecha, isSearchByFecha, _dataSend, rpt, external_id, numero_comprobante, _rpt;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -373,9 +373,11 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', fu
                 rpt = _b.sent();
                 if (rpt.length > 0) {
                     external_id = rpt[0].f0;
+                    numero_comprobante = rpt[0].f1;
                     _rpt = {
                         success: true,
-                        external_id: external_id
+                        external_id: external_id,
+                        numero_comprobante: numero_comprobante
                     };
                     res.status(200).send(_rpt);
                     // if (datosReceptor.numero_documento === dni ) {

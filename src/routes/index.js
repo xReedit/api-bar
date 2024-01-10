@@ -35,6 +35,7 @@ var colaborador_1 = __importDefault(require("../controllers/colaborador"));
 var colaborador_contrato_1 = __importDefault(require("../controllers/colaborador.contrato"));
 var chat_bot_1 = __importDefault(require("../controllers/chat.bot"));
 var login_restobar_1 = __importDefault(require("../controllers/login.restobar"));
+var permiso_remoto_1 = __importDefault(require("../controllers/permiso.remoto"));
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a nuestra API RESTOBAR port: 20223' });
@@ -48,5 +49,6 @@ router.use('/sede', auth_1.auth, sede_1["default"]);
 router.use('/colaborador', auth_1.auth, colaborador_1["default"]);
 router.use('/colaborador-contrato', auth_1.auth, colaborador_contrato_1["default"]);
 router.use('/chat-bot', chat_bot_1["default"]);
+router.use('/permiso-remoto', permiso_remoto_1["default"]);
 // router.use('/usuario', auth, usuario);
 exports["default"] = router;

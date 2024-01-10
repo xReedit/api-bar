@@ -87,6 +87,14 @@ model almacen_items {
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 model almacen_motivo_es {
   idalmacen_motivo_es Int    @default(autoincrement())
   motivo              String @db.Char(50)
@@ -460,6 +468,14 @@ model comision_intensidad_lluvia {
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 model comisiones_visa {
   comision_visa        String @db.VarChar(5)
   comision_transaccion String @db.VarChar(5)
@@ -696,6 +712,8 @@ model distribuicion {
   fecha                                       String                  @db.Char(50)
   detalle                                     String                  @db.VarChar(200)
   estado                                      Boolean                 @default(false)
+  idusuario_recibe                            Int?
+  fecha_recibe                                String?                 @db.VarChar(50)
   sede_distribuicion_idsedeTosede             sede                    @relation("distribuicion_idsedeTosede", fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_ibfk_1")
   almacen_distribuicion_idalmacen_deToalmacen almacen                 @relation("distribuicion_idalmacen_deToalmacen", fields: [idalmacen_de], references: [idalmacen], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_ibfk_2")
   almacen_distribuicion_idalmacen_aToalmacen  almacen                 @relation("distribuicion_idalmacen_aToalmacen", fields: [idalmacen_a], references: [idalmacen], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_ibfk_3")
@@ -716,6 +734,8 @@ model distribuicion_detalle {
   estado                  Boolean        @default(false)
   descripcion             String?        @db.VarChar(150)
   idproducto              Int?
+  recibido                String?        @default("0") @db.Char(1)
+  costo                   String?        @db.VarChar(10)
   distribuicion           distribuicion  @relation(fields: [iddistribuicion], references: [iddistribuicion], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_detalle_ibfk_1")
   producto_stock          producto_stock @relation(fields: [idproducto_stock], references: [idproducto_stock], onDelete: NoAction, onUpdate: NoAction, map: "distribuicion_detalle_ibfk_2")
 
@@ -782,6 +802,14 @@ model frases {
   estado   Int    @default(0)
 }
 
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
@@ -894,14 +922,19 @@ model item_cat_kiosko {
 }
 
 model item_ingrediente {
-  iditem_ingrediente Int    @id @default(autoincrement())
+  iditem_ingrediente Int     @id @default(autoincrement())
   iditem             Int
-  idporcion          Int    @default(0)
-  descripcion        String @db.VarChar(80)
-  cantidad           String @db.VarChar(10)
-  costo              String @db.VarChar(10)
-  estado             Int    @default(0)
-  necesario          String @default("0") @db.Char(1)
+  idporcion          Int     @default(0)
+  descripcion        String  @db.VarChar(80)
+  cantidad           String  @db.VarChar(10)
+  costo              String  @db.VarChar(10)
+  estado             Int     @default(0)
+  necesario          String  @default("0") @db.Char(1)
+  viene_de           String? @default("1") @db.Char(1)
+  idproducto_stock   Int?    @default(0)
+
+  @@index([idporcion], map: "item_ingrediente_idporcion_IDX")
+  @@index([idproducto_stock], map: "item_ingrediente_idproducto_stock_IDX")
 }
 
 model item_kiosko {
@@ -1157,6 +1190,7 @@ model pedido {
   is_printer                      Boolean                    @default(false)
   flag_is_cliente                 Boolean?                   @default(false)
   pwa_delivery_atendido           Boolean                    @default(false)
+  permission_delete               String?                    @default("0") @db.Char(1)
   cliente                         cliente?                   @relation(fields: [idcliente], references: [idcliente], onDelete: Restrict, onUpdate: Restrict, map: "pedido_FK")
   org                             org                        @relation(fields: [idorg], references: [idorg], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_1")
   sede                            sede                       @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_2")
@@ -1184,20 +1218,21 @@ model pedido_app_sede_last_week {
 }
 
 model pedido_borrados {
-  idpedido_borrados Int    @id @default(autoincrement())
-  idpedido          Int
-  idpedido_detalle  Int
-  iditem            Int
-  idcarta_lista     String @db.Char(50)
-  idusuario         Int
-  idusuario_permiso Int
-  importe           String @db.VarChar(8)
-  fecha             String @db.VarChar(50)
-  hora              String @db.VarChar(20)
-  fecha_cierre      String @db.VarChar(30)
-  procede_tabla     Int
-  estado            Int    @default(0)
-  cantidad          Int    @default(0)
+  idpedido_borrados   Int     @id @default(autoincrement())
+  idpedido            Int
+  idpedido_detalle    Int
+  iditem              Int
+  idcarta_lista       String  @db.Char(50)
+  idusuario           Int
+  idusuario_permiso   Int
+  importe             String  @db.VarChar(8)
+  fecha               String  @db.VarChar(50)
+  hora                String  @db.VarChar(20)
+  fecha_cierre        String  @db.VarChar(30)
+  procede_tabla       Int
+  estado              Int     @default(0)
+  cantidad            Int     @default(0)
+  flag_recupera_stock String? @default("0") @db.Char(1)
 }
 
 model pedido_cambios {
@@ -1251,6 +1286,8 @@ model pedido_detalle {
   estado            Int          @default(0)
   confirmar_pago    Boolean      @default(false)
   iditem_subitem    Int?
+  permission_delete String?      @default("0") @db.Char(1)
+  motivo_borrado    String?      @db.VarChar(100)
   tipo_consumo      tipo_consumo @relation(fields: [idtipo_consumo], references: [idtipo_consumo], onUpdate: Restrict, map: "pedido_detalle_FK_1")
   categoria         categoria    @relation(fields: [idcategoria], references: [idcategoria], onUpdate: Restrict, map: "pedido_detalle_FK_2")
 
@@ -1487,7 +1524,7 @@ model producto_historial_precio {
 model producto_stock {
   idproducto                  Int
   idalmacen                   Int
-  stock                       String                        @db.Char(5)
+  stock                       Float                         @db.Float
   estado                      Int                           @default(0)
   idproducto_stock            Int                           @id @default(autoincrement())
   flag_last_date_salida       String?                       @db.Char(30)
@@ -1606,6 +1643,14 @@ model pwa_cliente {
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 model pwa_pago_purchasenumber {
   purchasenumber Int
 
@@ -1701,18 +1746,28 @@ model registro_pago_cpe_error {
 }
 
 model registro_pago_detalle {
-  idregistro_pago_detalle Int     @id @default(autoincrement())
+  idregistro_pago_detalle Int                 @id @default(autoincrement())
   idregistro_pago         Int
   idtipo_pago             Int
-  importe                 String  @db.Char(10)
-  pagado                  String? @default("0") @db.Char(10)
-  estado                  Int     @default(0)
-  flag_pagado             String? @default("0") @db.Char(1)
+  importe                 String              @db.Char(10)
+  pagado                  String?             @default("0") @db.Char(10)
+  estado                  Int                 @default(0)
+  flag_pagado             String?             @default("0") @db.Char(1)
+  permission_change       String?             @default("0") @db.Char(1)
+  cambios_tipo_pago       cambios_tipo_pago[]
 
   @@index([idregistro_pago], map: "registro_pago_detalle_idregistro_pago_IDX")
   @@index([idtipo_pago], map: "registro_pago_detalle_idtipo_pago_IDX")
 }
 
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
@@ -1937,7 +1992,10 @@ model sede {
   ruc_cpe                                             String?                        @db.Char(12)
   razonsocial_cpe                                     String?                        @db.VarChar(255)
   metodo_pago_aceptados_chatbot                       String?                        @db.VarChar(100)
+  is_bloqueado_facturacion                            String                         @default("0") @db.Char(1)
+  msj_cpe_alert                                       String?                        @default("") @db.VarChar(200)
   almacen_ie                                          almacen_ie[]
+  cambios_tipo_pago                                   cambios_tipo_pago[]
   cliente_paga_credito                                cliente_paga_credito[]
   colaborador                                         colaborador[]
   colaborador_contrato_detalle                        colaborador_contrato_detalle[]
@@ -1945,9 +2003,11 @@ model sede {
   distribuicion_distribuicion_idsede_aTosede          distribuicion[]                @relation("distribuicion_idsede_aTosede")
   pedido                                              pedido[]
   pedido_repartidor_pagado                            pedido_repartidor_pagado[]
+  permiso_remoto                                      permiso_remoto[]
   produccion_producto                                 produccion_producto[]
   promocion                                           promocion[]
   sede_plan_contratado                                sede_plan_contratado?          @relation(fields: [idsede_plan_contratado], references: [idsede_plan_contratado], onDelete: Restrict, onUpdate: Restrict, map: "sede_FK")
+  sede_opciones                                       sede_opciones?
   sede_pago_servicio                                  sede_pago_servicio[]
 
   @@index([idsede_plan_contratado], map: "sede_FK")
@@ -2179,6 +2239,14 @@ model sys_const {
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 model system {
   idsede Int
   token  String @db.Text
@@ -2228,6 +2296,7 @@ model tipo_comprobante_serie {
   correlativo                 Int
   facturacion_correlativo_api Int    @default(0)
   estado                      Int    @default(0)
+  is_deshabilitado_cpe        String @default("0") @db.Char(1)
 }
 
 model tipo_consumo {
@@ -2292,6 +2361,7 @@ model tipo_pago {
   estado                       Int                            @default(0)
   orden                        Boolean                        @default(false)
   habilitado_chatbot           String?                        @default("0") @db.Char(1)
+  visible                      String?                        @default("0") @db.Char(1)
   cliente_paga_credito_detalle cliente_paga_credito_detalle[]
 }
 
@@ -2360,6 +2430,7 @@ model usuario {
   pacman                       Boolean                        @default(false)
   last_notificacion_change_sys String?                        @db.Char(30)
   isbot                        String?                        @default("0") @db.Char(1)
+  telefono                     String?                        @db.VarChar(50)
   cliente_paga_credito_detalle cliente_paga_credito_detalle[]
   ingreso_varios               ingreso_varios[]
   produccion_producto          produccion_producto[]
@@ -2500,4 +2571,60 @@ model chatbot_cliente {
   estado            String @default("0") @db.Char(1)
   fecha             String @db.Char(30)
   telefono          String @db.Char(15)
+}
+
+model ce_alerta {
+  idce_alerta Int    @id
+  code        String @db.VarChar(100)
+  comentario  String @db.VarChar(100)
+  estado      String @default("0") @db.Char(1)
+  nivel       String @default("1") @db.Char(1)
+}
+
+model permiso_remoto {
+  idpermiso_remoto   Int     @id @default(autoincrement())
+  idsede             Int
+  idusuario_admin    Int
+  idusuario_solicita Int
+  fecha              String  @db.Char(15)
+  hora               String  @db.Char(15)
+  data               Json
+  estado             String  @default("0") @db.Char(1)
+  atendido           String  @default("0") @db.Char(1)
+  link               String? @db.Char(10)
+  ejecutado          String? @default("0") @db.Char(1)
+  sede               sede    @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "permiso_remoto_FK")
+
+  @@index([idsede], map: "permiso_remoto_FK")
+}
+
+model cambios_tipo_pago {
+  idcambios_tipo_pago     Int                    @id @default(autoincrement())
+  idusuario_admin         Int
+  idusuario_solicita      Int
+  fecha                   String                 @db.Char(30)
+  hora                    String                 @db.Char(20)
+  idsede                  Int
+  idtipo_pago_before      Int
+  idtipo_pago_after       Int
+  importe                 String                 @db.Char(10)
+  estado                  String                 @default("0") @db.Char(1)
+  idregistro_pago         Int?
+  idregistro_pago_detalle Int?
+  motivo                  String?                @db.VarChar(150)
+  sede                    sede                   @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "cambios_tipo_pago_FK")
+  registro_pago_detalle   registro_pago_detalle? @relation(fields: [idregistro_pago_detalle], references: [idregistro_pago_detalle], onDelete: Restrict, onUpdate: Restrict, map: "cambios_tipo_pago_FK_1")
+
+  @@index([idsede], map: "cambios_tipo_pago_FK")
+  @@index([idregistro_pago_detalle], map: "cambios_tipo_pago_FK_1")
+}
+
+model sede_opciones {
+  idsede              Int     @id
+  switch1             String  @default("0") @db.Char(1)
+  switch2             String  @default("0") @db.Char(1)
+  num_intentos_cierre String  @default("3") @db.Char(1)
+  update_stock_after  String? @default("0") @db.Char(1)
+  hora_cierre_dia     String? @default("0") @db.Char(10)
+  sede                sede    @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "sede_opciones_FK")
 }

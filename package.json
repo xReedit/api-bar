@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx nodemon src/app.ts",
+    "start": "node app.js",
+    "dev": "npx nodemon src/app.ts",
     "prod": "node src/app.js",
     "build": "rimraf ./build && tsc"
   },

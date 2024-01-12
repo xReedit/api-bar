@@ -413,7 +413,7 @@ router.put('/change-name-cliente', async (req: any, res, next) => {
 // obtener la carta
 router.get("/get-carta/:idsede", async (req, res) => {
     const { idsede } = req.params;
-    const rpt = await prisma.$queryRaw`select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad from carta_lista cl 
+    const rpt = await prisma.$queryRaw`select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad as stock from carta_lista cl 
         inner join item i on i.iditem = cl.iditem 
         inner JOIN carta c on c.idcarta = cl.idcarta 
         where c.idsede = ${idsede} and i.estado=0`;

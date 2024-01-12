@@ -573,7 +573,7 @@ router.get("/get-carta/:idsede", function (req, res) { return __awaiter(void 0, 
         switch (_a.label) {
             case 0:
                 idsede = req.params.idsede;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad from carta_lista cl \n        inner join item i on i.iditem = cl.iditem \n        inner JOIN carta c on c.idcarta = cl.idcarta \n        where c.idsede = ", " and i.estado=0"], ["select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad from carta_lista cl \n        inner join item i on i.iditem = cl.iditem \n        inner JOIN carta c on c.idcarta = cl.idcarta \n        where c.idsede = ", " and i.estado=0"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad as stock from carta_lista cl \n        inner join item i on i.iditem = cl.iditem \n        inner JOIN carta c on c.idcarta = cl.idcarta \n        where c.idsede = ", " and i.estado=0"], ["select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad as stock from carta_lista cl \n        inner join item i on i.iditem = cl.iditem \n        inner JOIN carta c on c.idcarta = cl.idcarta \n        where c.idsede = ", " and i.estado=0"])), idsede)];
             case 1:
                 rpt = _a.sent();
                 res.status(200).send(rpt);

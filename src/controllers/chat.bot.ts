@@ -413,7 +413,7 @@ router.put('/change-name-cliente', async (req: any, res, next) => {
 // obtener la carta
 router.get("/get-carta/:idsede", async (req, res) => {
     const { idsede } = req.params;
-    const rpt = await prisma.$queryRaw`select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descroipcion_seccion, i.descripcion, cll.precio, 
+    const rpt = await prisma.$queryRaw`select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descroipcion_seccion, i.descripcion, i.detalle as receta, cll.precio, 
 		IF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,
 																		if(i1.viene_de='1', min(cast(p1.stock as SIGNED)), 
 																			min(cast(ps.stock as SIGNED)))

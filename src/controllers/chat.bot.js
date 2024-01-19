@@ -186,7 +186,6 @@ router.get("/canales/:idsede", function (req, res) { return __awaiter(void 0, vo
                 return [4 /*yield*/, prisma.tipo_consumo.findMany({
                         where: { AND: {
                                 idsede: Number(idsede),
-                                // titulo: '',            
                                 estado: 0
                             } },
                         select: {
@@ -380,16 +379,12 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', fu
                         numero_comprobante: numero_comprobante
                     };
                     res.status(200).send(_rpt);
-                    // if (datosReceptor.numero_documento === dni ) {
-                    //     res.status(200).send(_rpt);         
-                    // }
                 }
                 else {
                     res.status(500).send({
                         success: false
                     });
                 }
-                // res.status(200).send(rpt);
                 prisma.$disconnect();
                 return [2 /*return*/];
         }
@@ -598,5 +593,29 @@ router.get("/get-stock-item/:idsede/:iditem", function (req, res) { return __awa
         }
     });
 }); });
+// obtener seccion y los items seleccionados by listIdItem
+router.get("/get-seccion-items/:idsede/:listIdItem", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, listIdItem, rpt, data;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.params, idsede = _a.idsede, listIdItem = _a.listIdItem;
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["call procedure_get_seccion_items_chatbot(", ", '", "')"], ["call procedure_get_seccion_items_chatbot(", ", '", "')"])), idsede, listIdItem)];
+            case 1:
+                rpt = _b.sent();
+                try {
+                    data = {
+                        secciones: rpt[0].f0
+                    };
+                    res.status(200).send(data);
+                }
+                catch (error) {
+                    res.status(500).send(error);
+                }
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9;

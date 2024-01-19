@@ -104,8 +104,7 @@ router.get("/canales/:idsede", async (req, res) => {
     const { idsede } = req.params;
     const rpt = await prisma.tipo_consumo.findMany({
         where: { AND: {
-            idsede: Number(idsede),
-            // titulo: '',            
+            idsede: Number(idsede),             
             estado: 0
         }},
         select: {
@@ -256,21 +255,12 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', as
             numero_comprobante: numero_comprobante
         }
         res.status(200).send(_rpt);
-
-        // if (datosReceptor.numero_documento === dni ) {
-
-        //     res.status(200).send(_rpt);         
-
-        // }
+        
     } else {
         res.status(500).send({
             success: false
         }); 
     }
-
-    
-
-    // res.status(200).send(rpt);
     prisma.$disconnect();
 });
 
@@ -456,6 +446,23 @@ router.get("/get-stock-item/:idsede/:iditem", async (req, res) => {
     prisma.$disconnect();
     
 })
+
+// obtener seccion y los items seleccionados by listIdItem
+router.get("/get-seccion-items/:idsede/:listIdItem", async (req, res) => {
+    const { idsede, listIdItem } = req.params;    
+    const rpt: any = await prisma.$queryRaw`call procedure_get_seccion_items_chatbot(${idsede}, '${listIdItem}')`;    
+    try {
+        const data = {
+            secciones: rpt[0].f0            
+        }
+        res.status(200).send(data);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+    prisma.$disconnect();
+    
+})
+
 
 
 

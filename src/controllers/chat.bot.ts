@@ -448,9 +448,11 @@ router.get("/get-stock-item/:idsede/:iditem", async (req, res) => {
 })
 
 // obtener seccion y los items seleccionados by listIdItem
-router.get("/get-seccion-items/:idsede/:listIdItem", async (req, res) => {
-    const { idsede, listIdItem } = req.params;    
-    const rpt: any = await prisma.$queryRaw`call procedure_get_seccion_items_chatbot(${idsede}, '${listIdItem}')`;    
+router.post("/get-seccion-items", async (req, res) => {
+    const { idsede, items } = req.body;    
+    const _query = `call procedure_get_seccion_items_chatbot(${idsede}, '${JSON.stringify(items)}')`;
+    console.log('_query', _query);
+    const rpt: any = await prisma.$queryRaw`call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(items)})`
     try {
         const data = {
             secciones: rpt[0].f0            
@@ -460,10 +462,7 @@ router.get("/get-seccion-items/:idsede/:listIdItem", async (req, res) => {
         res.status(500).send(error);
     }
     prisma.$disconnect();
-    
 })
-
-
 
 
 

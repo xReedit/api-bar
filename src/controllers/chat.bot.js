@@ -594,13 +594,15 @@ router.get("/get-stock-item/:idsede/:iditem", function (req, res) { return __awa
     });
 }); });
 // obtener seccion y los items seleccionados by listIdItem
-router.get("/get-seccion-items/:idsede/:listIdItem", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, listIdItem, rpt, data;
+router.post("/get-seccion-items", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, items, _query, rpt, data;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                _a = req.params, idsede = _a.idsede, listIdItem = _a.listIdItem;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["call procedure_get_seccion_items_chatbot(", ", '", "')"], ["call procedure_get_seccion_items_chatbot(", ", '", "')"])), idsede, listIdItem)];
+                _a = req.body, idsede = _a.idsede, items = _a.items;
+                _query = "call procedure_get_seccion_items_chatbot(".concat(idsede, ", '").concat(JSON.stringify(items), "')");
+                console.log('_query', _query);
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["call procedure_get_seccion_items_chatbot(", ", ", ")"], ["call procedure_get_seccion_items_chatbot(", ", ", ")"])), idsede, JSON.stringify(items))];
             case 1:
                 rpt = _b.sent();
                 try {

@@ -449,9 +449,7 @@ router.get("/get-stock-item/:idsede/:iditem", async (req, res) => {
 
 // obtener seccion y los items seleccionados by listIdItem
 router.post("/get-seccion-items", async (req, res) => {
-    const { idsede, items } = req.body;    
-    const _query = `call procedure_get_seccion_items_chatbot(${idsede}, '${JSON.stringify(items)}')`;
-    console.log('_query', _query);
+    const { idsede, items } = req.body;            
     const rpt: any = await prisma.$queryRaw`call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(items)})`
     try {
         const data = {
@@ -461,6 +459,17 @@ router.post("/get-seccion-items", async (req, res) => {
     } catch (error) {
         res.status(500).send(error);
     }
+    prisma.$disconnect();
+})
+
+// obtner informacion para el delivery de la sede
+router.get("/get-info-delivery/:idsede", async (req, res) => {
+    const { idsede } = req.params;
+    const rpt = await prisma.$queryRaw`select JSON_OBJECT('latitude',s.latitude, 'longitude', s.longitude) coordenadas_sede, scd.ciudades ciudades_disponible, scd.parametros->>'$.km_limite' distancia_maxima from sede s 
+        inner join sede_costo_delivery scd on s.idsede = scd.idsede 
+        where s.idsede = ${idsede}`
+
+    res.status(200).send(rpt);
     prisma.$disconnect();
 })
 

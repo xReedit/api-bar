@@ -595,13 +595,11 @@ router.get("/get-stock-item/:idsede/:iditem", function (req, res) { return __awa
 }); });
 // obtener seccion y los items seleccionados by listIdItem
 router.post("/get-seccion-items", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, items, _query, rpt, data;
+    var _a, idsede, items, rpt, data;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, items = _a.items;
-                _query = "call procedure_get_seccion_items_chatbot(".concat(idsede, ", '").concat(JSON.stringify(items), "')");
-                console.log('_query', _query);
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["call procedure_get_seccion_items_chatbot(", ", ", ")"], ["call procedure_get_seccion_items_chatbot(", ", ", ")"])), idsede, JSON.stringify(items))];
             case 1:
                 rpt = _b.sent();
@@ -619,5 +617,21 @@ router.post("/get-seccion-items", function (req, res) { return __awaiter(void 0,
         }
     });
 }); });
+// obtner informacion para el delivery de la sede
+router.get("/get-info-delivery/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rpt;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["select JSON_OBJECT('latitude',s.latitude, 'longitude', s.longitude) coordenadas_sede, scd.ciudades ciudades_disponible, scd.parametros->>'$.km_limite' distancia_maxima from sede s \n        inner join sede_costo_delivery scd on s.idsede = scd.idsede \n        where s.idsede = ", ""], ["select JSON_OBJECT('latitude',s.latitude, 'longitude', s.longitude) coordenadas_sede, scd.ciudades ciudades_disponible, scd.parametros->>'$.km_limite' distancia_maxima from sede s \n        inner join sede_costo_delivery scd on s.idsede = scd.idsede \n        where s.idsede = ", ""])), idsede)];
+            case 1:
+                rpt = _a.sent();
+                res.status(200).send(rpt);
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10;

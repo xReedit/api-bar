@@ -469,7 +469,7 @@ router.get("/get-info-delivery/:idsede", async (req, res) => {
         inner join sede_costo_delivery scd on s.idsede = scd.idsede 
         where s.idsede = ${idsede}`
 
-    res.status(200).send(rpt);
+    res.status(200).send(rpt); 
     prisma.$disconnect();
 })
 

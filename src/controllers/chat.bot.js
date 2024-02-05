@@ -301,7 +301,7 @@ router.get("/get-config-delivery/:idsede", function (req, res) { return __awaite
             case 1:
                 rptConsulta = _a.sent();
                 if (!(rptConsulta.length === 0)) return [3 /*break*/, 3];
-                _parametros = { "km_base": "2", "km_limite": "7", "km_base_costo": "3", "km_adicional_costo": "2" };
+                _parametros = { "km_base": "2", "km_limite": "7", "km_base_costo": "3", "km_adicional_costo": "2", "obtener_coordenadas_del_cliente": "SI", "costo_fijo": "0" };
                 dataSend = {
                     idsede: Number(idsede),
                     ciudades: '',
@@ -600,9 +600,11 @@ router.post("/get-seccion-items", function (req, res) { return __awaiter(void 0,
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, items = _a.items;
+                console.log('sql', "call procedure_get_seccion_items_chatbot(".concat(idsede, ", ").concat(JSON.stringify(items), ")"));
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["call procedure_get_seccion_items_chatbot(", ", ", ")"], ["call procedure_get_seccion_items_chatbot(", ", ", ")"])), idsede, JSON.stringify(items))];
             case 1:
                 rpt = _b.sent();
+                console.log('rpt get-seccion-items ', rpt);
                 try {
                     data = {
                         secciones: rpt[0].f0
@@ -628,6 +630,59 @@ router.get("/get-info-delivery/:idsede", function (req, res) { return __awaiter(
             case 1:
                 rpt = _a.sent();
                 res.status(200).send(rpt);
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
+// reducir tokens
+// obtener la paramtrosSedeDelivery
+router.get("/parametros-delivery/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rptParams, rptSede, paramsSede, data;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                return [4 /*yield*/, prisma.sede_costo_delivery.findMany({
+                        where: {
+                            AND: {
+                                idsede: Number(idsede),
+                                estado: '0'
+                            }
+                        }
+                    })
+                    // coordenadas de la sede
+                ];
+            case 1:
+                rptParams = _a.sent();
+                return [4 /*yield*/, prisma.sede.findMany({
+                        where: {
+                            idsede: Number(idsede)
+                        },
+                        select: {
+                            latitude: true,
+                            longitude: true
+                        }
+                    })];
+            case 2:
+                rptSede = _a.sent();
+                paramsSede = [];
+                if (rptParams.length == 0) {
+                    paramsSede = [{ "km_base": "2", "km_limite": "7", "km_base_costo": "3", "km_adicional_costo": "2", "obtener_coordenadas_del_cliente": "SI", "costo_fijo": "0" }];
+                }
+                else {
+                }
+                paramsSede = rptParams;
+                data = {
+                    obtener_coordenadas_del_cliente: paramsSede[0].parametros.obtener_coordenadas_del_cliente,
+                    coordenadas_sede: {
+                        latitude: rptSede[0].latitude,
+                        longitude: rptSede[0].longitude
+                    },
+                    ciudades_disponible: paramsSede[0].ciudades,
+                    distancia_maxima_en_kilometros: paramsSede[0].parametros.km_limite
+                };
+                res.status(200).send(data);
                 prisma.$disconnect();
                 return [2 /*return*/];
         }

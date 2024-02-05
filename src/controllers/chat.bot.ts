@@ -183,7 +183,7 @@ router.get("/get-config-delivery/:idsede", async (req, res) => {
 
     // crea
     if (rptConsulta.length === 0 ) {
-        const _parametros = { "km_base": "2", "km_limite": "7", "km_base_costo": "3", "km_adicional_costo": "2" }
+        const _parametros = { "km_base": "2", "km_limite": "7", "km_base_costo": "3", "km_adicional_costo": "2", "obtener_coordenadas_del_cliente":"SI", "costo_fijo":"0" }
         const dataSend = {
             idsede: Number(idsede),
             ciudades: '',
@@ -449,8 +449,10 @@ router.get("/get-stock-item/:idsede/:iditem", async (req, res) => {
 
 // obtener seccion y los items seleccionados by listIdItem
 router.post("/get-seccion-items", async (req, res) => {
-    const { idsede, items } = req.body;            
+    const { idsede, items } = req.body;     
+    console.log('sql', `call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(items)})`);       
     const rpt: any = await prisma.$queryRaw`call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(items)})`
+    console.log('rpt get-seccion-items ', rpt);
     try {
         const data = {
             secciones: rpt[0].f0            
@@ -470,6 +472,53 @@ router.get("/get-info-delivery/:idsede", async (req, res) => {
         where s.idsede = ${idsede}`
 
     res.status(200).send(rpt); 
+    prisma.$disconnect();
+})
+
+// reducir tokens
+// obtener la paramtrosSedeDelivery
+router.get("/parametros-delivery/:idsede", async (req, res) => {
+    const { idsede } = req.params;
+    const rptParams = await prisma.sede_costo_delivery.findMany({
+        where: {
+            AND: {
+                idsede: Number(idsede),                
+                estado: '0'
+            }
+        }
+    })
+
+    // coordenadas de la sede
+    const rptSede:any = await prisma.sede.findMany({
+        where: {
+            idsede: Number(idsede)
+        },
+        select: {
+            latitude: true,
+            longitude: true
+        }
+    })
+
+    let paramsSede: any[] = []    
+    if ( rptParams.length == 0 ) {
+        paramsSede = [{ "km_base": "2", "km_limite": "7", "km_base_costo": "3", "km_adicional_costo": "2", "obtener_coordenadas_del_cliente":"SI", "costo_fijo":"0" }]
+    } else {
+    }
+    paramsSede = rptParams
+
+    
+    const data = {
+        obtener_coordenadas_del_cliente: paramsSede[0].parametros.obtener_coordenadas_del_cliente,
+        coordenadas_sede: {
+            latitude: rptSede[0].latitude,
+            longitude: rptSede[0].longitude
+        },
+        ciudades_disponible: paramsSede[0].ciudades,
+        distancia_maxima_en_kilometros: paramsSede[0].parametros.km_limite
+    }
+    
+
+    res.status(200).send(data);
     prisma.$disconnect();
 })
 

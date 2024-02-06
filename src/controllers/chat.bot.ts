@@ -503,11 +503,11 @@ router.get("/get-parametros-delivery/:idsede", async (req, res) => {
     if ( rptParams.length == 0 ) {
         paramsSede = [{ "km_base": "2", "km_limite": "7", "km_base_costo": "3", "km_adicional_costo": "2", "obtener_coordenadas_del_cliente":"SI", "costo_fijo":"0" }]
     } else {
+        paramsSede = rptParams
     }
-    paramsSede = rptParams
 
     
-    const data = {
+    const dataRpt = {
         obtener_coordenadas_del_cliente: paramsSede[0].parametros.obtener_coordenadas_del_cliente,
         coordenadas_sede: {
             latitude: rptSede[0].latitude,
@@ -518,7 +518,7 @@ router.get("/get-parametros-delivery/:idsede", async (req, res) => {
     }
     
 
-    res.status(200).send(data);
+    res.status(200).send(dataRpt);
     prisma.$disconnect();
 })
 

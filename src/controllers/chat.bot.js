@@ -638,7 +638,7 @@ router.get("/get-info-delivery/:idsede", function (req, res) { return __awaiter(
 // reducir tokens
 // obtener la paramtrosSedeDelivery
 router.get("/get-parametros-delivery/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, rptParams, rptSede, paramsSede, data;
+    var idsede, rptParams, rptSede, paramsSede, dataRpt;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -671,9 +671,9 @@ router.get("/get-parametros-delivery/:idsede", function (req, res) { return __aw
                     paramsSede = [{ "km_base": "2", "km_limite": "7", "km_base_costo": "3", "km_adicional_costo": "2", "obtener_coordenadas_del_cliente": "SI", "costo_fijo": "0" }];
                 }
                 else {
+                    paramsSede = rptParams;
                 }
-                paramsSede = rptParams;
-                data = {
+                dataRpt = {
                     obtener_coordenadas_del_cliente: paramsSede[0].parametros.obtener_coordenadas_del_cliente,
                     coordenadas_sede: {
                         latitude: rptSede[0].latitude,
@@ -682,7 +682,7 @@ router.get("/get-parametros-delivery/:idsede", function (req, res) { return __aw
                     ciudades_disponible: paramsSede[0].ciudades,
                     distancia_maxima_en_kilometros: paramsSede[0].parametros.km_limite
                 };
-                res.status(200).send(data);
+                res.status(200).send(dataRpt);
                 prisma.$disconnect();
                 return [2 /*return*/];
         }

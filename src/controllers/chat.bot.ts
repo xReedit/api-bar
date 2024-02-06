@@ -508,7 +508,7 @@ router.get("/get-parametros-delivery/:idsede", async (req, res) => {
 
     
     const dataRpt = {
-        obtener_coordenadas_del_cliente: paramsSede[0].parametros.obtener_coordenadas_del_cliente,
+        obtener_coordenadas_del_cliente: 'SI',
         coordenadas_sede: {
             latitude: rptSede[0].latitude,
             longitude: rptSede[0].longitude

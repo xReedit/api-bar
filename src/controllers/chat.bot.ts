@@ -477,7 +477,7 @@ router.get("/get-info-delivery/:idsede", async (req, res) => {
 
 // reducir tokens
 // obtener la paramtrosSedeDelivery
-router.get("/parametros-delivery/:idsede", async (req, res) => {
+router.get("/get-parametros-delivery/:idsede", async (req, res) => {
     const { idsede } = req.params;
     const rptParams = await prisma.sede_costo_delivery.findMany({
         where: {

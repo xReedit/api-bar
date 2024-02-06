@@ -637,7 +637,7 @@ router.get("/get-info-delivery/:idsede", function (req, res) { return __awaiter(
 }); });
 // reducir tokens
 // obtener la paramtrosSedeDelivery
-router.get("/parametros-delivery/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.get("/get-parametros-delivery/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var idsede, rptParams, rptSede, paramsSede, data;
     return __generator(this, function (_a) {
         switch (_a.label) {

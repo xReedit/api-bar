@@ -674,13 +674,13 @@ router.get("/get-parametros-delivery/:idsede", function (req, res) { return __aw
                     paramsSede = rptParams;
                 }
                 dataRpt = {
-                    obtener_coordenadas_del_cliente: 'SI',
-                    coordenadas_sedex: {
+                    obtener_coordenadas_del_cliente: paramsSede[0].parametros.obtener_coordenadas_del_cliente || 'SI',
+                    coordenadas_sede: {
                         latitude: rptSede[0].latitude,
                         longitude: rptSede[0].longitude
                     },
-                    ciudades_disponiblex: paramsSede[0].ciudades,
-                    distancia_maxima_en_kilometrosx: paramsSede[0].parametros.km_limite
+                    ciudades_disponible: paramsSede[0].ciudades,
+                    distancia_maxima_en_kilometros: paramsSede[0].parametros.km_limite
                 };
                 res.status(200).send(dataRpt);
                 prisma.$disconnect();

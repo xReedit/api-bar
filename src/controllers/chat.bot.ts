@@ -1,6 +1,7 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { fechaGuionASlash } from "../utils/utils";
+import { getEstructuraPedido } from "../services/cocinar.pedido";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -52,7 +53,7 @@ router.get("/cliente/:telefono", async (req, res) => {
     JSON_ARRAYAGG(
         JSON_OBJECT(
         'idcliente_pwa_direccion', cpd.idcliente_pwa_direccion,
-        'direccion', cpd.direccion,
+        'direccion', concat(cpd.direccion, ', ', cpd.ciudad, ' ', cpd.codigo),
         'referencia', cpd.referencia,
         'latitude', cpd.latitude,
         'longitude', cpd.longitude 
@@ -60,7 +61,7 @@ router.get("/cliente/:telefono", async (req, res) => {
     ) AS direcciones
 FROM cliente c
 left JOIN (
-		select cp.idcliente, cp.idcliente_pwa_direccion, cp.direccion, cp.referencia, cp.latitude, cp.longitude 
+		select cp.idcliente, cp.idcliente_pwa_direccion, cp.direccion, cp.referencia, cp.latitude, cp.longitude, cp.ciudad, cp.codigo 
 		from cliente_pwa_direccion cp
 		order by cp.idcliente_pwa_direccion desc		
 	) cpd USING (idcliente)
@@ -204,11 +205,24 @@ router.get("/get-config-delivery/:idsede", async (req, res) => {
 router.get("/get-impresoras/:idsede", async (req, res) => {
     const { idsede } = req.params;
     const rpt = await prisma.$queryRaw`select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font
-	,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery
-	,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda		
-from conf_print cp 
-	inner join impresora i using(idsede)
-where cp.idsede = ${idsede} and i.estado = 0`
+            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery
+            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda		
+        from conf_print cp 
+            inner join impresora i using(idsede)
+        where cp.idsede = ${idsede} and i.estado = 0`
+
+    res.status(200).send(rpt);
+});
+
+// obtener la impresora segun el tipo de consumo y la sede
+router.get("/get-impresora-tipo-consumo/:idsede/:idimpresora", async (req, res) => {
+    const { idsede, idimpresora } = req.params;
+    const rpt = await prisma.$queryRaw`select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font
+            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery
+            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda		
+        from conf_print cp 
+            inner join impresora i using(idsede)
+        where cp.idsede = ${idsede} and i.estado = 0 and i.idimpresora = ${idimpresora}`
 
     res.status(200).send(rpt);
 });
@@ -228,7 +242,7 @@ order by cantidad_seccion desc limit 2`
 // obnter el comprobante electronico
 router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', async (req: any, res) => {    
     let { idsede, dni, serie, numero, fecha } = req.params;
-    const isSearchByFecha = fecha !== '' || fecha !== '0' ? true : false    
+    const isSearchByFecha = fecha == '' || fecha == '0' ? false : true    
         
     fecha = isSearchByFecha ?  fechaGuionASlash(fecha) : ''    
 
@@ -241,7 +255,11 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', as
         isSearchByFecha: isSearchByFecha ?  1 : 0
     }
 
+    console.log('_dataSend', _dataSend);
+    console.log('query', `call procedure_chatbot_getidexternal_comprobante(${JSON.stringify(_dataSend)})`);
+
     const rpt: any = await prisma.$queryRaw`call procedure_chatbot_getidexternal_comprobante(${JSON.stringify(_dataSend)})`
+    console.log('rpt', rpt);
 
     if ( rpt.length > 0 ) {
         const external_id = rpt[0].f0
@@ -395,6 +413,22 @@ router.put('/change-name-cliente', async (req: any, res, next) => {
     prisma.$disconnect();
 })
 
+// cambiar nombre del cliente
+router.put('/change-name-cliente', async (req: any, res, next) => {
+    const dataBody = { ...req.body}
+    const rpt = await prisma.cliente.update({
+        data: {
+            nombres: dataBody.nombres,
+        },
+        where: {
+            idcliente: Number(dataBody.idcliente)
+        }
+    })
+
+    res.status(200).send(rpt);
+    prisma.$disconnect();
+})
+
 
 
 
@@ -450,9 +484,14 @@ router.get("/get-stock-item/:idsede/:iditem", async (req, res) => {
 // obtener seccion y los items seleccionados by listIdItem
 router.post("/get-seccion-items", async (req, res) => {
     const { idsede, items } = req.body;     
-    console.log('sql', `call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(items)})`);       
-    const rpt: any = await prisma.$queryRaw`call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(items)})`
-    console.log('rpt get-seccion-items ', rpt);
+
+    // verificamos si items es un json, sino lo es lo convertimos a json
+    const _items = typeof items === 'string' ? JSON.parse(items) : items;
+    
+
+
+    // console.log('sql', `call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(_items)})`);       
+    const rpt: any = await prisma.$queryRaw`call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(_items)})`        
     try {
         const data = {
             secciones: rpt[0].f0            
@@ -514,7 +553,9 @@ router.get("/get-parametros-delivery/:idsede", async (req, res) => {
             longitude: rptSede[0].longitude
         },
         ciudades_disponible: paramsSede[0].ciudades,
-        distancia_maxima_en_kilometros: paramsSede[0].parametros.km_limite
+        distancia_maxima_en_kilometros: paramsSede[0].parametros.km_limite,
+        costo_delivery: 0,
+        parametros_delivery: paramsSede[0].parametros
     }
     
 
@@ -522,6 +563,42 @@ router.get("/get-parametros-delivery/:idsede", async (req, res) => {
     prisma.$disconnect();
 })
 
+
+// cocina estructura de pedido
+router.post("/get-estructura-pedido", async (req, res) => {
+    const { items, tipo_entrega, datos_entrega, idsede } = req.body;    
+    const estrutura_pedido = await getEstructuraPedido(items, tipo_entrega, datos_entrega, idsede)
+    console.log('estrutura_pedido', estrutura_pedido);
+    res.status(200).send(estrutura_pedido);
+})
+
+// registrar nuevo cliente
+router.post("/create-cliente-from-bot", async (req, res) => {
+    const {telefono, idsede, nombres} = req.body;
+    const rpt = await prisma.cliente.create({
+        data: {
+            telefono: telefono,
+            idorg: 1,
+            nombres: nombres.toUpperCase(),
+            f_registro: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            ruc: '',
+            direccion: ''
+        }        
+    })
+    const idcliente = rpt.idcliente;
+
+    // ahora guardamos en cliente-sede
+    const rptClienteSede = await prisma.cliente_sede.create({
+        data: {
+            idcliente: idcliente,
+            idsede: idsede,
+            telefono: telefono            
+        }
+    })    
+
+    res.status(200).send(rpt);
+    prisma.$disconnect();
+})
 
 
 export default router;

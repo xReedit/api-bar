@@ -626,12 +626,33 @@ router.get("/count-pedidos-bot/:idsede", async (req, res, next) => {
         where: {
             idsede: Number(idsede)
         }
-    }).catch(next);
-
-    res.status(200).send(rpt);
+    }).catch(next);      
+    res.status(200).send({ count: rpt})
     prisma.$disconnect();    
 })
 
+// lista de productos disponibles para el bot
+router.get("/get-list-productos-disponibles/:idsede", async (req, res, next) => {    
+    const { idsede } = req.params;    
+    try {
+        const rpt: any = await prisma.$queryRaw`call procedure_secciones_mas_salen_bot(${idsede})`        
+
+        let listProductos: any[] = []
+        rpt.forEach((seccion: any) => {
+            const seccionAdd = {
+                idseccion: seccion.f0,
+                seccion: seccion.f1,
+                items: seccion.f2,
+            }            
+            listProductos.push(seccionAdd)
+        })        
+        res.status(200).send(listProductos);
+    } catch (error) {
+        next(error);
+    } finally {
+        prisma.$disconnect();    
+    }
+})
 
 export default router;
 

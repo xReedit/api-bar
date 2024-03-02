@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 
-function errorHandler(err: Error, res: any) {    
-    console.error(err);
-    return res.status(400).send({ error: 'Error al procesar la solicitud' });        
+function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
+    console.error(err.stack);
+    res.status(500).send('Ocurrio un error en la solicitud.');
 }
 
 export { errorHandler };

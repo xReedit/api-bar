@@ -3,11 +3,13 @@ import cors from "cors";
 
 import routes from "./routes";
 import { env } from 'process';
+import { errorHandler } from './middleware/error';
 
 const app = express()
 
 app.use(cors());
 app.use(express.json());
+app.use(errorHandler);
 
 app.use('/api-restobar', routes)
 

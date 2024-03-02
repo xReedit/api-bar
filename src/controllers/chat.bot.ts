@@ -129,7 +129,7 @@ router.get("/tipos-pago", async (req, res) => {
         }},
         select: {
             idtipo_pago: true,
-            descripcion: true,            
+            descripcion: true,
         }
     })
     res.status(200).send(rpt);
@@ -341,17 +341,21 @@ router.put('/update-tipo-pago-sede/:id', async (req: any, res, next) => {
 router.put('/update-config-delivery/:id', async (req: any, res, next) => {
     const { id } = req.params
     const dataBody = req.body
-    const rpt = await prisma.sede_costo_delivery.updateMany({
-        data: dataBody,
-        where: {
-            idsede_costo_delivery: Number(id)
-        }
 
-    }
-    )
-
-    res.status(200).send(rpt);
-    prisma.$disconnect();
+    try {
+        const rpt = await prisma.sede_costo_delivery.updateMany({
+            data: dataBody,
+            where: {
+                idsede_costo_delivery: Number(id)
+            }
+        })
+        res.status(200).send(rpt);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: 'error al actualizar update-config-delivery.' });
+    } finally {
+        prisma.$disconnect();
+    }        
 
 })
 
@@ -565,15 +569,14 @@ router.get("/get-parametros-delivery/:idsede", async (req, res) => {
 
 
 // cocina estructura de pedido
-router.post("/get-estructura-pedido", async (req, res) => {
+router.post("/get-estructura-pedido", async (req, res, next) => {
     const { items, tipo_entrega, datos_entrega, idsede } = req.body;    
-    const estrutura_pedido = await getEstructuraPedido(items, tipo_entrega, datos_entrega, idsede)
-    console.log('estrutura_pedido', estrutura_pedido);
+    const estrutura_pedido = await getEstructuraPedido(items, tipo_entrega, datos_entrega, idsede).catch(next);    
     res.status(200).send(estrutura_pedido);
 })
 
 // registrar nuevo cliente
-router.post("/create-cliente-from-bot", async (req, res) => {
+router.post("/create-cliente-from-bot", async (req, res, next) => {
     const {telefono, idsede, nombres} = req.body;
     const rpt = await prisma.cliente.create({
         data: {
@@ -594,10 +597,39 @@ router.post("/create-cliente-from-bot", async (req, res) => {
             idsede: idsede,
             telefono: telefono            
         }
-    })    
+    })   
 
     res.status(200).send(rpt);
     prisma.$disconnect();
+})
+
+
+// guardar pedido realizado por el bot
+router.post("/create-pedido-bot", async (req, res, next) => {
+    const { idpedido, idsede } = req.body;
+        
+        const rpt = await prisma.pedido_bot.create({
+            data: {
+                idpedido: idpedido,
+                fecha: new Date(),
+                idsede: idsede
+            }
+        }).catch(next);
+        res.status(200).send(rpt);    
+        await prisma.$disconnect();    
+})
+
+// cuenta los pedidos del bot
+router.get("/count-pedidos-bot/:idsede", async (req, res, next) => {
+    const { idsede } = req.params;
+    const rpt = await prisma.pedido_bot.count({
+        where: {
+            idsede: Number(idsede)
+        }
+    }).catch(next);
+
+    res.status(200).send(rpt);
+    prisma.$disconnect();    
 })
 
 

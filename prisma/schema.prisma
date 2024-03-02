@@ -37,6 +37,8 @@ model almacen_ie {
   idproducto_motivo_es Int
   motivo               String  @db.Char(120)
   estado               Int     @default(0)
+  fecha_hora           String? @db.VarChar(100)
+  hora                 String? @db.VarChar(100)
   almacen              almacen @relation(fields: [idalmacen], references: [idalmacen], onUpdate: Restrict, map: "almacen_ie_FK")
   sede                 sede    @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "almacen_ie_FK_1")
   org                  org     @relation(fields: [idorg], references: [idorg], onUpdate: Restrict, map: "almacen_ie_FK_2")
@@ -64,6 +66,8 @@ model almacen_items {
   estado          Int    @default(0)
 }
 
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
@@ -248,6 +252,7 @@ model ce {
   status_sunat_date        String? @db.Char(35)
 
   @@index([idorg, idsede, idtipo_comprobante_serie], map: "ce_idorg_IDX")
+  @@index([fecha], map: "ce_fecha_IDX")
 }
 
 model ce_nota_credito {
@@ -445,6 +450,8 @@ model comision_intensidad_lluvia {
   estado                       Int    @default(0)
 }
 
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
@@ -802,6 +809,8 @@ model frases {
   estado   Int    @default(0)
 }
 
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
@@ -1195,6 +1204,7 @@ model pedido {
   org                             org                        @relation(fields: [idorg], references: [idorg], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_1")
   sede                            sede                       @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_2")
   tipo_consumo                    tipo_consumo               @relation(fields: [idtipo_consumo], references: [idtipo_consumo], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_3")
+  pedido_bot                      pedido_bot[]
   pedido_repartidor_pagado        pedido_repartidor_pagado[]
 
   @@index([correlativo_dia], map: "pedido_correlativo_dia_IDX")
@@ -1210,6 +1220,9 @@ model pedido {
   @@index([is_from_client_pwa, pwa_delivery_status], map: "pedido_is_from_client_pwa_IDX")
   @@index([nummesa, numpedido], map: "pedido_nummesa_IDX")
   @@index([numpedido], map: "pedido_numpedido_IDX")
+  @@index([idsede, fecha_hora], map: "idx_idsede_fecha_hora")
+  @@index([confirmar_pago], map: "pedido_confirmar_pago_IDX")
+  @@index([fecha_hora], map: "pedido_fecha_hora_IDX")
 }
 
 model pedido_app_sede_last_week {
@@ -1651,6 +1664,8 @@ model pwa_cliente {
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 model pwa_pago_purchasenumber {
   purchasenumber Int
 
@@ -1760,6 +1775,8 @@ model registro_pago_detalle {
   @@index([idtipo_pago], map: "registro_pago_detalle_idtipo_pago_IDX")
 }
 
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
@@ -2002,6 +2019,7 @@ model sede {
   distribuicion_distribuicion_idsedeTosede            distribuicion[]                @relation("distribuicion_idsedeTosede")
   distribuicion_distribuicion_idsede_aTosede          distribuicion[]                @relation("distribuicion_idsede_aTosede")
   pedido                                              pedido[]
+  pedido_bot                                          pedido_bot[]
   pedido_repartidor_pagado                            pedido_repartidor_pagado[]
   permiso_remoto                                      permiso_remoto[]
   produccion_producto                                 produccion_producto[]
@@ -2216,6 +2234,8 @@ model sys_const {
   orden      Boolean?
 }
 
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
@@ -2627,4 +2647,32 @@ model sede_opciones {
   update_stock_after  String? @default("0") @db.Char(1)
   hora_cierre_dia     String? @default("0") @db.Char(10)
   sede                sede    @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "sede_opciones_FK")
+}
+
+model correlativo_pedidos_monitor {
+  fecha    DateTime @id @db.Date
+  idpedido Int
+}
+
+model pedido_bot {
+  idpedido_bot Int      @id @default(autoincrement())
+  idpedido     Int
+  idsede       Int
+  fecha        DateTime @db.DateTime(0)
+  estado       String   @default("0") @db.Char(1)
+  sede         sede     @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "pedido_bot_FK")
+  pedido       pedido   @relation(fields: [idpedido], references: [idpedido], onUpdate: Restrict, map: "pedido_bot_FK_1")
+
+  @@index([idsede], map: "pedido_bot_FK")
+  @@index([idpedido], map: "pedido_bot_FK_1")
+}
+
+model ubigeos {
+  IDDIST       String @id @db.Char(10)
+  NOMBDEP      String @db.VarChar(100)
+  NOMBPROV     String @db.VarChar(100)
+  NOMBDIST     String @db.VarChar(100)
+  NOM_CAPITAL  String @db.VarChar(100)
+  COD__REG_NAT String @map("COD_ REG_NAT") @db.Char(5)
+  REGION       String @db.VarChar(100)
 }

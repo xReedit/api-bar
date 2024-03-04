@@ -476,23 +476,34 @@ router.put('/update-tipo-pago-sede/:id', function (req, res, next) { return __aw
 }); });
 // guardar datos del delivery update-config-delivery
 router.put('/update-config-delivery/:id', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var id, dataBody, rpt;
+    var id, dataBody, rpt, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 id = req.params.id;
                 dataBody = req.body;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, 4, 5]);
                 return [4 /*yield*/, prisma.sede_costo_delivery.updateMany({
                         data: dataBody,
                         where: {
                             idsede_costo_delivery: Number(id)
                         }
                     })];
-            case 1:
+            case 2:
                 rpt = _a.sent();
                 res.status(200).send(rpt);
+                return [3 /*break*/, 5];
+            case 3:
+                error_1 = _a.sent();
+                console.error(error_1);
+                res.status(500).send({ error: 'error al actualizar update-config-delivery.' });
+                return [3 /*break*/, 5];
+            case 4:
                 prisma.$disconnect();
-                return [2 /*return*/];
+                return [7 /*endfinally*/];
+            case 5: return [2 /*return*/];
         }
     });
 }); });
@@ -732,23 +743,22 @@ router.get("/get-parametros-delivery/:idsede", function (req, res) { return __aw
     });
 }); });
 // cocina estructura de pedido
-router.post("/get-estructura-pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.post("/get-estructura-pedido", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, items, tipo_entrega, datos_entrega, idsede, estrutura_pedido;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _a = req.body, items = _a.items, tipo_entrega = _a.tipo_entrega, datos_entrega = _a.datos_entrega, idsede = _a.idsede;
-                return [4 /*yield*/, (0, cocinar_pedido_1.getEstructuraPedido)(items, tipo_entrega, datos_entrega, idsede)];
+                return [4 /*yield*/, (0, cocinar_pedido_1.getEstructuraPedido)(items, tipo_entrega, datos_entrega, idsede)["catch"](next)];
             case 1:
                 estrutura_pedido = _b.sent();
-                console.log('estrutura_pedido', estrutura_pedido);
                 res.status(200).send(estrutura_pedido);
                 return [2 /*return*/];
         }
     });
 }); });
 // registrar nuevo cliente
-router.post("/create-cliente-from-bot", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.post("/create-cliente-from-bot", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, telefono, idsede, nombres, rpt, idcliente, rptClienteSede;
     return __generator(this, function (_b) {
         switch (_b.label) {
@@ -782,5 +792,119 @@ router.post("/create-cliente-from-bot", function (req, res) { return __awaiter(v
         }
     });
 }); });
+// guardar pedido realizado por el bot
+router.post("/create-pedido-bot", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idpedido, idsede, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idpedido = _a.idpedido, idsede = _a.idsede;
+                return [4 /*yield*/, prisma.pedido_bot.create({
+                        data: {
+                            idpedido: idpedido,
+                            fecha: new Date(),
+                            idsede: idsede
+                        }
+                    })["catch"](next)];
+            case 1:
+                rpt = _b.sent();
+                res.status(200).send(rpt);
+                return [4 /*yield*/, prisma.$disconnect()];
+            case 2:
+                _b.sent();
+                return [2 /*return*/];
+        }
+    });
+}); });
+// cuenta los pedidos del bot
+router.get("/count-pedidos-bot/:idsede", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rpt, rptCount;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                return [4 /*yield*/, prisma.pedido_bot.count({
+                        where: {
+                            idsede: Number(idsede)
+                        }
+                    })["catch"](next)];
+            case 1:
+                rpt = _a.sent();
+                rptCount = {
+                    count: rpt
+                };
+                res.status(200).send(rptCount);
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
+// lista de productos disponibles para el bot
+router.get("/get-list-productos-disponibles/:idsede", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rpt, listProductos_1, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, 4, 5]);
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_12 || (templateObject_12 = __makeTemplateObject(["call procedure_secciones_mas_salen_bot(", ")"], ["call procedure_secciones_mas_salen_bot(", ")"])), idsede)];
+            case 2:
+                rpt = _a.sent();
+                listProductos_1 = [];
+                rpt.forEach(function (seccion) {
+                    var seccionAdd = {
+                        idseccion: seccion.f0,
+                        seccion: seccion.f1,
+                        items: seccion.f2
+                    };
+                    listProductos_1.push(seccionAdd);
+                });
+                res.status(200).send(listProductos_1);
+                return [3 /*break*/, 5];
+            case 3:
+                error_2 = _a.sent();
+                next(error_2);
+                return [3 /*break*/, 5];
+            case 4:
+                prisma.$disconnect();
+                return [7 /*endfinally*/];
+            case 5: return [2 /*return*/];
+        }
+    });
+}); });
+// registra la direccion del cliente para el pedido - bot
+router.post("/create-direccion-cliente-pedido-bot", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, direccion, idcliente, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, direccion = _a.direccion, idcliente = _a.idcliente;
+                console.log('direccion', direccion);
+                console.log('idcliente', idcliente);
+                return [4 /*yield*/, prisma.cliente_pwa_direccion.create({
+                        data: {
+                            idcliente: idcliente,
+                            direccion: direccion.direccion,
+                            referencia: direccion.referencia,
+                            latitude: direccion.latitude,
+                            longitude: direccion.longitude,
+                            ciudad: direccion.ciudad,
+                            provincia: direccion.provincia,
+                            departamento: direccion.departamento,
+                            codigo: direccion.codigo,
+                            pais: direccion.pais,
+                            titulo: ''
+                        }
+                    })["catch"](next)];
+            case 1:
+                rpt = _b.sent();
+                res.status(200).send(rpt);
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12;

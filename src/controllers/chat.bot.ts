@@ -626,8 +626,12 @@ router.get("/count-pedidos-bot/:idsede", async (req, res, next) => {
         where: {
             idsede: Number(idsede)
         }
-    }).catch(next);      
-    res.status(200).send({ count: rpt})
+    }).catch(next);     
+        
+    const rptCount = {
+        count: rpt    
+    };
+    res.status(200).send(rptCount)
     prisma.$disconnect();    
 })
 
@@ -652,6 +656,31 @@ router.get("/get-list-productos-disponibles/:idsede", async (req, res, next) => 
     } finally {
         prisma.$disconnect();    
     }
+})
+
+// registra la direccion del cliente para el pedido - bot
+router.post("/create-direccion-cliente-pedido-bot", async (req, res, next) => {
+    const { direccion, idcliente } = req.body;   
+    console.log('direccion', direccion); 
+    console.log('idcliente', idcliente);
+
+    const rpt = await prisma.cliente_pwa_direccion.create({        
+        data: {
+            idcliente: idcliente,
+            direccion: direccion.direccion,
+            referencia: direccion.referencia,
+            latitude: direccion.latitude,
+            longitude: direccion.longitude,
+            ciudad: direccion.ciudad,
+            provincia: direccion.provincia,
+            departamento: direccion.departamento,
+            codigo: direccion.codigo,
+            pais: direccion.pais,
+            titulo: ''            
+        }
+    }).catch(next);
+    res.status(200).send(rpt);
+    prisma.$disconnect();
 })
 
 export default router;

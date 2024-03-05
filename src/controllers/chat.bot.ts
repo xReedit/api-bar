@@ -47,6 +47,7 @@ router.get("/get-sede/:idsede", async (req, res) => {
 
 // busca cliente por el numero de telefono
 router.get("/cliente/:telefono", async (req, res) => {
+    console.log('buscar cliente telefono', res);
     const { telefono } = req.params;
     const rpt = await prisma.$queryRaw`
         SELECT c.idcliente, c.nombres, c.direccion, c.telefono, cast(COALESCE(cpd.idcliente_pwa_direccion,0) as char) pwa_direccion,
@@ -164,7 +165,7 @@ router.get("/get-reglas-carta/:idsede/:idorg", async (req, res) => {
             subtotales: rpt[0].f1,            
         }
         res.status(200).send(data);
-    } catch (error) {
+    } catch (error) {        
         res.status(500).send(error);
     }
 })
@@ -440,6 +441,7 @@ router.put('/change-name-cliente', async (req: any, res, next) => {
 // INTERACCION CON GPTS - PITER
 // obtener la carta
 router.get("/get-carta/:idsede", async (req, res) => {
+    console.log('get-carta');
     const { idsede } = req.params;
     const rpt = await prisma.$queryRaw`select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descroipcion_seccion, i.descripcion, i.detalle as receta, cll.precio, 
 		IF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,

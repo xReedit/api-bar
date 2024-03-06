@@ -46,8 +46,7 @@ router.get("/get-sede/:idsede", async (req, res) => {
 });
 
 // busca cliente por el numero de telefono
-router.get("/cliente/:telefono", async (req, res) => {
-    console.log('buscar cliente telefono', res);
+router.get("/cliente/:telefono", async (req, res) => {    
     const { telefono } = req.params;
     const rpt = await prisma.$queryRaw`
         SELECT c.idcliente, c.nombres, c.direccion, c.telefono, cast(COALESCE(cpd.idcliente_pwa_direccion,0) as char) pwa_direccion,

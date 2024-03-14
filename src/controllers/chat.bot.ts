@@ -135,6 +135,20 @@ router.get("/tipos-pago", async (req, res) => {
     res.status(200).send(rpt);
 })       
 
+// obtener listado de la secciones
+router.get("/get-secciones-carta/:idsede", async (req, res) => {
+    const { idsede } = req.params;
+    try {        
+        const rpt: any = await prisma.$queryRaw`SELECT s.descripcion, s.idseccion from carta_lista cl 
+            inner join seccion s on cl.idseccion = s.idseccion 
+            inner join carta c on cl.idcarta = c.idcarta 
+            where c.idsede = ${idsede}
+            GROUP by s.idseccion`
+        res.status(200).send(rpt);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
 
 router.get('/get-carta-establecimiento/:idsede', async (req: any, res) => {
     const { idsede } = req.params
@@ -442,7 +456,7 @@ router.put('/change-name-cliente', async (req: any, res, next) => {
 router.get("/get-carta/:idsede", async (req, res) => {
     console.log('get-carta');
     const { idsede } = req.params;
-    const rpt = await prisma.$queryRaw`select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descroipcion_seccion, i.descripcion, i.detalle as receta, cll.precio, 
+    const rpt = await prisma.$queryRaw`select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descripcion_seccion, i.descripcion, i.detalle as receta, cll.precio, 
 		IF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,
 																		if(i1.viene_de='1', min(cast(p1.stock as SIGNED)), 
 																			min(cast(ps.stock as SIGNED)))
@@ -467,6 +481,39 @@ router.get("/get-carta/:idsede", async (req, res) => {
         inner JOIN carta c on c.idcarta = cll.idcarta 
         inner join categoria as catt on catt.idcategoria = c.idcategoria
         where c.idsede = ${idsede} and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0`;
+    
+    res.status(200).send(rpt);
+    prisma.$disconnect();
+    
+})
+
+router.get("/get-carta-by-seccion/:idsede/:idseccion", async (req, res) => {    
+    const { idsede, idseccion } = req.params;
+    const rpt = await prisma.$queryRaw`select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descripcion_seccion, i.descripcion, i.detalle as receta, cll.precio, 
+		IF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,
+																		if(i1.viene_de='1', min(cast(p1.stock as SIGNED)), 
+																			min(cast(ps.stock as SIGNED)))
+																		,if(i1.viene_de='1', cast(p1.stock as SIGNED), 
+																			cast(ps.stock as SIGNED))) /i1.cantidad)  cantidad 
+																	  FROM item_ingrediente AS i1 
+																	  	left JOIN porcion AS p1 ON i1.idporcion=p1.idporcion 
+																		left JOIN producto_stock ps on ps.idproducto_stock = i1.idproducto_stock 
+																	  WHERE i1.iditem=cll.iditem GROUP BY i1.iditem, i1.necesario ORDER BY i1.necesario desc, i1.iditem_ingrediente limit 1)
+											,IFNULL((SELECT sum(FLOOR(p1.stock/i1.cantidad)) 
+												FROM item_subitem_content ic
+												inner join item_subitem AS i1 on ic.iditem_subitem_content = i1.iditem_subitem_content and i1.estado=0
+												INNER JOIN porcion AS p1 ON i1.idporcion=p1.idporcion 
+												WHERE i1.iditem_subitem_content=( 													
+													SELECT iditem_subitem_content from item_subitem_content_detalle where iditem = cll.iditem and estado = 0 order by iditem_subitem_content_detalle limit 1
+												)											
+											),0)
+											)),if(cll.cantidad = 'ND', 1000, cll.cantidad)) as stock 
+	from carta_lista cll
+        inner join item i on i.iditem = cll.iditem 
+        inner join seccion s on s.idseccion = cll.idseccion
+        inner JOIN carta c on c.idcarta = cll.idcarta 
+        inner join categoria as catt on catt.idcategoria = c.idcategoria
+        where (c.idsede = ${idsede} and s.idseccion= ${idseccion}) and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0`;
     
     res.status(200).send(rpt);
     prisma.$disconnect();

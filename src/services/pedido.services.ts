@@ -191,8 +191,10 @@ class PedidoServices {
             const _costoXcantidad = parseFloat(c.monto)
             const _subtotal: any = arrSubtotales.find((s: Subtotal) => s.descripcion.toLowerCase().trim() === c.descripcion.toLowerCase().trim())
 
-            // si en la reglas incluye delivery ya no lo ponemos en el subtotal
-            if (c.descripcion.toLowerCase().trim().includes('delivery')) {
+            // si en la reglas incluye delivery, costo de entrega, entrega, envio ya no lo ponemos en el subtotal
+            const exclusiones = ['delivery', 'entrega', 'envio'];
+
+            if (exclusiones.some(exclusion => c.descripcion.toLowerCase().trim().includes(exclusion))) {
                 // continuar
                 return
             }
@@ -416,14 +418,6 @@ class PedidoServices {
         let arrTotales: any = null;   
         let arrSubtotalCostoEntega = null;
         if ( tipo_entrega.descripcion.toLowerCase() === 'delivery' ) {            
-            // const parametrosCostosDelivery = this.getInfoSede.getParametrosCostosDelivery();
-            // console.log('parametrosCostosDelivery', parametrosCostosDelivery);
-            // arrSubtotalCostoEntega = await this.pedidoServices.calcCostoEntrega(datos_entrega, coordenadasSede, parametrosCostosDelivery)   
-            
-            // if ( !arrSubtotalCostoEntega.success ) {
-            //     return arrSubtotalCostoEntega;
-            //     // this.sock.send('🗺️ ' + arrSubtotalCostoEntega.mensaje);                
-            // }
 
             arrSubtotalCostoEntega = this.getSubtotalCostoEntrega(datos_entrega)
         }

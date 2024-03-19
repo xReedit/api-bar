@@ -135,7 +135,6 @@ router.get("/cliente/:telefono", function (req, res) { return __awaiter(void 0, 
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                console.log('buscar cliente telefono', res);
                 telefono = req.params.telefono;
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT c.idcliente, c.nombres, c.direccion, c.telefono, cast(COALESCE(cpd.idcliente_pwa_direccion,0) as char) pwa_direccion,\n    JSON_ARRAYAGG(\n        JSON_OBJECT(\n        'idcliente_pwa_direccion', cpd.idcliente_pwa_direccion,\n        'direccion', concat(cpd.direccion, ', ', cpd.ciudad, ' ', cpd.codigo),\n        'referencia', cpd.referencia,\n        'latitude', cpd.latitude,\n        'longitude', cpd.longitude \n        )\n    ) AS direcciones\nFROM cliente c\nleft JOIN (\n\t\tselect cp.idcliente, cp.idcliente_pwa_direccion, cp.direccion, cp.referencia, cp.latitude, cp.longitude, cp.ciudad, cp.codigo \n\t\tfrom cliente_pwa_direccion cp\n\t\torder by cp.idcliente_pwa_direccion desc\t\t\n\t) cpd USING (idcliente)\nWHERE REPLACE(c.telefono, ' ', '') = REPLACE(", ", ' ', '')\nGROUP by SOUNDEX(c.nombres)\nORDER BY c.idcliente DESC\nLIMIT 1;"], ["\n        SELECT c.idcliente, c.nombres, c.direccion, c.telefono, cast(COALESCE(cpd.idcliente_pwa_direccion,0) as char) pwa_direccion,\n    JSON_ARRAYAGG(\n        JSON_OBJECT(\n        'idcliente_pwa_direccion', cpd.idcliente_pwa_direccion,\n        'direccion', concat(cpd.direccion, ', ', cpd.ciudad, ' ', cpd.codigo),\n        'referencia', cpd.referencia,\n        'latitude', cpd.latitude,\n        'longitude', cpd.longitude \n        )\n    ) AS direcciones\nFROM cliente c\nleft JOIN (\n\t\tselect cp.idcliente, cp.idcliente_pwa_direccion, cp.direccion, cp.referencia, cp.latitude, cp.longitude, cp.ciudad, cp.codigo \n\t\tfrom cliente_pwa_direccion cp\n\t\torder by cp.idcliente_pwa_direccion desc\t\t\n\t) cpd USING (idcliente)\nWHERE REPLACE(c.telefono, ' ', '') = REPLACE(", ", ' ', '')\nGROUP by SOUNDEX(c.nombres)\nORDER BY c.idcliente DESC\nLIMIT 1;"])), telefono)];
             case 1:
@@ -228,13 +227,36 @@ router.get("/tipos-pago", function (req, res) { return __awaiter(void 0, void 0,
         }
     });
 }); });
+// obtener listado de la secciones
+router.get("/get-secciones-carta/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rpt, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["SELECT s.descripcion, s.idseccion from carta_lista cl \n            inner join seccion s on cl.idseccion = s.idseccion \n            inner join carta c on cl.idcarta = c.idcarta \n            where c.idsede = ", "\n            GROUP by s.idseccion"], ["SELECT s.descripcion, s.idseccion from carta_lista cl \n            inner join seccion s on cl.idseccion = s.idseccion \n            inner join carta c on cl.idcarta = c.idcarta \n            where c.idsede = ", "\n            GROUP by s.idseccion"])), idsede)];
+            case 2:
+                rpt = _a.sent();
+                res.status(200).send(rpt);
+                return [3 /*break*/, 4];
+            case 3:
+                error_1 = _a.sent();
+                res.status(500).send(error_1);
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });
 router.get('/get-carta-establecimiento/:idsede', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var idsede, rpt, data;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 idsede = req.params.idsede;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(0,", ",0)"], ["call porcedure_pwa_pedido_carta(0,", ",0)"
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(0,", ",0)"], ["call porcedure_pwa_pedido_carta(0,", ",0)"
                         // remplazar nombre de las key de la respuesta
                     ])), idsede)];
             case 1:
@@ -263,7 +285,7 @@ router.get("/get-reglas-carta/:idsede/:idorg", function (req, res) { return __aw
             case 0:
                 idsede = req.params.idsede;
                 idorg = req.params.idorg;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["call procedure_pwa_reglas_carta_subtotales(", ",", ")"], ["call procedure_pwa_reglas_carta_subtotales(", ",", ")"
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["call procedure_pwa_reglas_carta_subtotales(", ",", ")"], ["call procedure_pwa_reglas_carta_subtotales(", ",", ")"
                         // remplazar nombre de las key de la respuesta
                     ])), idorg, idsede)];
             case 1:
@@ -329,7 +351,7 @@ router.get("/get-impresoras/:idsede", function (req, res) { return __awaiter(voi
         switch (_a.label) {
             case 0:
                 idsede = req.params.idsede;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"], ["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"], ["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"])), idsede)];
             case 1:
                 rpt = _a.sent();
                 res.status(200).send(rpt);
@@ -344,7 +366,7 @@ router.get("/get-impresora-tipo-consumo/:idsede/:idimpresora", function (req, re
         switch (_b.label) {
             case 0:
                 _a = req.params, idsede = _a.idsede, idimpresora = _a.idimpresora;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0 and i.idimpresora = ", ""], ["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0 and i.idimpresora = ", ""])), idsede, idimpresora)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0 and i.idimpresora = ", ""], ["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0 and i.idimpresora = ", ""])), idsede, idimpresora)];
             case 1:
                 rpt = _b.sent();
                 res.status(200).send(rpt);
@@ -359,7 +381,7 @@ router.get("/get-seccion-mas-piden/:idsede", function (req, res) { return __awai
         switch (_a.label) {
             case 0:
                 idsede = req.params.idsede;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["select cast(pd.idseccion as char(10)) idseccion, cast(COUNT(p.idpedido) as char(10)) cantidad_seccion  from pedido p\ninner join pedido_detalle pd using (idpedido)\nwhere STR_TO_DATE(fecha, '%d/%m/%Y') >=date_add(curdate(), INTERVAL -3 DAY) and p.idsede = ", " \ngroup by pd.idseccion \norder by cantidad_seccion desc limit 2"], ["select cast(pd.idseccion as char(10)) idseccion, cast(COUNT(p.idpedido) as char(10)) cantidad_seccion  from pedido p\ninner join pedido_detalle pd using (idpedido)\nwhere STR_TO_DATE(fecha, '%d/%m/%Y') >=date_add(curdate(), INTERVAL -3 DAY) and p.idsede = ", " \ngroup by pd.idseccion \norder by cantidad_seccion desc limit 2"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["select cast(pd.idseccion as char(10)) idseccion, cast(COUNT(p.idpedido) as char(10)) cantidad_seccion  from pedido p\ninner join pedido_detalle pd using (idpedido)\nwhere STR_TO_DATE(fecha, '%d/%m/%Y') >=date_add(curdate(), INTERVAL -3 DAY) and p.idsede = ", " \ngroup by pd.idseccion \norder by cantidad_seccion desc limit 2"], ["select cast(pd.idseccion as char(10)) idseccion, cast(COUNT(p.idpedido) as char(10)) cantidad_seccion  from pedido p\ninner join pedido_detalle pd using (idpedido)\nwhere STR_TO_DATE(fecha, '%d/%m/%Y') >=date_add(curdate(), INTERVAL -3 DAY) and p.idsede = ", " \ngroup by pd.idseccion \norder by cantidad_seccion desc limit 2"])), idsede)];
             case 1:
                 rpt = _a.sent();
                 res.status(200).send(rpt);
@@ -386,7 +408,7 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', fu
                 };
                 console.log('_dataSend', _dataSend);
                 console.log('query', "call procedure_chatbot_getidexternal_comprobante(".concat(JSON.stringify(_dataSend), ")"));
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["call procedure_chatbot_getidexternal_comprobante(", ")"], ["call procedure_chatbot_getidexternal_comprobante(", ")"])), JSON.stringify(_dataSend))];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_8 || (templateObject_8 = __makeTemplateObject(["call procedure_chatbot_getidexternal_comprobante(", ")"], ["call procedure_chatbot_getidexternal_comprobante(", ")"])), JSON.stringify(_dataSend))];
             case 1:
                 rpt = _b.sent();
                 console.log('rpt', rpt);
@@ -477,7 +499,7 @@ router.put('/update-tipo-pago-sede/:id', function (req, res, next) { return __aw
 }); });
 // guardar datos del delivery update-config-delivery
 router.put('/update-config-delivery/:id', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var id, dataBody, rpt, error_1;
+    var id, dataBody, rpt, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -497,8 +519,8 @@ router.put('/update-config-delivery/:id', function (req, res, next) { return __a
                 res.status(200).send(rpt);
                 return [3 /*break*/, 5];
             case 3:
-                error_1 = _a.sent();
-                console.error(error_1);
+                error_2 = _a.sent();
+                console.error(error_2);
                 res.status(500).send({ error: 'error al actualizar update-config-delivery.' });
                 return [3 /*break*/, 5];
             case 4:
@@ -621,11 +643,25 @@ router.get("/get-carta/:idsede", function (req, res) { return __awaiter(void 0, 
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                console.log('get-carta');
                 idsede = req.params.idsede;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_8 || (templateObject_8 = __makeTemplateObject(["select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descroipcion_seccion, i.descripcion, i.detalle as receta, cll.precio, \n\t\tIF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tif(i1.viene_de='1', min(cast(p1.stock as SIGNED)), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tmin(cast(ps.stock as SIGNED)))\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t,if(i1.viene_de='1', cast(p1.stock as SIGNED), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tcast(ps.stock as SIGNED))) /i1.cantidad)  cantidad \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  FROM item_ingrediente AS i1 \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  \tleft JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tleft JOIN producto_stock ps on ps.idproducto_stock = i1.idproducto_stock \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  WHERE i1.iditem=cll.iditem GROUP BY i1.iditem, i1.necesario ORDER BY i1.necesario desc, i1.iditem_ingrediente limit 1)\n\t\t\t\t\t\t\t\t\t\t\t,IFNULL((SELECT sum(FLOOR(p1.stock/i1.cantidad)) \n\t\t\t\t\t\t\t\t\t\t\t\tFROM item_subitem_content ic\n\t\t\t\t\t\t\t\t\t\t\t\tinner join item_subitem AS i1 on ic.iditem_subitem_content = i1.iditem_subitem_content and i1.estado=0\n\t\t\t\t\t\t\t\t\t\t\t\tINNER JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\tWHERE i1.iditem_subitem_content=( \t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\tSELECT iditem_subitem_content from item_subitem_content_detalle where iditem = cll.iditem and estado = 0 order by iditem_subitem_content_detalle limit 1\n\t\t\t\t\t\t\t\t\t\t\t\t)\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t),0)\n\t\t\t\t\t\t\t\t\t\t\t)),if(cll.cantidad = 'ND', 1000, cll.cantidad)) as stock \n\tfrom carta_lista cll\n        inner join item i on i.iditem = cll.iditem \n        inner join seccion s on s.idseccion = cll.idseccion\n        inner JOIN carta c on c.idcarta = cll.idcarta \n        inner join categoria as catt on catt.idcategoria = c.idcategoria\n        where c.idsede = ", " and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0"], ["select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descroipcion_seccion, i.descripcion, i.detalle as receta, cll.precio, \n\t\tIF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tif(i1.viene_de='1', min(cast(p1.stock as SIGNED)), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tmin(cast(ps.stock as SIGNED)))\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t,if(i1.viene_de='1', cast(p1.stock as SIGNED), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tcast(ps.stock as SIGNED))) /i1.cantidad)  cantidad \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  FROM item_ingrediente AS i1 \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  \tleft JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tleft JOIN producto_stock ps on ps.idproducto_stock = i1.idproducto_stock \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  WHERE i1.iditem=cll.iditem GROUP BY i1.iditem, i1.necesario ORDER BY i1.necesario desc, i1.iditem_ingrediente limit 1)\n\t\t\t\t\t\t\t\t\t\t\t,IFNULL((SELECT sum(FLOOR(p1.stock/i1.cantidad)) \n\t\t\t\t\t\t\t\t\t\t\t\tFROM item_subitem_content ic\n\t\t\t\t\t\t\t\t\t\t\t\tinner join item_subitem AS i1 on ic.iditem_subitem_content = i1.iditem_subitem_content and i1.estado=0\n\t\t\t\t\t\t\t\t\t\t\t\tINNER JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\tWHERE i1.iditem_subitem_content=( \t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\tSELECT iditem_subitem_content from item_subitem_content_detalle where iditem = cll.iditem and estado = 0 order by iditem_subitem_content_detalle limit 1\n\t\t\t\t\t\t\t\t\t\t\t\t)\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t),0)\n\t\t\t\t\t\t\t\t\t\t\t)),if(cll.cantidad = 'ND', 1000, cll.cantidad)) as stock \n\tfrom carta_lista cll\n        inner join item i on i.iditem = cll.iditem \n        inner join seccion s on s.idseccion = cll.idseccion\n        inner JOIN carta c on c.idcarta = cll.idcarta \n        inner join categoria as catt on catt.idcategoria = c.idcategoria\n        where c.idsede = ", " and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descripcion_seccion, i.descripcion, i.detalle as receta, cll.precio, \n\t\tIF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tif(i1.viene_de='1', min(cast(p1.stock as SIGNED)), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tmin(cast(ps.stock as SIGNED)))\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t,if(i1.viene_de='1', cast(p1.stock as SIGNED), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tcast(ps.stock as SIGNED))) /i1.cantidad)  cantidad \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  FROM item_ingrediente AS i1 \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  \tleft JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tleft JOIN producto_stock ps on ps.idproducto_stock = i1.idproducto_stock \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  WHERE i1.iditem=cll.iditem GROUP BY i1.iditem, i1.necesario ORDER BY i1.necesario desc, i1.iditem_ingrediente limit 1)\n\t\t\t\t\t\t\t\t\t\t\t,IFNULL((SELECT sum(FLOOR(p1.stock/i1.cantidad)) \n\t\t\t\t\t\t\t\t\t\t\t\tFROM item_subitem_content ic\n\t\t\t\t\t\t\t\t\t\t\t\tinner join item_subitem AS i1 on ic.iditem_subitem_content = i1.iditem_subitem_content and i1.estado=0\n\t\t\t\t\t\t\t\t\t\t\t\tINNER JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\tWHERE i1.iditem_subitem_content=( \t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\tSELECT iditem_subitem_content from item_subitem_content_detalle where iditem = cll.iditem and estado = 0 order by iditem_subitem_content_detalle limit 1\n\t\t\t\t\t\t\t\t\t\t\t\t)\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t),0)\n\t\t\t\t\t\t\t\t\t\t\t)),if(cll.cantidad = 'ND', 1000, cll.cantidad)) as stock \n\tfrom carta_lista cll\n        inner join item i on i.iditem = cll.iditem \n        inner join seccion s on s.idseccion = cll.idseccion\n        inner JOIN carta c on c.idcarta = cll.idcarta \n        inner join categoria as catt on catt.idcategoria = c.idcategoria\n        where c.idsede = ", " and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0"], ["select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descripcion_seccion, i.descripcion, i.detalle as receta, cll.precio, \n\t\tIF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tif(i1.viene_de='1', min(cast(p1.stock as SIGNED)), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tmin(cast(ps.stock as SIGNED)))\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t,if(i1.viene_de='1', cast(p1.stock as SIGNED), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tcast(ps.stock as SIGNED))) /i1.cantidad)  cantidad \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  FROM item_ingrediente AS i1 \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  \tleft JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tleft JOIN producto_stock ps on ps.idproducto_stock = i1.idproducto_stock \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  WHERE i1.iditem=cll.iditem GROUP BY i1.iditem, i1.necesario ORDER BY i1.necesario desc, i1.iditem_ingrediente limit 1)\n\t\t\t\t\t\t\t\t\t\t\t,IFNULL((SELECT sum(FLOOR(p1.stock/i1.cantidad)) \n\t\t\t\t\t\t\t\t\t\t\t\tFROM item_subitem_content ic\n\t\t\t\t\t\t\t\t\t\t\t\tinner join item_subitem AS i1 on ic.iditem_subitem_content = i1.iditem_subitem_content and i1.estado=0\n\t\t\t\t\t\t\t\t\t\t\t\tINNER JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\tWHERE i1.iditem_subitem_content=( \t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\tSELECT iditem_subitem_content from item_subitem_content_detalle where iditem = cll.iditem and estado = 0 order by iditem_subitem_content_detalle limit 1\n\t\t\t\t\t\t\t\t\t\t\t\t)\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t),0)\n\t\t\t\t\t\t\t\t\t\t\t)),if(cll.cantidad = 'ND', 1000, cll.cantidad)) as stock \n\tfrom carta_lista cll\n        inner join item i on i.iditem = cll.iditem \n        inner join seccion s on s.idseccion = cll.idseccion\n        inner JOIN carta c on c.idcarta = cll.idcarta \n        inner join categoria as catt on catt.idcategoria = c.idcategoria\n        where c.idsede = ", " and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0"])), idsede)];
             case 1:
                 rpt = _a.sent();
+                res.status(200).send(rpt);
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
+router.get("/get-carta-by-seccion/:idsede/:idseccion", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, idseccion, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.params, idsede = _a.idsede, idseccion = _a.idseccion;
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descripcion_seccion, i.descripcion, i.detalle as receta, cll.precio, \n\t\tIF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tif(i1.viene_de='1', min(cast(p1.stock as SIGNED)), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tmin(cast(ps.stock as SIGNED)))\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t,if(i1.viene_de='1', cast(p1.stock as SIGNED), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tcast(ps.stock as SIGNED))) /i1.cantidad)  cantidad \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  FROM item_ingrediente AS i1 \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  \tleft JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tleft JOIN producto_stock ps on ps.idproducto_stock = i1.idproducto_stock \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  WHERE i1.iditem=cll.iditem GROUP BY i1.iditem, i1.necesario ORDER BY i1.necesario desc, i1.iditem_ingrediente limit 1)\n\t\t\t\t\t\t\t\t\t\t\t,IFNULL((SELECT sum(FLOOR(p1.stock/i1.cantidad)) \n\t\t\t\t\t\t\t\t\t\t\t\tFROM item_subitem_content ic\n\t\t\t\t\t\t\t\t\t\t\t\tinner join item_subitem AS i1 on ic.iditem_subitem_content = i1.iditem_subitem_content and i1.estado=0\n\t\t\t\t\t\t\t\t\t\t\t\tINNER JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\tWHERE i1.iditem_subitem_content=( \t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\tSELECT iditem_subitem_content from item_subitem_content_detalle where iditem = cll.iditem and estado = 0 order by iditem_subitem_content_detalle limit 1\n\t\t\t\t\t\t\t\t\t\t\t\t)\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t),0)\n\t\t\t\t\t\t\t\t\t\t\t)),if(cll.cantidad = 'ND', 1000, cll.cantidad)) as stock \n\tfrom carta_lista cll\n        inner join item i on i.iditem = cll.iditem \n        inner join seccion s on s.idseccion = cll.idseccion\n        inner JOIN carta c on c.idcarta = cll.idcarta \n        inner join categoria as catt on catt.idcategoria = c.idcategoria\n        where (c.idsede = ", " and s.idseccion= ", ") and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0"], ["select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descripcion_seccion, i.descripcion, i.detalle as receta, cll.precio, \n\t\tIF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tif(i1.viene_de='1', min(cast(p1.stock as SIGNED)), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tmin(cast(ps.stock as SIGNED)))\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t,if(i1.viene_de='1', cast(p1.stock as SIGNED), \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tcast(ps.stock as SIGNED))) /i1.cantidad)  cantidad \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  FROM item_ingrediente AS i1 \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  \tleft JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tleft JOIN producto_stock ps on ps.idproducto_stock = i1.idproducto_stock \n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  WHERE i1.iditem=cll.iditem GROUP BY i1.iditem, i1.necesario ORDER BY i1.necesario desc, i1.iditem_ingrediente limit 1)\n\t\t\t\t\t\t\t\t\t\t\t,IFNULL((SELECT sum(FLOOR(p1.stock/i1.cantidad)) \n\t\t\t\t\t\t\t\t\t\t\t\tFROM item_subitem_content ic\n\t\t\t\t\t\t\t\t\t\t\t\tinner join item_subitem AS i1 on ic.iditem_subitem_content = i1.iditem_subitem_content and i1.estado=0\n\t\t\t\t\t\t\t\t\t\t\t\tINNER JOIN porcion AS p1 ON i1.idporcion=p1.idporcion \n\t\t\t\t\t\t\t\t\t\t\t\tWHERE i1.iditem_subitem_content=( \t\t\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\tSELECT iditem_subitem_content from item_subitem_content_detalle where iditem = cll.iditem and estado = 0 order by iditem_subitem_content_detalle limit 1\n\t\t\t\t\t\t\t\t\t\t\t\t)\t\t\t\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t),0)\n\t\t\t\t\t\t\t\t\t\t\t)),if(cll.cantidad = 'ND', 1000, cll.cantidad)) as stock \n\tfrom carta_lista cll\n        inner join item i on i.iditem = cll.iditem \n        inner join seccion s on s.idseccion = cll.idseccion\n        inner JOIN carta c on c.idcarta = cll.idcarta \n        inner join categoria as catt on catt.idcategoria = c.idcategoria\n        where (c.idsede = ", " and s.idseccion= ", ") and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0"])), idsede, idseccion)];
+            case 1:
+                rpt = _b.sent();
                 res.status(200).send(rpt);
                 prisma.$disconnect();
                 return [2 /*return*/];
@@ -639,7 +675,7 @@ router.get("/get-stock-item/:idsede/:iditem", function (req, res) { return __awa
         switch (_b.label) {
             case 0:
                 _a = req.params, idsede = _a.idsede, iditem = _a.iditem;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad as stock from carta_lista cl \n        inner join item i on i.iditem = cl.iditem \n        inner JOIN carta c on c.idcarta = cl.idcarta \n        where c.idsede = ", " and i.estado=0 and cl.iditem = ", ""], ["select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad as stock from carta_lista cl \n        inner join item i on i.iditem = cl.iditem \n        inner JOIN carta c on c.idcarta = cl.idcarta \n        where c.idsede = ", " and i.estado=0 and cl.iditem = ", ""])), idsede, iditem)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_11 || (templateObject_11 = __makeTemplateObject(["select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad as stock from carta_lista cl \n        inner join item i on i.iditem = cl.iditem \n        inner JOIN carta c on c.idcarta = cl.idcarta \n        where c.idsede = ", " and i.estado=0 and cl.iditem = ", ""], ["select cl.idcarta_lista, cl.idcarta, cl.idseccion, cl.iditem, i.descripcion, cl.precio, cl.cantidad as stock from carta_lista cl \n        inner join item i on i.iditem = cl.iditem \n        inner JOIN carta c on c.idcarta = cl.idcarta \n        where c.idsede = ", " and i.estado=0 and cl.iditem = ", ""])), idsede, iditem)];
             case 1:
                 rpt = _b.sent();
                 res.status(200).send(rpt);
@@ -656,7 +692,7 @@ router.post("/get-seccion-items", function (req, res) { return __awaiter(void 0,
             case 0:
                 _a = req.body, idsede = _a.idsede, items = _a.items;
                 _items = typeof items === 'string' ? JSON.parse(items) : items;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["call procedure_get_seccion_items_chatbot(", ", ", ")"], ["call procedure_get_seccion_items_chatbot(", ", ", ")"])), idsede, JSON.stringify(_items))];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_12 || (templateObject_12 = __makeTemplateObject(["call procedure_get_seccion_items_chatbot(", ", ", ")"], ["call procedure_get_seccion_items_chatbot(", ", ", ")"])), idsede, JSON.stringify(_items))];
             case 1:
                 rpt = _b.sent();
                 try {
@@ -680,7 +716,7 @@ router.get("/get-info-delivery/:idsede", function (req, res) { return __awaiter(
         switch (_a.label) {
             case 0:
                 idsede = req.params.idsede;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_11 || (templateObject_11 = __makeTemplateObject(["select JSON_OBJECT('latitude',s.latitude, 'longitude', s.longitude) coordenadas_sede, scd.ciudades ciudades_disponible, scd.parametros->>'$.km_limite' distancia_maxima from sede s \n        inner join sede_costo_delivery scd on s.idsede = scd.idsede \n        where s.idsede = ", ""], ["select JSON_OBJECT('latitude',s.latitude, 'longitude', s.longitude) coordenadas_sede, scd.ciudades ciudades_disponible, scd.parametros->>'$.km_limite' distancia_maxima from sede s \n        inner join sede_costo_delivery scd on s.idsede = scd.idsede \n        where s.idsede = ", ""])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_13 || (templateObject_13 = __makeTemplateObject(["select JSON_OBJECT('latitude',s.latitude, 'longitude', s.longitude) coordenadas_sede, scd.ciudades ciudades_disponible, scd.parametros->>'$.km_limite' distancia_maxima from sede s \n        inner join sede_costo_delivery scd on s.idsede = scd.idsede \n        where s.idsede = ", ""], ["select JSON_OBJECT('latitude',s.latitude, 'longitude', s.longitude) coordenadas_sede, scd.ciudades ciudades_disponible, scd.parametros->>'$.km_limite' distancia_maxima from sede s \n        inner join sede_costo_delivery scd on s.idsede = scd.idsede \n        where s.idsede = ", ""])), idsede)];
             case 1:
                 rpt = _a.sent();
                 res.status(200).send(rpt);
@@ -843,7 +879,7 @@ router.get("/count-pedidos-bot/:idsede", function (req, res, next) { return __aw
 }); });
 // lista de productos disponibles para el bot
 router.get("/get-list-productos-disponibles/:idsede", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, rpt, listProductos_1, error_2;
+    var idsede, rpt, listProductos_1, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -851,7 +887,7 @@ router.get("/get-list-productos-disponibles/:idsede", function (req, res, next) 
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 3, 4, 5]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_12 || (templateObject_12 = __makeTemplateObject(["call procedure_secciones_mas_salen_bot(", ")"], ["call procedure_secciones_mas_salen_bot(", ")"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_14 || (templateObject_14 = __makeTemplateObject(["call procedure_secciones_mas_salen_bot(", ")"], ["call procedure_secciones_mas_salen_bot(", ")"])), idsede)];
             case 2:
                 rpt = _a.sent();
                 listProductos_1 = [];
@@ -866,8 +902,8 @@ router.get("/get-list-productos-disponibles/:idsede", function (req, res, next) 
                 res.status(200).send(listProductos_1);
                 return [3 /*break*/, 5];
             case 3:
-                error_2 = _a.sent();
-                next(error_2);
+                error_3 = _a.sent();
+                next(error_3);
                 return [3 /*break*/, 5];
             case 4:
                 prisma.$disconnect();
@@ -908,5 +944,26 @@ router.post("/create-direccion-cliente-pedido-bot", function (req, res, next) { 
         }
     });
 }); });
+// registra la cantidad de token utilizado por idsede
+router.post("/register-used-gpt-sede", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, rpt;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                data = req.body.data;
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_15 || (templateObject_15 = __makeTemplateObject(["call procedure_use_gpt(", ")"], ["call procedure_use_gpt(", ")"])), JSON.stringify(data))];
+            case 1:
+                rpt = _a.sent();
+                try {
+                    res.status(200).send(data);
+                }
+                catch (error) {
+                    res.status(500).send(error);
+                }
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15;

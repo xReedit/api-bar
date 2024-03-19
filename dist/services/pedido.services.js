@@ -191,8 +191,9 @@ var PedidoServices = /** @class */ (function () {
             var _idSubtotal = "".concat(c.tipo).concat(c.id);
             var _costoXcantidad = parseFloat(c.monto);
             var _subtotal = arrSubtotales.find(function (s) { return s.descripcion.toLowerCase().trim() === c.descripcion.toLowerCase().trim(); });
-            // si en la reglas incluye delivery ya no lo ponemos en el subtotal
-            if (c.descripcion.toLowerCase().trim().includes('delivery')) {
+            // si en la reglas incluye delivery, costo de entrega, entrega, envio ya no lo ponemos en el subtotal
+            var exclusiones = ['delivery', 'entrega', 'envio'];
+            if (exclusiones.some(function (exclusion) { return c.descripcion.toLowerCase().trim().includes(exclusion); })) {
                 // continuar
                 return;
             }
@@ -215,13 +216,12 @@ var PedidoServices = /** @class */ (function () {
         // costos adicionales  a nivel items
         seccionMasItems.map(function (item) {
             var costosAdicionales = _this.getCostosAdicionalesPorSeccion(item.idseccion, idtipo_consumo);
-            // console.log('costosAdicionales', costosAdicionales);
             costosAdicionales.map(function (c) {
                 // si el nivel es 0 se multiplica por la cantidad de items de la seccion
                 // console.log('c', c);
                 // console.log('seccion', item);
                 var _idSubtotal = "".concat(c.tipo).concat(c.id);
-                var _totalItemsSeccion = item.totalItems || item.count_items;
+                var _totalItemsSeccion = item.items.reduce(function (a, b) { return a + parseFloat(b.cantidad_seleccionada); }, 0);
                 var _costoXcantidad = c.nivel === 0 ? parseFloat(c.monto) * _totalItemsSeccion : parseFloat(c.monto);
                 // buscamos si ya existe el subtotal
                 var _subtotal = arrSubtotales.find(function (s) { return s.descripcion.toLowerCase().trim() === c.descripcion.toLowerCase().trim(); });
@@ -269,7 +269,7 @@ var PedidoServices = /** @class */ (function () {
         // console.log('totalSubtotales', totalSubtotales);
         // agregar solo el igv sobre el total
         var rowIGVAdd = null;
-        var rowIGV = this.arrReglasCarta.subtotales.filter(function (item) { return item.es_impuesto === 1 && item.descripcion.toLowerCase().trim() === 'i.g.v'; })[0] || [];
+        var rowIGV = this.arrReglasCarta.subtotales.filter(function (item) { return item.es_impuesto === 1 && item.descripcion.toLowerCase().trim() === 'i.g.v' && item.activo === 0; })[0] || [];
         var rowSubtotal = rowSubtotalProductos; // arrSubtotales.filter((item: any) => item.descripcion.toLowerCase().trim() === 'sub total')[0] || []
         var _importeIGV = parseFloat(rowIGV.monto);
         importeSubTotal = parseFloat(rowSubtotal.importe);
@@ -370,13 +370,6 @@ var PedidoServices = /** @class */ (function () {
                 arrTotales = null;
                 arrSubtotalCostoEntega = null;
                 if (tipo_entrega.descripcion.toLowerCase() === 'delivery') {
-                    // const parametrosCostosDelivery = this.getInfoSede.getParametrosCostosDelivery();
-                    // console.log('parametrosCostosDelivery', parametrosCostosDelivery);
-                    // arrSubtotalCostoEntega = await this.pedidoServices.calcCostoEntrega(datos_entrega, coordenadasSede, parametrosCostosDelivery)   
-                    // if ( !arrSubtotalCostoEntega.success ) {
-                    //     return arrSubtotalCostoEntega;
-                    //     // this.sock.send('🗺️ ' + arrSubtotalCostoEntega.mensaje);                
-                    // }
                     arrSubtotalCostoEntega = this.getSubtotalCostoEntrega(datos_entrega);
                 }
                 arrTotales = this.getArraySubtotal(secciones, tipo_entrega.idtipo_consumo, arrSubtotalCostoEntega);

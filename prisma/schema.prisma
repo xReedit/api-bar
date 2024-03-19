@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+  previewFeatures = ["fullTextIndex", "fullTextSearch"]
 }
 
 datasource db {
@@ -2687,4 +2687,14 @@ model ubigeos {
   NOM_CAPITAL  String @db.VarChar(100)
   COD__REG_NAT String @map("COD_ REG_NAT") @db.Char(5)
   REGION       String @db.VarChar(100)
+}
+
+model use_gpt {
+  iduse_gpt         Int     @id @default(autoincrement())
+  model             String  @db.Char(30)
+  idsede            Int
+  total_tokens_used Float   @db.Float
+  total_cost        Decimal @db.Decimal(10, 9)
+  estado            String  @default("0") @db.Char(1)
+  mes               String? @db.Char(10)
 }

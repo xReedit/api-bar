@@ -219,14 +219,13 @@ class PedidoServices {
 
         // costos adicionales  a nivel items
         seccionMasItems.map((item: any) => {
-            let costosAdicionales = this.getCostosAdicionalesPorSeccion(item.idseccion, idtipo_consumo)
-            // console.log('costosAdicionales', costosAdicionales);
+            let costosAdicionales = this.getCostosAdicionalesPorSeccion(item.idseccion, idtipo_consumo)            
             costosAdicionales.map((c: any) => {
                 // si el nivel es 0 se multiplica por la cantidad de items de la seccion
                 // console.log('c', c);
                 // console.log('seccion', item);
                 const _idSubtotal = `${c.tipo}${c.id}`
-                const _totalItemsSeccion = item.totalItems || item.count_items;
+                const _totalItemsSeccion = item.items.reduce((a: any, b: any) => a + parseFloat(b.cantidad_seleccionada), 0)
                 const _costoXcantidad = c.nivel === 0 ? parseFloat(c.monto) * _totalItemsSeccion : parseFloat(c.monto)
 
                 // buscamos si ya existe el subtotal
@@ -291,7 +290,7 @@ class PedidoServices {
 
         // agregar solo el igv sobre el total
         let rowIGVAdd: any = null
-        const rowIGV = this.arrReglasCarta.subtotales.filter((item: any) => item.es_impuesto === 1 && item.descripcion.toLowerCase().trim() === 'i.g.v')[0] || []
+        const rowIGV = this.arrReglasCarta.subtotales.filter((item: any) => item.es_impuesto === 1 && item.descripcion.toLowerCase().trim() === 'i.g.v' && item.activo === 0)[0] || []
         const rowSubtotal = rowSubtotalProductos // arrSubtotales.filter((item: any) => item.descripcion.toLowerCase().trim() === 'sub total')[0] || []
         let _importeIGV = parseFloat(rowIGV.monto)
         importeSubTotal = parseFloat(rowSubtotal.importe)

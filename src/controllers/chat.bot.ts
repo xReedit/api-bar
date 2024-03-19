@@ -453,8 +453,7 @@ router.put('/change-name-cliente', async (req: any, res, next) => {
 
 // INTERACCION CON GPTS - PITER
 // obtener la carta
-router.get("/get-carta/:idsede", async (req, res) => {
-    console.log('get-carta');
+router.get("/get-carta/:idsede", async (req, res) => {    
     const { idsede } = req.params;
     const rpt = await prisma.$queryRaw`select cll.idcarta_lista, cll.idcarta, cll.idseccion, cll.iditem, s.descripcion descripcion_seccion, i.descripcion, i.detalle as receta, cll.precio, 
 		IF(cll.cantidad='SP',(IFNULL(( SELECT FLOOR(if (sum(i1.necesario) >= 1,
@@ -728,6 +727,18 @@ router.post("/create-direccion-cliente-pedido-bot", async (req, res, next) => {
         }
     }).catch(next);
     res.status(200).send(rpt);
+    prisma.$disconnect();
+})
+
+// registra la cantidad de token utilizado por idsede
+router.post("/register-used-gpt-sede", async (req, res, next) => {
+    const { data } = req.body;    
+    const rpt: any = await prisma.$queryRaw`call procedure_use_gpt(${JSON.stringify(data)})`        
+    try {        
+        res.status(200).send(data);
+    } catch (error) {
+        res.status(500).send(error);
+    }
     prisma.$disconnect();
 })
 

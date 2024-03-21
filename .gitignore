@@ -1,5 +1,6 @@
 node_modules
 /prisma/*
 !/prisma/
+!/prisma/.gitkeep
 # Keep environment variables out of version control
 .env

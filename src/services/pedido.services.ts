@@ -22,8 +22,8 @@ class PedidoServices {
     }
 
     cocinarPedido(seccionMasItems: any, itemsFromBot: any) {        
-        this.setDescripcionCantidadItems(seccionMasItems, itemsFromBot)
-        this.validarReglasCarta(this.arrReglasCarta.reglas, seccionMasItems)
+        seccionMasItems = this.setDescripcionCantidadItems(seccionMasItems, itemsFromBot)
+        seccionMasItems = this.validarReglasCarta(this.arrReglasCarta.reglas, seccionMasItems)
         return seccionMasItems
     }
 
@@ -57,7 +57,9 @@ class PedidoServices {
             })
         } catch (error) {
             console.log('error setDescripcionCantidadItems', error);
-        }        
+        }     
+        
+        return seccionMasItems;
     }
 
     // rules = this.arrReglasCarta.reglas
@@ -135,6 +137,8 @@ class PedidoServices {
             //     });
             // })
         });
+
+        return seccionMasItems;
     }
 
 
@@ -250,7 +254,8 @@ class PedidoServices {
             })
         })
 
-        let totalItemsPedido = this.getTotalItemsPedido(this.arrSeccionesPedido)
+        // let totalItemsPedido = this.getTotalItemsPedido(this.arrSeccionesPedido)
+        let totalItemsPedido = this.getTotalItemsPedido(seccionMasItems)
         let importeSubTotal = totalItemsPedido;
        
 

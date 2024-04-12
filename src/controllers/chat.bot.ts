@@ -479,7 +479,7 @@ router.get("/get-carta/:idsede", async (req, res) => {
         inner join seccion s on s.idseccion = cll.idseccion
         inner JOIN carta c on c.idcarta = cll.idcarta 
         inner join categoria as catt on catt.idcategoria = c.idcategoria
-        where c.idsede = ${idsede} and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0`;
+        where c.idsede = ${idsede} and (catt.estado = 0 AND catt.visible_cliente=1 and (catt.url_carta <> '' AND catt.url_carta IS NOT NULL)) and i.estado=0 and cll.is_visible_cliente = 0 and s.is_visible_cliente=0`;
     
     res.status(200).send(rpt);
     prisma.$disconnect();

@@ -8,7 +8,7 @@ import colaborador_contrato from "../controllers/colaborador.contrato";
 import chat_bot from "../controllers/chat.bot";
 import loginRestobar from "../controllers/login.restobar";
 import permiso_remoto from "../controllers/permiso.remoto";
-
+import reinpresion from "../controllers/reimpresion";
 
 const router = express.Router();
 
@@ -26,6 +26,7 @@ router.use('/colaborador', auth, colaborador);
 router.use('/colaborador-contrato', auth, colaborador_contrato);
 router.use('/chat-bot', chat_bot);
 router.use('/permiso-remoto', permiso_remoto);
+router.use('/reimpresion', reinpresion);
 // router.use('/usuario', auth, usuario);
 
 

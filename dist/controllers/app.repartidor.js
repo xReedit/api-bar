@@ -101,15 +101,19 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                     var propina = 0;
                     var entrega = 0;
                     var subtotales = JSON.parse(item.p_subtotales);
-                    subtotales.map(function (sub) {
-                        if (!sub.descripcion.toLowerCase().includes('delivery') && !sub.descripcion.toLowerCase().includes('entrega') && !sub.descripcion.toLowerCase().includes('propina')) {
-                            total += parseFloat(sub.importe);
+                    subtotales
+                        .filter(function (x) { return x.descripcion.toLowerCase() !== 'total'; })
+                        .map(function (sub) {
+                        var descripcion = sub.descripcion.toLowerCase();
+                        var importe = parseFloat(sub.importe);
+                        if (!descripcion.includes('propina') && !descripcion.includes('delivery') && !descripcion.includes('entrega')) {
+                            total += importe;
                         }
-                        if (sub.descripcion.toLowerCase().includes('propina')) {
-                            propina = parseFloat(sub.importe);
+                        else if (descripcion.includes('propina')) {
+                            propina = importe;
                         }
-                        if (sub.descripcion.toLowerCase().includes('delivery') || sub.descripcion.toLowerCase().includes('entrega')) {
-                            entrega = parseFloat(sub.importe);
+                        else if (descripcion.includes('delivery') || descripcion.includes('entrega')) {
+                            entrega = importe;
                         }
                     });
                     ArrayPedidos.push({
@@ -119,7 +123,8 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                         isapp: item.isapp,
                         idtipo_pago: item.idtipo_pago,
                         establecimiento: item.establecimiento,
-                        importe: total,
+                        importe_pagar: total,
+                        importe_total: item.importe,
                         propina: propina,
                         entrega: entrega
                     });

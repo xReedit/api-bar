@@ -12,7 +12,9 @@ router.get("/", async (req, res) => {
 // obtener lista de pedidos
 router.post('/list-pedidos-asignados', async (req: any, res) => {
     const { idpedidos } = req.body;
-    const pedidos: any = await prisma.$queryRaw`SELECT 
+    const idpedidosArray = idpedidos.split(',').map(Number);
+    const placeholders = idpedidosArray.map(() => '?').join(',');
+    const pedidos: any = await prisma.$queryRawUnsafe(`SELECT 
         sub.idpedido, 
         sub.nomcliente, 
         sub.nomsede, 
@@ -32,8 +34,8 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
         FROM pedido p
         INNER JOIN cliente c ON c.idcliente = p.idcliente 
         INNER JOIN sede s ON p.idsede = s.idsede  
-        WHERE p.idpedido in (${idpedidos})
-    ) sub`;
+        WHERE p.idpedido in (${placeholders})
+    ) sub`, ...idpedidosArray);
 
     const ArrayPedidos: any = [];
     pedidos.map((item: any) => {

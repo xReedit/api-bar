@@ -46,8 +46,8 @@ var PedidoServices = /** @class */ (function () {
         this.arrReglasCarta = arrReglasCarta;
     };
     PedidoServices.prototype.cocinarPedido = function (seccionMasItems, itemsFromBot) {
-        this.setDescripcionCantidadItems(seccionMasItems, itemsFromBot);
-        this.validarReglasCarta(this.arrReglasCarta.reglas, seccionMasItems);
+        seccionMasItems = this.setDescripcionCantidadItems(seccionMasItems, itemsFromBot);
+        seccionMasItems = this.validarReglasCarta(this.arrReglasCarta.reglas, seccionMasItems);
         return seccionMasItems;
     };
     PedidoServices.prototype.setCanalConsumo = function (canalFromBot, listCanalConsumo, seccionMasItems) {
@@ -78,6 +78,7 @@ var PedidoServices = /** @class */ (function () {
         catch (error) {
             console.log('error setDescripcionCantidadItems', error);
         }
+        return seccionMasItems;
     };
     // rules = this.arrReglasCarta.reglas
     PedidoServices.prototype.validarReglasCarta = function (rules, seccionMasItems) {
@@ -141,6 +142,7 @@ var PedidoServices = /** @class */ (function () {
             //     });
             // })
         });
+        return seccionMasItems;
     };
     PedidoServices.prototype.getCantidadItemsFromSeccion = function (idseccion) {
         var total = 0;
@@ -243,7 +245,8 @@ var PedidoServices = /** @class */ (function () {
                 importeCostosAdicionales += _costoXcantidad;
             });
         });
-        var totalItemsPedido = this.getTotalItemsPedido(this.arrSeccionesPedido);
+        // let totalItemsPedido = this.getTotalItemsPedido(this.arrSeccionesPedido)
+        var totalItemsPedido = this.getTotalItemsPedido(seccionMasItems);
         var importeSubTotal = totalItemsPedido;
         // console.log('importeSubTotal', importeSubTotal);
         // total en productos
@@ -378,8 +381,8 @@ var PedidoServices = /** @class */ (function () {
         });
     };
     PedidoServices.prototype.getSubtotalCostoEntrega = function (datosEntrega) {
-        var deliveryCost = datosEntrega.delivery_cost;
-        var distance = datosEntrega.distance;
+        var deliveryCost = datosEntrega.delivery_cost || 0;
+        var distance = datosEntrega.distance || 0;
         var subtotalCostoEntrega = {
             id: 0,
             quitar: true,

@@ -44,16 +44,19 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
         let propina = 0;
         let entrega = 0;
         const subtotales = JSON.parse(item.p_subtotales);
-        subtotales.map((sub: any) => {
-            if (!sub.descripcion.toLowerCase().includes('delivery') && !sub.descripcion.toLowerCase().includes('entrega') && !sub.descripcion.toLowerCase().includes('propina')) {
-                total += parseFloat(sub.importe);
-            }
-            if (sub.descripcion.toLowerCase().includes('propina')) {
-                propina = parseFloat(sub.importe);
-            }
-            if (sub.descripcion.toLowerCase().includes('delivery') || sub.descripcion.toLowerCase().includes('entrega')) {
-                entrega = parseFloat(sub.importe);
-            }
+        subtotales
+            .filter((x:any) => x.descripcion.toLowerCase() !== 'total')
+            .map((sub: any) => {
+                const descripcion = sub.descripcion.toLowerCase();
+                const importe = parseFloat(sub.importe);
+
+                if (!descripcion.includes('propina') && !descripcion.includes('delivery') && !descripcion.includes('entrega')) {
+                    total += importe;
+                } else if (descripcion.includes('propina')) {
+                    propina = importe;
+                } else if (descripcion.includes('delivery') || descripcion.includes('entrega')) {
+                    entrega = importe;
+                }
         });
 
         ArrayPedidos.push({
@@ -63,7 +66,8 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             isapp: item.isapp,
             idtipo_pago: item.idtipo_pago,
             establecimiento: item.establecimiento,
-            importe: total,
+            importe_pagar: total,
+            importe_total: item.importe,
             propina: propina,
             entrega: entrega
         });

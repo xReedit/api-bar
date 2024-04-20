@@ -19,7 +19,7 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
         sub.nomcliente, 
         sub.nomsede, 
         sub.isapp,    
-        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago.idtipo_pago' AS idtipo_pago,
+        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,
@@ -59,12 +59,15 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
                 }
         });
 
+        const url_img = 'https://restobar.papaya.com.pe/images/';
+
         ArrayPedidos.push({
             idpedido: item.idpedido,
             nomcliente: item.nomcliente,
             nomsede: item.nomsede,
-            isapp: item.isapp,
-            idtipo_pago: item.idtipo_pago,
+            isapp: item.isapp == 1 ? true : false,
+            idtipo_pago: item.metodo_pago.idtipo_pago,
+            img_pago: `${url_img}${item.metodo_pago.img}`,
             establecimiento: item.establecimiento,
             importe_pagar: total,
             importe_total: item.importe,

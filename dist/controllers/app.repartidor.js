@@ -91,7 +91,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                 idpedidos = req.body.idpedidos;
                 idpedidosArray = idpedidos.split(',').map(Number);
                 placeholders = idpedidosArray.map(function () { return '?'; }).join(',');
-                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido, \n        sub.nomcliente, \n        sub.nomsede, \n        sub.isapp,    \n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago.idtipo_pago' AS idtipo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            c.nombres nomcliente, \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
+                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido, \n        sub.nomcliente, \n        sub.nomsede, \n        sub.isapp,    \n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            c.nombres nomcliente, \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
             case 1:
                 pedidos = _a.sent();
                 ArrayPedidos = [];
@@ -116,12 +116,14 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                             entrega = importe;
                         }
                     });
+                    var url_img = 'https://restobar.papaya.com.pe/images/';
                     ArrayPedidos.push({
                         idpedido: item.idpedido,
                         nomcliente: item.nomcliente,
                         nomsede: item.nomsede,
-                        isapp: item.isapp,
-                        idtipo_pago: item.idtipo_pago,
+                        isapp: item.isapp == 1 ? true : false,
+                        idtipo_pago: item.metodo_pago.idtipo_pago,
+                        img_pago: "".concat(url_img).concat(item.metodo_pago.img),
                         establecimiento: item.establecimiento,
                         importe_pagar: total,
                         importe_total: item.importe,

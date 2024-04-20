@@ -59,7 +59,7 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
                 }
         });
 
-        const url_img = 'https://restobar.papaya.com.pe/images/';
+        const url_img = 'https://app.restobar.papaya.com.pe/assets/images/icon-app/';
         item.metodo_pago = JSON.parse(item.metodo_pago);
 
         ArrayPedidos.push({

@@ -116,7 +116,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                             entrega = importe;
                         }
                     });
-                    var url_img = 'https://restobar.papaya.com.pe/images/';
+                    var url_img = 'https://app.restobar.papaya.com.pe/assets/images/icon-app/';
                     item.metodo_pago = JSON.parse(item.metodo_pago);
                     ArrayPedidos.push({
                         idpedido: item.idpedido,

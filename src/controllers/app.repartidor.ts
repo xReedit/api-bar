@@ -15,10 +15,13 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
     const idpedidosArray = idpedidos.split(',').map(Number);
     const placeholders = idpedidosArray.map(() => '?').join(',');
     const pedidos: any = await prisma.$queryRawUnsafe(`SELECT 
-        sub.idpedido, 
+        sub.idpedido,
+        sub.pwa_estado,
+        sub.estado, 
         sub.nomcliente, 
         sub.nomsede, 
-        sub.isapp,    
+        sub.isapp,  
+        sub.json_datos_delivery,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,
@@ -27,6 +30,8 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
     FROM (
         SELECT 
             p.idpedido, 
+            p.pwa_estado,
+            p.estado,
             c.nombres nomcliente, 
             s.nombre nomsede, 
             p.flag_is_cliente isapp,
@@ -62,18 +67,54 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
         const url_img = 'https://app.restobar.papaya.com.pe/assets/images/icon-app/';
         item.metodo_pago = JSON.parse(item.metodo_pago);
 
+        const arrDatosDelivery = item.json_datos_delivery.p_header.arrDatosDelivery;
+        const orden = item.json_datos_delivery.p_body.tipoconsumo;
+        const subtotalesOrden = item.json_datos_delivery.p_subtotales;
+
+        // // objeto con los datos del cliente
+        const datosCliente = {
+            nombres: item.nomcliente,
+            telefono: item.telefono,
+            direccion: arrDatosDelivery.direccionEnvioSelected.direccion,
+            latitud: arrDatosDelivery.direccionEnvioSelected.latitude,
+            longitud: arrDatosDelivery.direccionEnvioSelected.longitude
+        }
+
+        // objeto con los datos del establecimiento
+        const datosEstablecimiento = {
+            nombre: arrDatosDelivery.establecimiento.nombre,
+            direccion: arrDatosDelivery.establecimiento.direccion,
+            telefono: item.telefono_sede,
+            ciudad: arrDatosDelivery.establecimiento.ciudad,
+            latitud: arrDatosDelivery.establecimiento.latitude,
+            longitud: arrDatosDelivery.establecimiento.longitude
+        }
+
+        const ArrayPedido = {
+            idpedido: item.idpedido,
+            pwa_estado: item.pwa_estado,
+            estado: item.estado,
+            cliente: datosCliente,
+            establecimiento: datosEstablecimiento,
+            orden: orden,
+            subtotales: subtotalesOrden        
+        }
+
         ArrayPedidos.push({
             idpedido: item.idpedido,
+            pwa_estado: item.pwa_estado,
+            estado: item.estado,
             nomcliente: item.nomcliente,
             nomsede: item.nomsede,
             isapp: item.isapp == 1 ? true : false,
             idtipo_pago: item.metodo_pago.idtipo_pago,
             img_pago: `${url_img}${item.metodo_pago.img}`,
             establecimiento: item.establecimiento,
-            importe_pagar: total,
+            importe_pagar: total.toFixed(2),
             importe_total: item.importe,
-            propina: propina,
-            entrega: entrega
+            propina: propina.toFixed(2),
+            entrega: entrega.toFixed(2),
+            laOrden: ArrayPedido
         });
         
     });
@@ -86,11 +127,15 @@ router.get('/detalle-pedido/:idpedido', async (req: any, res) => {
     const { idpedido } = req.params;
     const pedido: any = await prisma.$queryRaw`SELECT 
         p.idpedido, 
+        p.pwa_estado,
+        p.estado,
         c.nombres nomcliente, 
         c.telefono,        
+        s.telefono telefono_sede,
         p.flag_is_cliente isapp,
         CAST(p.json_datos_delivery AS JSON) json_datos_delivery
     FROM pedido p
+    inner join sede s on p.idsede=s.idsede
     INNER JOIN cliente c ON c.idcliente = p.idcliente     
     WHERE p.idpedido = ${idpedido}`;
 
@@ -113,6 +158,7 @@ router.get('/detalle-pedido/:idpedido', async (req: any, res) => {
     const datosEstablecimiento = {
         nombre: arrDatosDelivery.establecimiento.nombre,
         direccion: arrDatosDelivery.establecimiento.direccion,
+        telefono: pedido[0].telefono_sede,
         ciudad: arrDatosDelivery.establecimiento.ciudad,
         latitud: arrDatosDelivery.establecimiento.latitude,
         longitud: arrDatosDelivery.establecimiento.longitude
@@ -120,6 +166,8 @@ router.get('/detalle-pedido/:idpedido', async (req: any, res) => {
 
     const ArrayPedido = {
         idpedido: pedido[0].idpedido,
+        pwa_estado: pedido[0].pwa_estado,
+        estado: pedido[0].estado,
         cliente: datosCliente,
         establecimiento: datosEstablecimiento,
         orden: orden,

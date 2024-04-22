@@ -91,7 +91,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                 idpedidos = req.body.idpedidos;
                 idpedidosArray = idpedidos.split(',').map(Number);
                 placeholders = idpedidosArray.map(function () { return '?'; }).join(',');
-                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido, \n        sub.nomcliente, \n        sub.nomsede, \n        sub.isapp,    \n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            c.nombres nomcliente, \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
+                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido,\n        sub.pwa_estado,\n        sub.estado, \n        sub.nomcliente, \n        sub.nomsede, \n        sub.isapp,  \n        sub.json_datos_delivery,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            p.pwa_estado,\n            p.estado,\n            c.nombres nomcliente, \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
             case 1:
                 pedidos = _a.sent();
                 ArrayPedidos = [];
@@ -118,18 +118,50 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                     });
                     var url_img = 'https://app.restobar.papaya.com.pe/assets/images/icon-app/';
                     item.metodo_pago = JSON.parse(item.metodo_pago);
+                    var arrDatosDelivery = item.json_datos_delivery.p_header.arrDatosDelivery;
+                    var orden = item.json_datos_delivery.p_body.tipoconsumo;
+                    var subtotalesOrden = item.json_datos_delivery.p_subtotales;
+                    // // objeto con los datos del cliente
+                    var datosCliente = {
+                        nombres: item.nomcliente,
+                        telefono: item.telefono,
+                        direccion: arrDatosDelivery.direccionEnvioSelected.direccion,
+                        latitud: arrDatosDelivery.direccionEnvioSelected.latitude,
+                        longitud: arrDatosDelivery.direccionEnvioSelected.longitude
+                    };
+                    // objeto con los datos del establecimiento
+                    var datosEstablecimiento = {
+                        nombre: arrDatosDelivery.establecimiento.nombre,
+                        direccion: arrDatosDelivery.establecimiento.direccion,
+                        telefono: item.telefono_sede,
+                        ciudad: arrDatosDelivery.establecimiento.ciudad,
+                        latitud: arrDatosDelivery.establecimiento.latitude,
+                        longitud: arrDatosDelivery.establecimiento.longitude
+                    };
+                    var ArrayPedido = {
+                        idpedido: item.idpedido,
+                        pwa_estado: item.pwa_estado,
+                        estado: item.estado,
+                        cliente: datosCliente,
+                        establecimiento: datosEstablecimiento,
+                        orden: orden,
+                        subtotales: subtotalesOrden
+                    };
                     ArrayPedidos.push({
                         idpedido: item.idpedido,
+                        pwa_estado: item.pwa_estado,
+                        estado: item.estado,
                         nomcliente: item.nomcliente,
                         nomsede: item.nomsede,
                         isapp: item.isapp == 1 ? true : false,
                         idtipo_pago: item.metodo_pago.idtipo_pago,
                         img_pago: "".concat(url_img).concat(item.metodo_pago.img),
                         establecimiento: item.establecimiento,
-                        importe_pagar: total,
+                        importe_pagar: total.toFixed(2),
                         importe_total: item.importe,
-                        propina: propina,
-                        entrega: entrega
+                        propina: propina.toFixed(2),
+                        entrega: entrega.toFixed(2),
+                        laOrden: ArrayPedido
                     });
                 });
                 res.status(200).json(ArrayPedidos);
@@ -144,7 +176,7 @@ router.get('/detalle-pedido/:idpedido', function (req, res) { return __awaiter(v
         switch (_a.label) {
             case 0:
                 idpedido = req.params.idpedido;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["SELECT \n        p.idpedido, \n        c.nombres nomcliente, \n        c.telefono,        \n        p.flag_is_cliente isapp,\n        CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n    FROM pedido p\n    INNER JOIN cliente c ON c.idcliente = p.idcliente     \n    WHERE p.idpedido = ", ""], ["SELECT \n        p.idpedido, \n        c.nombres nomcliente, \n        c.telefono,        \n        p.flag_is_cliente isapp,\n        CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n    FROM pedido p\n    INNER JOIN cliente c ON c.idcliente = p.idcliente     \n    WHERE p.idpedido = ", ""])), idpedido)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["SELECT \n        p.idpedido, \n        p.pwa_estado,\n        p.estado,\n        c.nombres nomcliente, \n        c.telefono,        \n        s.telefono telefono_sede,\n        p.flag_is_cliente isapp,\n        CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n    FROM pedido p\n    inner join sede s on p.idsede=s.idsede\n    INNER JOIN cliente c ON c.idcliente = p.idcliente     \n    WHERE p.idpedido = ", ""], ["SELECT \n        p.idpedido, \n        p.pwa_estado,\n        p.estado,\n        c.nombres nomcliente, \n        c.telefono,        \n        s.telefono telefono_sede,\n        p.flag_is_cliente isapp,\n        CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n    FROM pedido p\n    inner join sede s on p.idsede=s.idsede\n    INNER JOIN cliente c ON c.idcliente = p.idcliente     \n    WHERE p.idpedido = ", ""])), idpedido)];
             case 1:
                 pedido = _a.sent();
                 arrDatosDelivery = pedido[0].json_datos_delivery.p_header.arrDatosDelivery;
@@ -160,12 +192,15 @@ router.get('/detalle-pedido/:idpedido', function (req, res) { return __awaiter(v
                 datosEstablecimiento = {
                     nombre: arrDatosDelivery.establecimiento.nombre,
                     direccion: arrDatosDelivery.establecimiento.direccion,
+                    telefono: pedido[0].telefono_sede,
                     ciudad: arrDatosDelivery.establecimiento.ciudad,
                     latitud: arrDatosDelivery.establecimiento.latitude,
                     longitud: arrDatosDelivery.establecimiento.longitude
                 };
                 ArrayPedido = {
                     idpedido: pedido[0].idpedido,
+                    pwa_estado: pedido[0].pwa_estado,
+                    estado: pedido[0].estado,
                     cliente: datosCliente,
                     establecimiento: datosEstablecimiento,
                     orden: orden,

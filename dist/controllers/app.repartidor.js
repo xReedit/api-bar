@@ -161,7 +161,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                         importe_total: item.importe,
                         propina: propina.toFixed(2),
                         entrega: entrega.toFixed(2),
-                        laOrden: ArrayPedido
+                        orden_detalle: ArrayPedido
                     });
                 });
                 res.status(200).json(ArrayPedidos);

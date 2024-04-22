@@ -114,7 +114,7 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             importe_total: item.importe,
             propina: propina.toFixed(2),
             entrega: entrega.toFixed(2),
-            laOrden: ArrayPedido
+            orden_detalle: ArrayPedido
         });
         
     });

@@ -19,7 +19,9 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
         sub.pwa_estado,
         sub.estado, 
         sub.nomcliente, 
+        sub.telefono,
         sub.nomsede, 
+        sub.telefono_sede,
         sub.isapp,  
         sub.json_datos_delivery,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,
@@ -33,6 +35,8 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             p.pwa_estado,
             p.estado,
             c.nombres nomcliente, 
+            c.telefono,        
+            s.telefono telefono_sede,            
             s.nombre nomsede, 
             p.flag_is_cliente isapp,
             CAST(p.json_datos_delivery AS JSON) json_datos_delivery

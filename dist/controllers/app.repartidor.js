@@ -157,10 +157,10 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                         idtipo_pago: item.metodo_pago.idtipo_pago,
                         img_pago: "".concat(url_img).concat(item.metodo_pago.img),
                         establecimiento: item.establecimiento,
-                        importe_pagar: total.toFixed(2),
-                        importe_total: item.importe,
-                        propina: propina.toFixed(2),
-                        entrega: entrega.toFixed(2),
+                        importe_pagar: total,
+                        importe_total: parseFloat(item.importe),
+                        propina: propina,
+                        entrega: entrega,
                         orden_detalle: ArrayPedido
                     });
                 });

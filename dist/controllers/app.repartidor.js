@@ -91,7 +91,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                 idpedidos = req.body.idpedidos;
                 idpedidosArray = idpedidos.split(',').map(Number);
                 placeholders = idpedidosArray.map(function () { return '?'; }).join(',');
-                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido,\n        sub.pwa_estado,\n        sub.estado, \n        sub.nomcliente, \n        sub.telefono,\n        sub.nomsede, \n        sub.telefono_sede,\n        sub.isapp,  \n        sub.json_datos_delivery,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            p.pwa_estado,\n            p.estado,\n            c.nombres nomcliente, \n            c.telefono,        \n            s.telefono telefono_sede,            \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
+                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido,\n        sub.pwa_estado,\n        sub.estado, \n        sub.nomcliente, \n        sub.telefono,\n        sub.nomsede, \n        sub.telefono_sede,\n        sub.isapp,  \n        sub.time_line,\n        sub.json_datos_delivery,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            p.pwa_estado,\n            p.estado,\n            c.nombres nomcliente, \n            c.telefono,        \n            s.telefono telefono_sede,            \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            ptle.time_line, \n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        left join pedido_time_line_entrega ptle on ptle.idpedido = p.idpedido \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
             case 1:
                 pedidos = _a.sent();
                 ArrayPedidos = [];
@@ -147,6 +147,21 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                         orden: orden,
                         subtotales: subtotalesOrden
                     };
+                    var _timeLineDefault = {
+                        hora_acepta_pedido: 0,
+                        hora_pedido_entregado: 0,
+                        llego_al_comercio: false,
+                        en_camino_al_cliente: false,
+                        mensaje_enviado: {
+                            llego_al_comercio: false,
+                            en_camino_al_cliente: false,
+                            entrego: false
+                        },
+                        paso: 0,
+                        msj_log: '',
+                        distanciaMtr: ''
+                    };
+                    var _time_line = item.time_line ? item.time_line : _timeLineDefault;
                     ArrayPedidos.push({
                         idpedido: item.idpedido,
                         pwa_estado: item.pwa_estado,
@@ -161,6 +176,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                         importe_total: parseFloat(item.importe),
                         propina: propina,
                         entrega: entrega,
+                        time_line: _time_line,
                         orden_detalle: ArrayPedido
                     });
                 });

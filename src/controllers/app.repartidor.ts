@@ -23,6 +23,7 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
         sub.nomsede, 
         sub.telefono_sede,
         sub.isapp,  
+        sub.time_line,
         sub.json_datos_delivery,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,
         sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,
@@ -39,10 +40,12 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             s.telefono telefono_sede,            
             s.nombre nomsede, 
             p.flag_is_cliente isapp,
+            ptle.time_line, 
             CAST(p.json_datos_delivery AS JSON) json_datos_delivery
         FROM pedido p
         INNER JOIN cliente c ON c.idcliente = p.idcliente 
         INNER JOIN sede s ON p.idsede = s.idsede  
+        left join pedido_time_line_entrega ptle on ptle.idpedido = p.idpedido 
         WHERE p.idpedido in (${placeholders})
     ) sub`, ...idpedidosArray);
 
@@ -104,6 +107,23 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             subtotales: subtotalesOrden        
         }
 
+        const _timeLineDefault = {
+            hora_acepta_pedido: 0,
+            hora_pedido_entregado: 0,
+            llego_al_comercio: false,
+            en_camino_al_cliente: false,
+            mensaje_enviado: {
+                llego_al_comercio: false,
+                en_camino_al_cliente: false,
+                entrego: false
+            },
+            paso:0,
+            msj_log:'',
+            distanciaMtr:'',
+        }
+
+        const _time_line = item.time_line ? item.time_line : _timeLineDefault;
+
         ArrayPedidos.push({
             idpedido: item.idpedido,
             pwa_estado: item.pwa_estado,
@@ -118,6 +138,7 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             importe_total: parseFloat(item.importe),
             propina: propina,
             entrega: entrega,
+            time_line: _time_line,
             orden_detalle: ArrayPedido
         });
         

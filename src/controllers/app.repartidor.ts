@@ -107,22 +107,22 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             subtotales: subtotalesOrden        
         }
 
+        const _time_line = item.time_line ? item.time_line : {};
+
         const _timeLineDefault = {
-            hora_acepta_pedido: 0,
-            hora_pedido_entregado: 0,
-            llego_al_comercio: false,
-            en_camino_al_cliente: false,
-            mensaje_enviado: {
+            hora_acepta_pedido: _time_line.hora_acepta_pedido ? _time_line.hora_acepta_pedido : 0,
+            hora_pedido_entregado: _time_line.hora_pedido_entregado ? _time_line.hora_pedido_entregado : 0,
+            llego_al_comercio: _time_line.llego_al_comercio ? _time_line.llego_al_comercio : false, 
+            en_camino_al_cliente: _time_line.en_camino_al_cliente ? _time_line.en_camino_al_cliente : false,
+            mensaje_enviado: _time_line.mensaje_enviado ? _time_line.mensaje_enviado : {
                 llego_al_comercio: false,
                 en_camino_al_cliente: false,
                 entrego: false
             },
-            paso:0,
-            msj_log:'',
-            distanciaMtr:'',
+            paso: _time_line.paso ? _time_line.paso : 0,
+            msj_log: _time_line.msj_log ? _time_line.msj_log : '',
+            distanciaMtr:_time_line.distanciaMtr ? _time_line.distanciaMtr : '',
         }
-
-        const _time_line = item.time_line ? item.time_line : _timeLineDefault;
 
         ArrayPedidos.push({
             idpedido: item.idpedido,
@@ -138,7 +138,7 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             importe_total: parseFloat(item.importe),
             propina: propina,
             entrega: entrega,
-            time_line: _time_line,
+            time_line: _timeLineDefault,
             orden_detalle: ArrayPedido
         });
         

@@ -96,6 +96,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                 pedidos = _a.sent();
                 ArrayPedidos = [];
                 pedidos.map(function (item) {
+                    var _a, _b, _c;
                     // obtener costo total a pagar quitando descripcion que contengan 'delivery', 'entrega', 'propina'
                     var total = 0;
                     var propina = 0;
@@ -153,10 +154,10 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                         hora_pedido_entregado: _time_line.hora_pedido_entregado ? _time_line.hora_pedido_entregado : 0,
                         llego_al_comercio: _time_line.llego_al_comercio ? _time_line.llego_al_comercio : false,
                         en_camino_al_cliente: _time_line.en_camino_al_cliente ? _time_line.en_camino_al_cliente : false,
-                        mensaje_enviado: _time_line.mensaje_enviado ? _time_line.mensaje_enviado : {
-                            llego_al_comercio: false,
-                            en_camino_al_cliente: false,
-                            entrego: false
+                        mensaje_enviado: {
+                            llego_al_comercio: ((_a = _time_line === null || _time_line === void 0 ? void 0 : _time_line.mensaje_enviado) === null || _a === void 0 ? void 0 : _a.llego_al_comercio) ? _time_line.mensaje_enviado.llego_al_comercio : false,
+                            en_camino_al_cliente: ((_b = _time_line === null || _time_line === void 0 ? void 0 : _time_line.mensaje_enviado) === null || _b === void 0 ? void 0 : _b.en_camino_al_cliente) ? _time_line.mensaje_enviado.en_camino_al_cliente : false,
+                            entrego: ((_c = _time_line === null || _time_line === void 0 ? void 0 : _time_line.mensaje_enviado) === null || _c === void 0 ? void 0 : _c.entrego) ? _time_line.mensaje_enviado.entrego : false
                         },
                         paso: _time_line.paso ? _time_line.paso : 0,
                         msj_log: _time_line.msj_log ? _time_line.msj_log : '',

@@ -1,6 +1,7 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { fechaGuionASlash } from "../utils/utils";
+import SocketService from "../services/socket.services";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -202,6 +203,56 @@ router.get('/detalle-pedido/:idpedido', async (req: any, res) => {
     
 
     res.status(200).json(ArrayPedido);
+});
+
+// guardar timeline pedido
+router.post('/save-timeline-pedido', async (req: any, res) => {
+    const { idpedido, dataCliente, dataEstablecimiento, nomRepartidor, telRepartidor, idrepartidor, timeLine } = req.body;    
+    let time_line = timeLine;    
+
+    if ( time_line.mensaje_enviado.llego_al_comercio == true && !time_line.mensaje_enviado.en_camino_al_cliente ) {
+        time_line.llego_al_comercio = true;
+        time_line.mensaje_enviado.llego_al_comercio = true;
+        time_line.paso = 1;
+        time_line.msj_log = 'Llego al comercio';        
+    } else if ( time_line.mensaje_enviado.en_camino_al_cliente ) {
+        time_line.llego_al_comercio = true;
+        time_line.mensaje_enviado.llego_al_comercio = true;
+        time_line.en_camino_al_cliente = true;
+        time_line.mensaje_enviado.en_camino_al_cliente = true;
+        time_line.paso = 2;
+        time_line.msj_log = 'En camino al cliente';        
+    }
+
+    
+    
+    const rowCliente = {
+            nombre: dataCliente.nombres.split(' ')[0],
+            telefono: dataCliente.telefono,
+            establecimiento: dataEstablecimiento.nombre,
+            idpedido: idpedido,
+            repartidor_nom: nomRepartidor,
+            repartidor_telefono: telRepartidor,
+            repartidor_id: idrepartidor, // update timeline
+            time_line: time_line, // update timeline
+            tipo_msj: time_line.paso
+    }
+
+    const listClienteNotificar:any = [];
+    listClienteNotificar.push(rowCliente);
+
+    console.log('listClienteNotificar', listClienteNotificar);
+
+    // se comunica mediante socket
+    const socketServices = new SocketService();
+    let querySocket = socketServices.querySocket('repartidor');
+    querySocket.idrepartidor = parseInt(idrepartidor);
+    console.log('querySocket', querySocket);
+    await socketServices.connectSocket(querySocket);
+
+    socketServices.emitEvent('repartidor-notifica-cliente-time-line', listClienteNotificar);
+    socketServices.disconnect();
+    res.status(200).json({ message: 'ok' });
 });
 
 

@@ -71,9 +71,13 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     }
     return to.concat(ar || Array.prototype.slice.call(from));
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
+var socket_services_1 = __importDefault(require("../services/socket.services"));
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -224,6 +228,56 @@ router.get('/detalle-pedido/:idpedido', function (req, res) { return __awaiter(v
                     subtotales: subtotales
                 };
                 res.status(200).json(ArrayPedido);
+                return [2 /*return*/];
+        }
+    });
+}); });
+// guardar timeline pedido
+router.post('/save-timeline-pedido', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idpedido, dataCliente, dataEstablecimiento, nomRepartidor, telRepartidor, idrepartidor, timeLine, time_line, rowCliente, listClienteNotificar, socketServices, querySocket;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idpedido = _a.idpedido, dataCliente = _a.dataCliente, dataEstablecimiento = _a.dataEstablecimiento, nomRepartidor = _a.nomRepartidor, telRepartidor = _a.telRepartidor, idrepartidor = _a.idrepartidor, timeLine = _a.timeLine;
+                time_line = timeLine;
+                if (time_line.mensaje_enviado.llego_al_comercio == true && !time_line.mensaje_enviado.en_camino_al_cliente) {
+                    time_line.llego_al_comercio = true;
+                    time_line.mensaje_enviado.llego_al_comercio = true;
+                    time_line.paso = 1;
+                    time_line.msj_log = 'Llego al comercio';
+                }
+                else if (time_line.mensaje_enviado.en_camino_al_cliente) {
+                    time_line.llego_al_comercio = true;
+                    time_line.mensaje_enviado.llego_al_comercio = true;
+                    time_line.en_camino_al_cliente = true;
+                    time_line.mensaje_enviado.en_camino_al_cliente = true;
+                    time_line.paso = 2;
+                    time_line.msj_log = 'En camino al cliente';
+                }
+                rowCliente = {
+                    nombre: dataCliente.nombres.split(' ')[0],
+                    telefono: dataCliente.telefono,
+                    establecimiento: dataEstablecimiento.nombre,
+                    idpedido: idpedido,
+                    repartidor_nom: nomRepartidor,
+                    repartidor_telefono: telRepartidor,
+                    repartidor_id: idrepartidor,
+                    time_line: time_line,
+                    tipo_msj: time_line.paso
+                };
+                listClienteNotificar = [];
+                listClienteNotificar.push(rowCliente);
+                console.log('listClienteNotificar', listClienteNotificar);
+                socketServices = new socket_services_1["default"]();
+                querySocket = socketServices.querySocket('repartidor');
+                querySocket.idrepartidor = parseInt(idrepartidor);
+                console.log('querySocket', querySocket);
+                return [4 /*yield*/, socketServices.connectSocket(querySocket)];
+            case 1:
+                _b.sent();
+                socketServices.emitEvent('repartidor-notifica-cliente-time-line', listClienteNotificar);
+                socketServices.disconnect();
+                res.status(200).json({ message: 'ok' });
                 return [2 /*return*/];
         }
     });

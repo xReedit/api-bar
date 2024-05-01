@@ -255,5 +255,19 @@ router.post('/save-timeline-pedido', async (req: any, res) => {
     res.status(200).json({ message: 'ok' });
 });
 
+// guardar token fcm
+router.post('/save-token-fcm', async (req: any, res) => {
+    const { idrepartidor, token_fcm } = req.body;
+    const repartidor = await prisma.repartidor.update({
+        where: {
+            idrepartidor: idrepartidor
+        },
+        data: {
+            pwa_code_verification: token_fcm
+        }
+    });
+
+    res.status(200).json(repartidor);
+});
 
 export default router;

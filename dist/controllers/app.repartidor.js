@@ -282,5 +282,27 @@ router.post('/save-timeline-pedido', function (req, res) { return __awaiter(void
         }
     });
 }); });
+// guardar token fcm
+router.post('/save-token-fcm', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idrepartidor, token_fcm, repartidor;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idrepartidor = _a.idrepartidor, token_fcm = _a.token_fcm;
+                return [4 /*yield*/, prisma.repartidor.update({
+                        where: {
+                            idrepartidor: idrepartidor
+                        },
+                        data: {
+                            pwa_code_verification: token_fcm
+                        }
+                    })];
+            case 1:
+                repartidor = _b.sent();
+                res.status(200).json(repartidor);
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
 var templateObject_1;

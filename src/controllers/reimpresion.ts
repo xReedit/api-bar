@@ -10,7 +10,8 @@ router.get('/', function (req, res) {
 
 // reimprimir comprobante por idcomprobante
 router.get('/reimprimir-comprobante/:idregistro_pago', async (req: any, res) => {
-    const { idregistro_pago } = req.params    
+    const { idregistro_pago } = req.params  
+    // console.log('idregistro_pago', idregistro_pago);  
     // obtener idce de registro de pagos
     const _registro_pago: any = await prisma.registro_pago.findFirst({
         where: { idregistro_pago: Number(idregistro_pago) }

@@ -95,7 +95,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                 idpedidos = req.body.idpedidos;
                 idpedidosArray = idpedidos.split(',').map(Number);
                 placeholders = idpedidosArray.map(function () { return '?'; }).join(',');
-                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido,\n        sub.pwa_estado,\n        sub.estado, \n        sub.nomcliente, \n        sub.telefono,\n        sub.nomsede, \n        sub.telefono_sede,\n        sub.isapp,  \n        sub.time_line,\n        sub.json_datos_delivery,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            p.pwa_estado,\n            p.estado,\n            c.nombres nomcliente, \n            c.telefono,        \n            s.telefono telefono_sede,            \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            ptle.time_line, \n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        left join pedido_time_line_entrega ptle on ptle.idpedido = p.idpedido \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
+                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido,\n        sub.pwa_estado,\n        sub.estado, \n        sub.idcliente,\n        sub.nomcliente, \n        sub.telefono,\n        sub.idsede,\n        sub.nomsede, \n        sub.telefono_sede,\n        sub.isapp,  \n        sub.time_line,\n        sub.json_datos_delivery,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            p.pwa_estado,\n            p.estado,\n            c.idcliente,\n            c.nombres nomcliente, \n            c.telefono, \n            s.idsede,       \n            s.telefono telefono_sede,            \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            ptle.time_line, \n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        left join pedido_time_line_entrega ptle on ptle.idpedido = p.idpedido \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
             case 1:
                 pedidos = _a.sent();
                 ArrayPedidos = [];
@@ -128,6 +128,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                     var subtotalesOrden = item.json_datos_delivery.p_subtotales;
                     // // objeto con los datos del cliente
                     var datosCliente = {
+                        idcliente: item.idcliente,
                         nombres: item.nomcliente,
                         telefono: item.telefono,
                         direccion: arrDatosDelivery.direccionEnvioSelected.direccion,
@@ -136,6 +137,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                     };
                     // objeto con los datos del establecimiento
                     var datosEstablecimiento = {
+                        idsede: item.idsede,
                         nombre: arrDatosDelivery.establecimiento.nombre,
                         direccion: arrDatosDelivery.establecimiento.direccion,
                         telefono: item.telefono_sede,
@@ -150,7 +152,8 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                         cliente: datosCliente,
                         establecimiento: datosEstablecimiento,
                         orden: orden,
-                        subtotales: subtotalesOrden
+                        subtotales: subtotalesOrden,
+                        metodo_pago: item.metodo_pago
                     };
                     var _time_line = item.time_line ? item.time_line : {};
                     var _timeLineDefault = {
@@ -304,5 +307,84 @@ router.post('/save-token-fcm', function (req, res) { return __awaiter(void 0, vo
         }
     });
 }); });
+// marcar pedido entregado
+router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, order, idrepartidor, repartidorSede, isrepartidor_propio, time_line, _dataSend, error_1, socketServices, querySocket;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, order = _a.order, idrepartidor = _a.idrepartidor;
+                return [4 /*yield*/, prisma.repartidor.findFirst({
+                        select: {
+                            idsede_suscrito: true
+                        },
+                        where: {
+                            idrepartidor: idrepartidor
+                        }
+                    })];
+            case 1:
+                repartidorSede = _b.sent();
+                isrepartidor_propio = (repartidorSede === null || repartidorSede === void 0 ? void 0 : repartidorSede.idsede_suscrito) ? true : false;
+                time_line = order.time_line;
+                time_line.hora_pedido_entregado = new Date().getTime();
+                time_line.mensaje_enviado.entrego = true;
+                time_line.msj_log = 'Pedido entregado';
+                time_line.paso = 4;
+                _dataSend = {
+                    idrepartidor: idrepartidor,
+                    idpedido: order.idpedido,
+                    time_line: time_line,
+                    idcliente: order.cliente.idcliente,
+                    idsede: order.establecimiento.idsede,
+                    operacion: {
+                        isrepartidor_propio: isrepartidor_propio,
+                        metodoPago: order.metodoPago,
+                        importeTotalPedido: order.total_r,
+                        importePagadoRepartidor: order.importe_pagar,
+                        comisionRepartidor: isrepartidor_propio ? 0 : order.entrega,
+                        propinaRepartidor: isrepartidor_propio ? 0 : order.propina,
+                        costoTotalServicio: isrepartidor_propio ? 0 : order.entrega + order.propina,
+                        importeDepositar: 0
+                    }
+                };
+                if (isrepartidor_propio) {
+                    order.estado = 4;
+                    order.paso_va = 4;
+                    order.pwa_delivery_status = 4;
+                }
+                else {
+                    order.estado = 2;
+                }
+                _b.label = 2;
+            case 2:
+                _b.trys.push([2, 4, , 5]);
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["call procedure_pwa_delivery_pedido_entregado('", "')"], ["call procedure_pwa_delivery_pedido_entregado('", "')"])), JSON.stringify(_dataSend))];
+            case 3:
+                _b.sent();
+                return [3 /*break*/, 5];
+            case 4:
+                error_1 = _b.sent();
+                console.error('error', error_1);
+                res.status(500).json({ message: 'Error al marcar pedido entregado' });
+                return [3 /*break*/, 5];
+            case 5:
+                socketServices = new socket_services_1["default"]();
+                querySocket = socketServices.querySocket('repartidor');
+                querySocket.idrepartidor = parseInt(idrepartidor);
+                return [4 /*yield*/, socketServices.connectSocket(querySocket)];
+            case 6:
+                _b.sent();
+                if (isrepartidor_propio) {
+                    socketServices.emitEvent('repartidor-propio-notifica-fin-pedido', order);
+                }
+                else {
+                    socketServices.emitEvent('repartidor-notifica-fin-one-pedido', order);
+                }
+                socketServices.disconnect();
+                res.status(200);
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1;
+var templateObject_1, templateObject_2;

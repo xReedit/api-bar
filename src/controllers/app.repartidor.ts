@@ -19,8 +19,10 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
         sub.idpedido,
         sub.pwa_estado,
         sub.estado, 
+        sub.idcliente,
         sub.nomcliente, 
         sub.telefono,
+        sub.idsede,
         sub.nomsede, 
         sub.telefono_sede,
         sub.isapp,  
@@ -36,8 +38,10 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             p.idpedido, 
             p.pwa_estado,
             p.estado,
+            c.idcliente,
             c.nombres nomcliente, 
-            c.telefono,        
+            c.telefono, 
+            s.idsede,       
             s.telefono telefono_sede,            
             s.nombre nomsede, 
             p.flag_is_cliente isapp,
@@ -81,6 +85,7 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
 
         // // objeto con los datos del cliente
         const datosCliente = {
+            idcliente: item.idcliente,
             nombres: item.nomcliente,
             telefono: item.telefono,
             direccion: arrDatosDelivery.direccionEnvioSelected.direccion,
@@ -90,6 +95,7 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
 
         // objeto con los datos del establecimiento
         const datosEstablecimiento = {
+            idsede: item.idsede,
             nombre: arrDatosDelivery.establecimiento.nombre,
             direccion: arrDatosDelivery.establecimiento.direccion,
             telefono: item.telefono_sede,
@@ -105,7 +111,8 @@ router.post('/list-pedidos-asignados', async (req: any, res) => {
             cliente: datosCliente,
             establecimiento: datosEstablecimiento,
             orden: orden,
-            subtotales: subtotalesOrden        
+            subtotales: subtotalesOrden,
+            metodo_pago: item.metodo_pago        
         }
 
         const _time_line = item.time_line ? item.time_line : {};
@@ -269,5 +276,81 @@ router.post('/save-token-fcm', async (req: any, res) => {
 
     res.status(200).json(repartidor);
 });
+
+
+// marcar pedido entregado
+router.post('/marcar-pedido-entregado', async (req: any, res) => {
+    const { order, idrepartidor } = req.body;
+
+    // buscamos si repartidor esta suscrito a alguna sede
+    const repartidorSede = await prisma.repartidor.findFirst({
+        select: {
+            idsede_suscrito: true
+        },
+        where: {
+            idrepartidor: idrepartidor
+        }
+    });
+
+    const isrepartidor_propio = repartidorSede?.idsede_suscrito ? true : false;
+
+    // marcar como pedido entregado en el timeline
+    let time_line = order.time_line;
+    time_line.hora_pedido_entregado = new Date().getTime();
+    time_line.mensaje_enviado.entrego = true;
+    time_line.msj_log = 'Pedido entregado';
+    time_line.paso = 4;
+
+    const _dataSend = {
+            idrepartidor: idrepartidor,
+            idpedido: order.idpedido,
+            time_line: time_line,
+            idcliente: order.cliente.idcliente,
+            idsede: order.establecimiento.idsede,
+            operacion: {
+                isrepartidor_propio: isrepartidor_propio,
+                metodoPago: order.metodoPago,
+                importeTotalPedido: order.total_r,
+                importePagadoRepartidor: order.importe_pagar, // (a)(b)
+                comisionRepartidor: isrepartidor_propio ? 0 : order.entrega, // comisionRepartidor - this.pedidoRepartidor.datosComercio.pwa_delivery_comision_fija_no_afiliado, // menos costo fijo comercio no afiliado,
+                propinaRepartidor: isrepartidor_propio ? 0 : order.propina,
+                costoTotalServicio: isrepartidor_propio ? 0 : order.entrega + order.propina,
+                importeDepositar: 0
+            }
+    };
+
+    if (isrepartidor_propio ) {
+        order.estado = 4;
+        order.paso_va = 4;
+        order.pwa_delivery_status = 4;
+    } else {
+        order.estado = 2
+    }
+
+    // enviamos al procedimiento almacenado
+    try {
+        await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;        
+    } catch (error) {
+        console.error('error', error);
+        res.status(500).json({ message: 'Error al marcar pedido entregado' });        
+    }
+
+    // se comunica mediante socket
+    const socketServices = new SocketService();
+    let querySocket = socketServices.querySocket('repartidor');
+    querySocket.idrepartidor = parseInt(idrepartidor);
+    await socketServices.connectSocket(querySocket);
+
+    if (isrepartidor_propio) {
+        socketServices.emitEvent('repartidor-propio-notifica-fin-pedido', order);
+    } else {
+        socketServices.emitEvent('repartidor-notifica-fin-one-pedido', order);
+    }
+
+    socketServices.disconnect();
+    res.status(200);
+    
+});
+
 
 export default router;

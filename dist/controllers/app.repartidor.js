@@ -309,7 +309,7 @@ router.post('/save-token-fcm', function (req, res) { return __awaiter(void 0, vo
 }); });
 // marcar pedido entregado
 router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, order, time_line, idrepartidor, importePagar, importeTotal, propina, entrega, repartidorSede, isrepartidor_propio, _dataSend, _sql, error_1, socketServices, querySocket;
+    var _a, order, time_line, idrepartidor, importePagar, importeTotal, propina, entrega, repartidorSede, isrepartidor_propio, _dataSend, error_1, socketServices, querySocket;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -356,10 +356,6 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
                 else {
                     order.estado = 2;
                 }
-                // enviamos al procedimiento almacenado
-                console.log('_dataSend', _dataSend);
-                _sql = "call procedure_pwa_delivery_pedido_entregado('".concat(JSON.stringify(_dataSend), "')");
-                console.log(_sql);
                 _b.label = 2;
             case 2:
                 _b.trys.push([2, 4, , 5]);

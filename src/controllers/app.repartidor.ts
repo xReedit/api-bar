@@ -327,10 +327,7 @@ router.post('/marcar-pedido-entregado', async (req: any, res) => {
         order.estado = 2
     }
 
-    // enviamos al procedimiento almacenado
-    console.log('_dataSend', _dataSend);
-    const _sql = `call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
-    console.log(_sql);
+    // enviamos al procedimiento almacenado    
     try {
         // await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
         await prisma.$queryRaw`CALL procedure_pwa_delivery_pedido_entregado(${JSON.stringify(_dataSend)})`;        

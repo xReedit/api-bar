@@ -332,7 +332,8 @@ router.post('/marcar-pedido-entregado', async (req: any, res) => {
     const _sql = `call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
     console.log(_sql);
     try {
-        await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;        
+        // await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
+        await prisma.$queryRaw`CALL procedure_pwa_delivery_pedido_entregado(${JSON.stringify(_dataSend)})`;        
     } catch (error) {
         console.error('error', error);
         res.status(500).json({ message: 'Error al marcar pedido entregado' });        
@@ -350,8 +351,8 @@ router.post('/marcar-pedido-entregado', async (req: any, res) => {
         socketServices.emitEvent('repartidor-notifica-fin-one-pedido', order);
     }
 
-    socketServices.disconnect();
-    res.status(200);
+    socketServices.disconnect();    
+    res.status(200).send('OK');
     
 });
 

@@ -363,8 +363,10 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
                 _b.label = 2;
             case 2:
                 _b.trys.push([2, 4, , 5]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["call procedure_pwa_delivery_pedido_entregado('", "')"], ["call procedure_pwa_delivery_pedido_entregado('", "')"])), JSON.stringify(_dataSend))];
+                // await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["CALL procedure_pwa_delivery_pedido_entregado(", ")"], ["CALL procedure_pwa_delivery_pedido_entregado(", ")"])), JSON.stringify(_dataSend))];
             case 3:
+                // await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
                 _b.sent();
                 return [3 /*break*/, 5];
             case 4:
@@ -386,7 +388,7 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
                     socketServices.emitEvent('repartidor-notifica-fin-one-pedido', order);
                 }
                 socketServices.disconnect();
-                res.status(200);
+                res.status(200).send('OK');
                 return [2 /*return*/];
         }
     });

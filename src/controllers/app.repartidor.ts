@@ -280,7 +280,7 @@ router.post('/save-token-fcm', async (req: any, res) => {
 
 // marcar pedido entregado
 router.post('/marcar-pedido-entregado', async (req: any, res) => {
-    const { order, idrepartidor } = req.body;
+    const { order, time_line, idrepartidor, importePagar, importeTotal, propina, entrega } = req.body;
 
     // buscamos si repartidor esta suscrito a alguna sede
     const repartidorSede = await prisma.repartidor.findFirst({
@@ -295,7 +295,7 @@ router.post('/marcar-pedido-entregado', async (req: any, res) => {
     const isrepartidor_propio = repartidorSede?.idsede_suscrito ? true : false;
 
     // marcar como pedido entregado en el timeline
-    let time_line = order.time_line;
+    // let time_line = order.time_line;
     time_line.hora_pedido_entregado = new Date().getTime();
     time_line.mensaje_enviado.entrego = true;
     time_line.msj_log = 'Pedido entregado';
@@ -309,12 +309,12 @@ router.post('/marcar-pedido-entregado', async (req: any, res) => {
             idsede: order.establecimiento.idsede,
             operacion: {
                 isrepartidor_propio: isrepartidor_propio,
-                metodoPago: order.metodoPago,
-                importeTotalPedido: order.total_r,
-                importePagadoRepartidor: order.importe_pagar, // (a)(b)
-                comisionRepartidor: isrepartidor_propio ? 0 : order.entrega, // comisionRepartidor - this.pedidoRepartidor.datosComercio.pwa_delivery_comision_fija_no_afiliado, // menos costo fijo comercio no afiliado,
-                propinaRepartidor: isrepartidor_propio ? 0 : order.propina,
-                costoTotalServicio: isrepartidor_propio ? 0 : order.entrega + order.propina,
+                metodoPago: order.metodo_pago,
+                importeTotalPedido: importeTotal,
+                importePagadoRepartidor: importePagar, // (a)(b)
+                comisionRepartidor: isrepartidor_propio ? 0 : entrega, // comisionRepartidor - this.pedidoRepartidor.datosComercio.pwa_delivery_comision_fija_no_afiliado, // menos costo fijo comercio no afiliado,
+                propinaRepartidor: isrepartidor_propio ? 0 : propina,
+                costoTotalServicio: isrepartidor_propio ? 0 : entrega + propina,
                 importeDepositar: 0
             }
     };
@@ -328,6 +328,9 @@ router.post('/marcar-pedido-entregado', async (req: any, res) => {
     }
 
     // enviamos al procedimiento almacenado
+    console.log('_dataSend', _dataSend);
+    const _sql = `call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
+    console.log(_sql);
     try {
         await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;        
     } catch (error) {

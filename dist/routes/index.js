@@ -38,6 +38,7 @@ var login_restobar_1 = __importDefault(require("../controllers/login.restobar"))
 var permiso_remoto_1 = __importDefault(require("../controllers/permiso.remoto"));
 var reimpresion_1 = __importDefault(require("../controllers/reimpresion"));
 var app_repartidor_1 = __importDefault(require("../controllers/app.repartidor"));
+var cobranza_1 = __importDefault(require("../controllers/restobar/cobranza"));
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a nuestra API RESTOBAR port: 20223' });
@@ -54,5 +55,6 @@ router.use('/chat-bot', chat_bot_1["default"]);
 router.use('/permiso-remoto', permiso_remoto_1["default"]);
 router.use('/reimpresion', reimpresion_1["default"]);
 router.use('/app-repartidor', app_repartidor_1["default"]);
+router.use('/restobar/cobranza', cobranza_1["default"]);
 // router.use('/usuario', auth, usuario);
 exports["default"] = router;

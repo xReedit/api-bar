@@ -2035,8 +2035,10 @@ model sede {
   produccion_producto                                 produccion_producto[]
   promocion                                           promocion[]
   sede_plan_contratado                                sede_plan_contratado?          @relation(fields: [idsede_plan_contratado], references: [idsede_plan_contratado], onDelete: Restrict, onUpdate: Restrict, map: "sede_FK")
+  sede_estado                                         sede_estado[]
   sede_opciones                                       sede_opciones?
   sede_pago_servicio                                  sede_pago_servicio[]
+  sede_suscripcion                                    sede_suscripcion[]
 
   @@index([idsede_plan_contratado], map: "sede_FK")
 }
@@ -2180,28 +2182,38 @@ model sede_pago_confirmacion {
 }
 
 model sede_pago_servicio {
-  idsede_pago_servicio Int    @id @default(autoincrement())
-  idsede               Int
-  f_corte              String @db.VarChar(20)
-  importe              String @db.VarChar(10)
-  importe_tarjetas     String @db.VarChar(10)
-  dias_mora            String @db.VarChar(5)
-  importe_mora         String @db.VarChar(10)
-  neto_pagar           String @db.VarChar(10)
-  f_pago               String @db.VarChar(20)
-  estado               Int    @default(0)
-  sede                 sede   @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "idsede")
+  idsede_pago_servicio   Int                   @id @default(autoincrement())
+  idsede                 Int
+  f_corte                DateTime              @db.Date
+  importe                String                @db.VarChar(10)
+  importe_tarjetas       String                @db.VarChar(10)
+  dias_mora              String                @db.VarChar(5)
+  importe_mora           String                @db.VarChar(10)
+  neto_pagar             String                @db.VarChar(10)
+  f_pago                 String                @db.VarChar(20)
+  estado                 Int                   @default(0)
+  idsede_plan_contratado Int?
+  frecuencia             String?               @db.VarChar(10)
+  ultima_fecha_pago      DateTime?             @db.Date
+  sede                   sede                  @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "idsede")
+  sede_plan_contratado   sede_plan_contratado? @relation(fields: [idsede_plan_contratado], references: [idsede_plan_contratado], onDelete: Restrict, onUpdate: Restrict, map: "sede_pago_servicio_FK")
 
   @@index([idsede], map: "idsede")
+  @@index([idsede_plan_contratado], map: "sede_pago_servicio_FK")
 }
 
 model sede_plan_contratado {
-  idsede_plan_contratado Int     @id @default(autoincrement())
-  descripcion            String  @db.VarChar(30)
-  importe                String  @db.VarChar(10)
-  estado                 Boolean @default(false)
-  comision               String? @db.VarChar(10)
+  idsede_plan_contratado Int                  @id @default(autoincrement())
+  descripcion            String               @db.VarChar(30)
+  importe                String               @db.VarChar(10)
+  estado                 Boolean              @default(false)
+  comision               String?              @db.VarChar(10)
+  precio_semestral       String?              @db.Char(8)
+  precio_anual           String?              @db.Char(8)
+  isvisible_cliente      String?              @default("0") @db.Char(1)
   sede                   sede[]
+  sede_pago_servicio     sede_pago_servicio[]
+  sede_suscripcion       sede_suscripcion[]
 }
 
 model sede_socketid {
@@ -2697,4 +2709,79 @@ model use_gpt {
   total_cost        Decimal @db.Decimal(20, 9)
   estado            String  @default("0") @db.Char(1)
   mes               String? @db.Char(10)
+}
+
+model area_mesa {
+  idarea_mesa           Int    @id @default(autoincrement())
+  idsede                Int
+  idorg                 Int
+  titulo                String @db.Char(30)
+  descripcion           String @db.VarChar(100)
+  idimpresora_precuenta Int    @default(0)
+  num_mesa_ini          Int    @db.TinyInt
+  num_mesa_fin          Int    @db.TinyInt
+  estado                String @default("0") @db.Char(1)
+}
+
+model pagos_suscripcion {
+  pago_suscripcion_id Int            @id
+  suscripcion_id      Int?
+  fecha_pago          DateTime?      @db.Date
+  monto               Decimal?       @db.Decimal(10, 2)
+  suscripciones       suscripciones? @relation(fields: [suscripcion_id], references: [suscripcion_id], onDelete: Restrict, onUpdate: Restrict, map: "pagos_suscripcion_ibfk_1")
+
+  @@index([suscripcion_id], map: "suscripcion_id")
+}
+
+model planes {
+  plan_id          Int      @id
+  nombre           String?  @db.VarChar(100)
+  precio_mensual   Decimal? @db.Decimal(10, 2)
+  precio_semestral Decimal? @db.Decimal(10, 2)
+  precio_anual     Decimal? @db.Decimal(10, 2)
+  visible          String?  @default("1") @db.Char(1)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sede_suscripcion {
+  idsede_suscripcion     Int                  @id @default(autoincrement())
+  idsede                 Int
+  idsede_plan_contratado Int
+  frecuencia             String               @db.Char(15)
+  fecha_inicio           DateTime             @db.Date
+  ultimo_pago            DateTime             @db.Date
+  activo                 String               @default("0") @db.Char(1)
+  estado                 String               @default("0") @db.Char(1)
+  nombre_contacto        String?              @db.VarChar(20)
+  telefono_contacto      String?              @db.VarChar(50)
+  sede                   sede                 @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "sede_suscripcion_FK")
+  sede_plan_contratado   sede_plan_contratado @relation(fields: [idsede_plan_contratado], references: [idsede_plan_contratado], onUpdate: Restrict, map: "sede_suscripcion_FK_1")
+
+  @@index([idsede], map: "sede_suscripcion_FK")
+  @@index([idsede_plan_contratado], map: "sede_suscripcion_FK_1")
+}
+
+model suscripciones {
+  suscripcion_id         Int                 @id
+  idsede_plan_contratado Int?
+  frecuencia             String?             @db.VarChar(10)
+  fecha_inicio           DateTime?           @db.Date
+  idsede                 Int?
+  ultima_fecha_pagado    DateTime?           @db.Date
+  pagos_suscripcion      pagos_suscripcion[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sede_estado {
+  idsede_estado       Int       @id @default(autoincrement())
+  idsede              Int
+  is_bloqueado        String    @default("0") @db.Char(1)
+  is_baja             String    @default("0") @db.Char(1)
+  fecha_bloqueo       DateTime? @db.Date
+  fecha_baja          DateTime? @db.Date
+  is_bloqueo_contador String?   @default("0") @db.Char(1)
+  is_advertencia      String?   @default("0") @db.Char(1)
+  sede                sede      @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "sede_estado_FK")
+
+  @@index([idsede], map: "sede_estado_FK")
 }

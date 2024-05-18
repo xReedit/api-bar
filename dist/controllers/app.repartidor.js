@@ -309,11 +309,11 @@ router.post('/save-token-fcm', function (req, res) { return __awaiter(void 0, vo
 }); });
 // marcar pedido entregado
 router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, order, idrepartidor, repartidorSede, isrepartidor_propio, time_line, _dataSend, error_1, socketServices, querySocket;
+    var _a, order, time_line, idrepartidor, importePagar, importeTotal, propina, entrega, repartidorSede, isrepartidor_propio, _dataSend, _sql, error_1, socketServices, querySocket;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                _a = req.body, order = _a.order, idrepartidor = _a.idrepartidor;
+                _a = req.body, order = _a.order, time_line = _a.time_line, idrepartidor = _a.idrepartidor, importePagar = _a.importePagar, importeTotal = _a.importeTotal, propina = _a.propina, entrega = _a.entrega;
                 return [4 /*yield*/, prisma.repartidor.findFirst({
                         select: {
                             idsede_suscrito: true
@@ -325,7 +325,8 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
             case 1:
                 repartidorSede = _b.sent();
                 isrepartidor_propio = (repartidorSede === null || repartidorSede === void 0 ? void 0 : repartidorSede.idsede_suscrito) ? true : false;
-                time_line = order.time_line;
+                // marcar como pedido entregado en el timeline
+                // let time_line = order.time_line;
                 time_line.hora_pedido_entregado = new Date().getTime();
                 time_line.mensaje_enviado.entrego = true;
                 time_line.msj_log = 'Pedido entregado';
@@ -338,12 +339,12 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
                     idsede: order.establecimiento.idsede,
                     operacion: {
                         isrepartidor_propio: isrepartidor_propio,
-                        metodoPago: order.metodoPago,
-                        importeTotalPedido: order.total_r,
-                        importePagadoRepartidor: order.importe_pagar,
-                        comisionRepartidor: isrepartidor_propio ? 0 : order.entrega,
-                        propinaRepartidor: isrepartidor_propio ? 0 : order.propina,
-                        costoTotalServicio: isrepartidor_propio ? 0 : order.entrega + order.propina,
+                        metodoPago: order.metodo_pago,
+                        importeTotalPedido: importeTotal,
+                        importePagadoRepartidor: importePagar,
+                        comisionRepartidor: isrepartidor_propio ? 0 : entrega,
+                        propinaRepartidor: isrepartidor_propio ? 0 : propina,
+                        costoTotalServicio: isrepartidor_propio ? 0 : entrega + propina,
                         importeDepositar: 0
                     }
                 };
@@ -355,6 +356,10 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
                 else {
                     order.estado = 2;
                 }
+                // enviamos al procedimiento almacenado
+                console.log('_dataSend', _dataSend);
+                _sql = "call procedure_pwa_delivery_pedido_entregado('".concat(JSON.stringify(_dataSend), "')");
+                console.log(_sql);
                 _b.label = 2;
             case 2:
                 _b.trys.push([2, 4, , 5]);

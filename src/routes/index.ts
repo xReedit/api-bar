@@ -10,6 +10,7 @@ import loginRestobar from "../controllers/login.restobar";
 import permiso_remoto from "../controllers/permiso.remoto";
 import reinpresion from "../controllers/reimpresion";
 import app_repartidor from "../controllers/app.repartidor";
+import restobar_cobranza from "../controllers/restobar/cobranza";
 
 const router = express.Router();
 
@@ -29,6 +30,8 @@ router.use('/chat-bot', chat_bot);
 router.use('/permiso-remoto', permiso_remoto);
 router.use('/reimpresion', reinpresion);
 router.use('/app-repartidor', app_repartidor);
+router.use('/restobar/cobranza', restobar_cobranza);
+
 // router.use('/usuario', auth, usuario);
 
 

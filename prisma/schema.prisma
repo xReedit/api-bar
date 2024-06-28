@@ -255,6 +255,10 @@ model ce {
 
   @@index([idorg, idsede, idtipo_comprobante_serie], map: "ce_idorg_IDX")
   @@index([fecha], map: "ce_fecha_IDX")
+  @@index([external_id], map: "ce_external_id_IDX")
+  @@index([idsede], map: "ce_idsede_IDX")
+  @@index([idtipo_comprobante_serie], map: "ce_idtipo_comprobante_serie_IDX")
+  @@index([idusuario], map: "ce_idusuario_IDX")
 }
 
 model ce_nota_credito {
@@ -381,6 +385,9 @@ model cliente_sede {
   importe_consumo      String?               @db.Char(20)
   idpedido_last        Int?                  @default(0)
   cliente_paga_credito cliente_paga_credito?
+
+  @@index([idcliente], map: "cliente_sede_idcliente_IDX")
+  @@index([idsede], map: "cliente_sede_idsede_IDX")
 }
 
 model cliente_socketid {
@@ -858,17 +865,18 @@ model historial_error {
 }
 
 model ie_caja {
-  idie_caja    Int    @id @default(autoincrement())
+  idie_caja    Int       @id @default(autoincrement())
   idorg        Int
   idsede       Int
   idusuario    Int
   tipo         Int
-  motivo       String @db.VarChar(255)
-  fecha        String @db.VarChar(30)
-  monto        String @db.VarChar(10)
-  cierre       Int    @default(0)
-  fecha_cierre String @db.VarChar(60)
-  estado       Int    @default(0)
+  motivo       String    @db.VarChar(255)
+  fecha        String    @db.VarChar(30)
+  monto        String    @db.VarChar(10)
+  cierre       Int       @default(0)
+  fecha_cierre String    @db.VarChar(60)
+  estado       Int       @default(0)
+  fecha_hora   DateTime? @db.DateTime(0)
 }
 
 model impresora {
@@ -922,6 +930,7 @@ model item {
   pwa_habilitado_delivery   String                      @default("0") @db.VarChar(1)
   is_visible_cliente        Boolean                     @default(false)
   is_recomendacion          String                      @default("0") @db.Char(1)
+  cupon_detalle_item        cupon_detalle_item[]
   item_producto_relacionado item_producto_relacionado[]
 
   @@index([descripcion], map: "item_descripcion_IDX")
@@ -1009,6 +1018,7 @@ model item_subitem_content {
   controlable             Boolean @default(false)
 
   @@index([iditem], map: "item_subitem_content_iditem_IDX")
+  @@index([idsede], map: "item_subitem_content_idsede_IDX")
 }
 
 model item_subitem_content_detalle {
@@ -1412,6 +1422,10 @@ model porcion {
   stock                 String  @db.VarChar(10)
   estado                Int     @default(0)
   flag_last_date_salida String? @db.Char(30)
+  sede                  sede    @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "porcion_sede_FK")
+
+  @@index([idproducto_de], map: "porcion_idproducto_de_IDX")
+  @@index([idsede], map: "porcion_sede_FK")
 }
 
 model porcion_historial {
@@ -1547,6 +1561,7 @@ model producto_stock {
   estado                      Int                           @default(0)
   idproducto_stock            Int                           @id @default(autoincrement())
   flag_last_date_salida       String?                       @db.Char(30)
+  cupon_detalle_producto      cupon_detalle_producto[]
   distribuicion_detalle       distribuicion_detalle[]
   item_producto_relacionado   item_producto_relacionado[]
   produccion_producto_detalle produccion_producto_detalle[]
@@ -1717,26 +1732,27 @@ model registra_scan_qr {
 }
 
 model registro_pago {
-  idregistro_pago          Int    @id @default(autoincrement())
+  idregistro_pago          Int       @id @default(autoincrement())
   idorg                    Int
   idsede                   Int
   idcliente                Int
   idusuario                Int
   idusuario_permiso        Int
   idtipo_consumo           Int
-  idtipo_comprobante_serie Int    @default(0)
+  idtipo_comprobante_serie Int       @default(0)
   idce                     Int?
-  correlativo              String @db.VarChar(15)
-  external_id_comprobante  String @db.VarChar(150)
-  fecha                    String @db.VarChar(80)
-  total                    String @db.Char(10)
-  fecha_cierre             String @db.VarChar(80)
-  cierre                   Int    @default(0)
-  motivo_anular            String @db.VarChar(180)
-  estado                   Int    @default(0)
-  from_pwa                 String @default("0") @db.VarChar(1)
-  confirmado               String @default("0") @db.VarChar(1)
+  correlativo              String    @db.VarChar(15)
+  external_id_comprobante  String    @db.VarChar(150)
+  fecha                    String    @db.VarChar(80)
+  total                    String    @db.Char(10)
+  fecha_cierre             String    @db.VarChar(80)
+  cierre                   Int       @default(0)
+  motivo_anular            String    @db.VarChar(180)
+  estado                   Int       @default(0)
+  from_pwa                 String    @default("0") @db.VarChar(1)
+  confirmado               String    @default("0") @db.VarChar(1)
   data_pago_pwa            Json
+  fecha_hora               DateTime? @db.DateTime(0)
 
   @@index([cierre], map: "registro_pago_cierre_IDX")
   @@index([fecha, idsede], map: "registro_pago_fecha_IDX")
@@ -1910,22 +1926,23 @@ model repartidor_pedido_entregado {
 }
 
 model seccion {
-  idseccion          Int     @id @default(autoincrement())
-  idorg              Int
-  idsede             Int
-  descripcion        String  @db.VarChar(80)
-  imprimir           Int     @default(0)
-  idimpresora        Int     @default(1)
-  sec_orden          Int
-  ver_stock_cero     Int     @default(0)
-  estado             Int     @default(0)
-  img                String  @db.VarChar(255)
-  is_visible_cliente Boolean @default(false)
-  idimpresora_otro   Int     @default(0)
-  idpromocion        Int?
-  idseccion_vinculo  String? @db.Char(15)
-  ispromocion        Boolean @default(false)
-  idimpresoras       String? @db.Char(15)
+  idseccion             Int                     @id @default(autoincrement())
+  idorg                 Int
+  idsede                Int
+  descripcion           String                  @db.VarChar(80)
+  imprimir              Int                     @default(0)
+  idimpresora           Int                     @default(1)
+  sec_orden             Int
+  ver_stock_cero        Int                     @default(0)
+  estado                Int                     @default(0)
+  img                   String                  @db.VarChar(255)
+  is_visible_cliente    Boolean                 @default(false)
+  idimpresora_otro      Int                     @default(0)
+  idpromocion           Int?
+  idseccion_vinculo     String?                 @db.Char(15)
+  ispromocion           Boolean                 @default(false)
+  idimpresoras          String?                 @db.Char(15)
+  cupon_detalle_seccion cupon_detalle_seccion[]
 
   @@index([descripcion], map: "seccion_descripcion_IDX")
   @@index([idimpresora], map: "seccion_idimpresora_IDX")
@@ -2026,16 +2043,20 @@ model sede {
   cliente_paga_credito                                cliente_paga_credito[]
   colaborador                                         colaborador[]
   colaborador_contrato_detalle                        colaborador_contrato_detalle[]
+  cupon                                               cupon[]
+  cupon_codigo                                        cupon_codigo[]
   distribuicion_distribuicion_idsedeTosede            distribuicion[]                @relation("distribuicion_idsedeTosede")
   distribuicion_distribuicion_idsede_aTosede          distribuicion[]                @relation("distribuicion_idsede_aTosede")
   pedido                                              pedido[]
   pedido_bot                                          pedido_bot[]
   pedido_repartidor_pagado                            pedido_repartidor_pagado[]
   permiso_remoto                                      permiso_remoto[]
+  porcion                                             porcion[]
   produccion_producto                                 produccion_producto[]
   promocion                                           promocion[]
   sede_plan_contratado                                sede_plan_contratado?          @relation(fields: [idsede_plan_contratado], references: [idsede_plan_contratado], onDelete: Restrict, onUpdate: Restrict, map: "sede_FK")
   sede_estado                                         sede_estado[]
+  sede_flags                                          sede_flags[]
   sede_opciones                                       sede_opciones?
   sede_pago_servicio                                  sede_pago_servicio[]
   sede_suscripcion                                    sede_suscripcion[]
@@ -2321,26 +2342,31 @@ model ticket_rapido_detalle {
 }
 
 model tipo_comprobante {
-  idtipo_comprobante Int     @id @default(autoincrement())
-  descripcion        String  @db.VarChar(50)
-  codsunat           String  @db.VarChar(10)
-  inicial            String  @db.VarChar(5)
-  tipo_documento     String  @db.VarChar(3)
-  requiere_cliente   Int     @default(0)
-  estado             Int     @default(0)
-  img                String? @db.Char(15)
+  idtipo_comprobante     Int                      @id @default(autoincrement())
+  descripcion            String                   @db.VarChar(50)
+  codsunat               String                   @db.VarChar(10)
+  inicial                String                   @db.VarChar(5)
+  tipo_documento         String                   @db.VarChar(3)
+  requiere_cliente       Int                      @default(0)
+  estado                 Int                      @default(0)
+  img                    String?                  @db.Char(15)
+  tipo_comprobante_serie tipo_comprobante_serie[]
 }
 
 model tipo_comprobante_serie {
-  idtipo_comprobante_serie    Int    @id @default(autoincrement())
+  idtipo_comprobante_serie    Int              @id @default(autoincrement())
   idtipo_comprobante          Int
   idorg                       Int
   idsede                      Int
-  serie                       String @default("0") @db.Char(5)
+  serie                       String           @default("0") @db.Char(5)
   correlativo                 Int
-  facturacion_correlativo_api Int    @default(0)
-  estado                      Int    @default(0)
-  is_deshabilitado_cpe        String @default("0") @db.Char(1)
+  facturacion_correlativo_api Int              @default(0)
+  estado                      Int              @default(0)
+  is_deshabilitado_cpe        String           @default("0") @db.Char(1)
+  tipo_comprobante            tipo_comprobante @relation(fields: [idtipo_comprobante], references: [idtipo_comprobante], onUpdate: Restrict, map: "tipo_comprobante_serie_tipo_comprobante_FK")
+
+  @@index([idsede], map: "tipo_comprobante_serie_idsede_IDX")
+  @@index([idtipo_comprobante], map: "tipo_comprobante_serie_tipo_comprobante_FK")
 }
 
 model tipo_consumo {
@@ -2355,6 +2381,9 @@ model tipo_consumo {
   item_producto_relacionado item_producto_relacionado[]
   pedido                    pedido[]
   pedido_detalle            pedido_detalle[]
+
+  @@index([idimpresora], map: "tipo_consumo_idimpresora_IDX")
+  @@index([idsede], map: "tipo_consumo_idsede_IDX")
 }
 
 model tipo_cosnumo_img {
@@ -2475,7 +2504,9 @@ model usuario {
   last_notificacion_change_sys String?                        @db.Char(30)
   isbot                        String?                        @default("0") @db.Char(1)
   telefono                     String?                        @db.VarChar(50)
+  last_version_changelog       Int?                           @default(0) @db.TinyInt
   cliente_paga_credito_detalle cliente_paga_credito_detalle[]
+  cupon                        cupon[]
   ingreso_varios               ingreso_varios[]
   produccion_producto          produccion_producto[]
   promocion                    promocion[]
@@ -2784,4 +2815,138 @@ model sede_estado {
   sede                sede      @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "sede_estado_FK")
 
   @@index([idsede], map: "sede_estado_FK")
+}
+
+model cliente_sede_consumo {
+  idcliente_sede  Int
+  idcliente       Int?
+  idregistro_pago Int
+  fecha           DateTime? @db.Date
+  importe         Decimal?  @db.Decimal(10, 2)
+  estado          String?   @default("0") @db.Char(1)
+
+  @@id([idcliente_sede, idregistro_pago])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cupon {
+  idcupon                Int                      @id @default(autoincrement())
+  titulo                 String                   @db.VarChar(50)
+  descripcion            String                   @db.VarChar(200)
+  fecha_inicio           DateTime                 @db.Date
+  fecha_termina          DateTime                 @db.Date
+  fecha_inicio_emitir    DateTime                 @db.Date
+  idsede                 Int
+  idusuario              Int
+  activo                 String                   @default("0") @db.Char(1)
+  estado                 String                   @default("0") @db.Char(1)
+  fecha_creacion         DateTime?                @db.DateTime(0)
+  cantidad_maxima        Int?                     @default(0) @db.TinyInt
+  is_automatico          String?                  @default("1") @db.Char(1)
+  cupon_manual           String?                  @db.Char(10)
+  cantidad_activado      Int?                     @default(0) @db.TinyInt
+  cantidad_emitido       Int?                     @default(0) @db.TinyInt
+  sede                   sede                     @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "cupon_FK")
+  usuario                usuario                  @relation(fields: [idusuario], references: [idusuario], onUpdate: Restrict, map: "cupon_FK_1")
+  cupon_codigo           cupon_codigo[]
+  cupon_detalle          cupon_detalle[]
+  cupon_detalle_item     cupon_detalle_item[]
+  cupon_detalle_producto cupon_detalle_producto[]
+  cupon_detalle_seccion  cupon_detalle_seccion[]
+
+  @@index([idsede], map: "cupon_FK")
+  @@index([idusuario], map: "cupon_FK_1")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cupon_codigo {
+  idcupon_codigo Int      @id @default(autoincrement())
+  idcupon        Int
+  codigo         String   @db.Char(10)
+  fecha_creacion DateTime @db.DateTime(0)
+  fecha_uso      DateTime @db.DateTime(0)
+  activado       String   @default("0") @db.Char(1)
+  estado         String   @default("0") @db.Char(1)
+  idcliente_sede Int?
+  idsede         Int?
+  idusuario      Int?
+  cupon          cupon    @relation(fields: [idcupon], references: [idcupon], onUpdate: Restrict, map: "cupon_codigo_FK")
+  sede           sede?    @relation(fields: [idsede], references: [idsede], onDelete: Restrict, onUpdate: Restrict, map: "cupon_codigo_FK_1")
+
+  @@index([idcupon], map: "cupon_codigo_FK")
+  @@index([idsede], map: "cupon_codigo_FK_1")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cupon_detalle {
+  idcupon_detalle  Int     @id @default(autoincrement())
+  idcupon          Int
+  tipo             String  @db.Char(10)
+  iditem           Int
+  idseccion        Int
+  idproducto_stock Int
+  precio           String  @db.Char(10)
+  dsct             String  @db.Char(5)
+  precio_final     String  @db.Char(10)
+  tipo_dsct        String  @default("0") @db.Char(1)
+  estado           String  @default("0") @db.Char(1)
+  descripcion      String? @db.VarChar(150)
+  cupon            cupon   @relation(fields: [idcupon], references: [idcupon], onUpdate: Restrict, map: "cupon_detalle_FK")
+
+  @@index([idcupon], map: "cupon_detalle_FK")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cupon_detalle_item {
+  idcupon_detalle_item Int    @id @default(autoincrement())
+  idcupon              Int
+  iditem               Int
+  tipo_dsct            String @default("0") @db.Char(1)
+  dsct                 String @db.Char(5)
+  estado               String @default("0") @db.Char(1)
+  cupon                cupon  @relation(fields: [idcupon], references: [idcupon], onUpdate: Restrict, map: "cupon_detalle_item_FK")
+  item                 item   @relation(fields: [iditem], references: [iditem], onUpdate: Restrict, map: "cupon_detalle_item_FK_1")
+
+  @@index([idcupon], map: "cupon_detalle_item_FK")
+  @@index([iditem], map: "cupon_detalle_item_FK_1")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cupon_detalle_producto {
+  idcupon_detalle_producto Int            @id @default(autoincrement())
+  idcupon                  Int
+  idproducto_stock         Int
+  tipo_dsct                String         @default("0") @db.Char(1)
+  dsct                     String         @db.Char(5)
+  estado                   String         @default("0") @db.Char(1)
+  cupon                    cupon          @relation(fields: [idcupon], references: [idcupon], onUpdate: Restrict, map: "cupon_detalle_producto_FK")
+  producto_stock           producto_stock @relation(fields: [idproducto_stock], references: [idproducto_stock], onUpdate: Restrict, map: "cupon_detalle_producto_FK_1")
+
+  @@index([idcupon], map: "cupon_detalle_producto_FK")
+  @@index([idproducto_stock], map: "cupon_detalle_producto_FK_1")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cupon_detalle_seccion {
+  idcupon_detalle_seccion Int     @id @default(autoincrement())
+  idcupon                 Int
+  idseccion               Int
+  tipo_dsct               String  @default("0") @db.Char(1)
+  dsct                    String  @default("0") @db.Char(5)
+  estado                  String  @default("0") @db.Char(1)
+  cupon                   cupon   @relation(fields: [idcupon], references: [idcupon], onUpdate: Restrict, map: "cupon_detalle_seccion_FK")
+  seccion                 seccion @relation(fields: [idseccion], references: [idseccion], onUpdate: Restrict, map: "cupon_detalle_seccion_FK_1")
+
+  @@index([idcupon], map: "cupon_detalle_seccion_FK")
+  @@index([idseccion], map: "cupon_detalle_seccion_FK_1")
+}
+
+model sede_flags {
+  idsede_flags Int     @id @default(autoincrement())
+  idsede       Int?
+  flags        Json?
+  estado       String? @default("0") @db.Char(1)
+  sede         sede?   @relation(fields: [idsede], references: [idsede], onDelete: Restrict, onUpdate: Restrict, map: "sede_flags_sede_FK")
+
+  @@index([idsede], map: "sede_flags_sede_FK")
 }

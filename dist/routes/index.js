@@ -39,13 +39,16 @@ var permiso_remoto_1 = __importDefault(require("../controllers/permiso.remoto"))
 var reimpresion_1 = __importDefault(require("../controllers/reimpresion"));
 var app_repartidor_1 = __importDefault(require("../controllers/app.repartidor"));
 var cobranza_1 = __importDefault(require("../controllers/restobar/cobranza"));
+var ventas_1 = __importDefault(require("../controllers/dashboard/ventas"));
+var iecaja_1 = __importDefault(require("../controllers/dashboard/iecaja"));
+var pedidos_1 = __importDefault(require("../controllers/dashboard/pedidos"));
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a nuestra API RESTOBAR port: 20223' });
 });
 router.use('/login', usuario_1.login);
 router.use('/login-bot', login_restobar_1["default"]);
-// router.use('/login-restobar', loginRestobar);
+router.use('/login-restobar', login_restobar_1["default"]);
 router.use('/verify-login', auth_1.authVerify);
 router.use('/rol', auth_1.auth, rol_1["default"]);
 router.use('/sede', auth_1.auth, sede_1["default"]);
@@ -55,6 +58,11 @@ router.use('/chat-bot', chat_bot_1["default"]);
 router.use('/permiso-remoto', permiso_remoto_1["default"]);
 router.use('/reimpresion', reimpresion_1["default"]);
 router.use('/app-repartidor', app_repartidor_1["default"]);
+// restobar
 router.use('/restobar/cobranza', cobranza_1["default"]);
+// dashboardñ
+router.use('/dash-ventas', ventas_1["default"]);
+router.use('/dash-iecaja', iecaja_1["default"]);
+router.use('/dash-pedidos', pedidos_1["default"]);
 // router.use('/usuario', auth, usuario);
 exports["default"] = router;

@@ -330,7 +330,7 @@ router.post('/marcar-pedido-entregado', async (req: any, res) => {
     // enviamos al procedimiento almacenado    
     try {
         // await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
-        await prisma.$queryRaw`CALL procedure_pwa_delivery_pedido_entregado(${JSON.stringify(_dataSend)})`;        
+        await prisma.$queryRaw`CALL procedure_pwa_delivery_pedido_entregado(${JSON.stringify(_dataSend)})`;
     } catch (error) {
         console.error('error', error);
         res.status(500).json({ message: 'Error al marcar pedido entregado' });        

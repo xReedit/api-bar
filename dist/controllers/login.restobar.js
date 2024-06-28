@@ -70,7 +70,7 @@ router.get('/', function (req, res) {
 });
 // login user
 router.post('/login', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _data, userRestobar, error_1;
+    var _data, idsede, userRestobar, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -78,7 +78,8 @@ router.post('/login', function (req, res) { return __awaiter(void 0, void 0, voi
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, getUserRestobar(_data.user.idusuario_restobar, _data.sede.idsede)
+                idsede = _data.sede.idsede || _data.sede.idsede_restobar;
+                return [4 /*yield*/, getUserRestobar(_data.user.idusuario_restobar, idsede)
                     // if (userRestobar.length === 0) { //crea org, sede, usuario
                     //     // const dataOrg = _data.org
                     //     // crea org

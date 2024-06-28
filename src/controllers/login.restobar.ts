@@ -20,7 +20,8 @@ router.post('/login', async (req: any, res: any) => {
     const _data = req.body
     try {
         // verificar si existe usuario restobar        
-        let userRestobar: any = await getUserRestobar(_data.user.idusuario_restobar, _data.sede.idsede)
+        const idsede = _data.sede.idsede || _data.sede.idsede_restobar
+        let userRestobar: any = await getUserRestobar(_data.user.idusuario_restobar, idsede)
 
         // if (userRestobar.length === 0) { //crea org, sede, usuario
         //     // const dataOrg = _data.org

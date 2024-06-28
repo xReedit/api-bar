@@ -11,6 +11,9 @@ import permiso_remoto from "../controllers/permiso.remoto";
 import reinpresion from "../controllers/reimpresion";
 import app_repartidor from "../controllers/app.repartidor";
 import restobar_cobranza from "../controllers/restobar/cobranza";
+import dashboard_ventas from "../controllers/dashboard/ventas";
+import dashboard_iecaja from "../controllers/dashboard/iecaja";
+import dashboard_pedidos from "../controllers/dashboard/pedidos";
 
 const router = express.Router();
 
@@ -20,7 +23,7 @@ router.get('/', function (req, res) {
 
 router.use('/login', login);
 router.use('/login-bot', loginRestobar);
-// router.use('/login-restobar', loginRestobar);
+router.use('/login-restobar', loginRestobar);
 router.use('/verify-login', authVerify);
 router.use('/rol', auth, rol);
 router.use('/sede', auth, sede);
@@ -30,7 +33,15 @@ router.use('/chat-bot', chat_bot);
 router.use('/permiso-remoto', permiso_remoto);
 router.use('/reimpresion', reinpresion);
 router.use('/app-repartidor', app_repartidor);
+
+// restobar
 router.use('/restobar/cobranza', restobar_cobranza);
+
+// dashboardñ
+router.use('/dash-ventas', dashboard_ventas);
+router.use('/dash-iecaja', dashboard_iecaja);
+router.use('/dash-pedidos', dashboard_pedidos);
+
 
 // router.use('/usuario', auth, usuario);
 

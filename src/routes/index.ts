@@ -13,7 +13,7 @@ import app_repartidor from "../controllers/app.repartidor";
 import restobar_cobranza from "../controllers/restobar/cobranza";
 import dashboard_ventas from "../controllers/dashboard/ventas";
 import dashboard_iecaja from "../controllers/dashboard/iecaja";
-import dashboard_pedidos from "../controllers/dashboard/pedidos";
+import dashboard_colaboradores from "../controllers/dashboard/colaboradores";
 
 const router = express.Router();
 
@@ -40,7 +40,7 @@ router.use('/restobar/cobranza', restobar_cobranza);
 // dashboardñ
 router.use('/dash-ventas', dashboard_ventas);
 router.use('/dash-iecaja', dashboard_iecaja);
-router.use('/dash-pedidos', dashboard_pedidos);
+router.use('/dash-colaboradores', dashboard_colaboradores);
 
 
 // router.use('/usuario', auth, usuario);

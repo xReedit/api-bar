@@ -20,7 +20,7 @@ router.get("/advertencia/:idsede", async (req, res) => {
         }
     });
     let rpt = rptData[0];
-    // console.log('rpt', rpt);
+    console.log('rpt', rpt);
     
     if (rptData.length > 0) {
         const ultimaFechaPago = rpt.ultimo_pago;

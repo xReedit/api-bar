@@ -86,6 +86,7 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
             case 1:
                 rptData = _a.sent();
                 rpt = rptData[0];
+                console.log('rpt', rpt);
                 if (!(rptData.length > 0)) return [3 /*break*/, 12];
                 ultimaFechaPago = rpt.ultimo_pago;
                 frecuenciaPago = rpt.frecuencia.toLowerCase();

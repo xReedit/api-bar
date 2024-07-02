@@ -75,7 +75,7 @@ var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        res.status(200).json({ message: 'Estás conectado al api dash pedidos' });
+        res.status(200).json({ message: 'Estás conectado al api dash COLABORADORES' });
         return [2 /*return*/];
     });
 }); });
@@ -105,6 +105,12 @@ router.post("/get-pedidos", function (req, res) { return __awaiter(void 0, void 
                 return [3 /*break*/, 5];
             case 5: return [2 /*return*/];
         }
+    });
+}); });
+router.post("/get-test", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        res.status(200).json({ message: 'Estás conectado al api dash COLABORADORES' });
+        return [2 /*return*/];
     });
 }); });
 exports["default"] = router;

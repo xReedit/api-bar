@@ -856,7 +856,7 @@ model frases {
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
 model historial_error {
-  fecha    DateTime @db.Date
+  fecha    DateTime @db.DateTime(0)
   error    Json
   origen   String   @db.Char(20)
   resuelto Int      @default(0)
@@ -1247,21 +1247,28 @@ model pedido_app_sede_last_week {
 }
 
 model pedido_borrados {
-  idpedido_borrados   Int     @id @default(autoincrement())
+  idpedido_borrados   Int       @id @default(autoincrement())
   idpedido            Int
   idpedido_detalle    Int
   iditem              Int
-  idcarta_lista       String  @db.Char(50)
+  idcarta_lista       String    @db.Char(50)
   idusuario           Int
   idusuario_permiso   Int
-  importe             String  @db.VarChar(8)
-  fecha               String  @db.VarChar(50)
-  hora                String  @db.VarChar(20)
-  fecha_cierre        String  @db.VarChar(30)
+  importe             String    @db.VarChar(8)
+  fecha               String    @db.VarChar(50)
+  hora                String    @db.VarChar(20)
+  fecha_cierre        String    @db.VarChar(30)
   procede_tabla       Int
-  estado              Int     @default(0)
-  cantidad            Int     @default(0)
-  flag_recupera_stock String? @default("0") @db.Char(1)
+  estado              Int       @default(0)
+  cantidad            Int       @default(0)
+  flag_recupera_stock String?   @default("0") @db.Char(1)
+  fecha_hora          DateTime? @db.DateTime(0)
+
+  @@index([idcarta_lista], map: "pedido_borrados_idcarta_lista_IDX")
+  @@index([iditem], map: "pedido_borrados_iditem_IDX")
+  @@index([idpedido], map: "pedido_borrados_idpedido_IDX")
+  @@index([idpedido_detalle], map: "pedido_borrados_idpedido_detalle_IDX")
+  @@index([idusuario], map: "pedido_borrados_idusuario_IDX")
 }
 
 model pedido_cambios {
@@ -2516,17 +2523,25 @@ model usuario {
 }
 
 model usuario_bitacora_cierre {
-  idusuario_bitacora_cierre Int     @id @default(autoincrement())
+  idusuario_bitacora_cierre Int       @id @default(autoincrement())
   idorg                     Int
   idsede                    Int
   idusuario                 Int
-  fecha                     String  @db.Char(65)
-  detalle_cierre            String? @db.LongText
-  numintentos               Int     @default(0)
+  fecha                     String    @db.Char(65)
+  detalle_cierre            String?   @db.LongText
+  numintentos               Int       @default(0)
   idusuario_supervisor      Int
-  estado                    Int     @default(0)
-  cierre                    Int     @default(0)
+  estado                    Int       @default(0)
+  cierre                    Int       @default(0)
   detalle_titulo            Json?
+  fecha_hora                DateTime? @db.DateTime(0)
+  total_ingresos            Float?    @default(0) @db.Float
+  total_egresos             Float?    @default(0) @db.Float
+  total_efectivo            Float?    @default(0) @db.Float
+
+  @@index([idsede], map: "usuario_bitacora_cierre_idsede_IDX")
+  @@index([idusuario], map: "usuario_bitacora_cierre_idusuario_IDX")
+  @@index([idusuario_supervisor], map: "usuario_bitacora_cierre_idusuario_supervisor_IDX")
 }
 
 model usuario_tipo {

@@ -97,7 +97,6 @@ router.post("/get-iecaja", function (req, res) { return __awaiter(void 0, void 0
                 return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
-                console.log('rptExec', rptExec);
                 // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
                 rptExec = (0, dash_util_1.normalizeResponse)(rptExec);
                 res.status(200).json(rptExec);
@@ -162,7 +161,6 @@ router.post("/get-pedidos-borrados", function (req, res) { return __awaiter(void
                 return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
-                console.log('rptExec', rptExec);
                 // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
                 rptExec = (0, dash_util_1.normalizeResponse)(rptExec);
                 res.status(200).json(rptExec);
@@ -195,7 +193,6 @@ router.post("/get-pedidos-sin-corbrar", function (req, res) { return __awaiter(v
                 return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
-                console.log('rptExec', rptExec);
                 // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
                 rptExec = (0, dash_util_1.normalizeResponse)(rptExec);
                 res.status(200).json(rptExec);

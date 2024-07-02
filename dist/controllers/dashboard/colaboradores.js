@@ -81,7 +81,7 @@ router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, f
 }); });
 // obtener total pedidos
 router.post("/get-pedidos", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, params, rpt, sqlExec, rptExec, error_1;
+    var _a, idsede, params, ssql, rpt, sqlExec, rptExec, error_1;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -89,6 +89,8 @@ router.post("/get-pedidos", function (req, res) { return __awaiter(void 0, void 
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
+                ssql = "CALL procedure_module_dash_pedidos(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
+                console.log('object', ssql);
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_pedidos(", ", ", ")"], ["CALL procedure_module_dash_pedidos(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();

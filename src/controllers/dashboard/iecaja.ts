@@ -18,9 +18,7 @@ router.post("/get-iecaja", async (req, res) => {
         const ssql = `CALL procedure_module_dash_caja(${idsede}, ${JSON.stringify(params)})`;        
         const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_caja(${idsede}, ${JSON.stringify(params)})`;        
         const sqlExec = rpt[0].f0                 
-        let rptExec: any = await prisma.$queryRawUnsafe(sqlExec); 	                
-        
-        console.log('rptExec',rptExec);
+        let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);            
         // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
         rptExec = normalizeResponse(rptExec);
 
@@ -61,10 +59,7 @@ router.post("/get-pedidos-borrados", async (req, res) => {
         const ssql = `CALL procedure_module_dash_pedidos_borrados(${idsede}, ${JSON.stringify(params)})`;        
         const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_pedidos_borrados(${idsede}, ${JSON.stringify(params)})`;        
         const sqlExec = rpt[0].f0                 
-        let rptExec: any = await prisma.$queryRawUnsafe(sqlExec); 	                
-            
-        console.log('rptExec', rptExec);
-
+        let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);            
         // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
         rptExec = normalizeResponse(rptExec);
 
@@ -85,9 +80,7 @@ router.post("/get-pedidos-sin-corbrar", async (req, res) => {
         const ssql = `CALL procedure_module_dash_pedidos_sin_cobrar(${idsede}, ${JSON.stringify(params)})`;        
         const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_pedidos_sin_cobrar(${idsede}, ${JSON.stringify(params)})`;        
         const sqlExec = rpt[0].f0                 
-        let rptExec: any = await prisma.$queryRawUnsafe(sqlExec); 	                
-            
-        console.log('rptExec', rptExec);
+        let rptExec: any = await prisma.$queryRawUnsafe(sqlExec); 	                                    
 
         // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
         rptExec = normalizeResponse(rptExec);

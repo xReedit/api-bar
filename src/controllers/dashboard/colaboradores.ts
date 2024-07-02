@@ -15,6 +15,8 @@ router.get("/", async (req, res) => {
 router.post("/get-pedidos", async (req, res) => {
     const { idsede, params } = req.body;
     try {        
+        const ssql = `CALL procedure_module_dash_pedidos(${idsede}, ${JSON.stringify(params)})`;
+        console.log('object', ssql);
         const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_pedidos(${idsede}, ${JSON.stringify(params)})`;
         const sqlExec = rpt[0].f0
         let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);

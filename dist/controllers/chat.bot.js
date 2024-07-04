@@ -797,7 +797,7 @@ router.post("/get-estructura-pedido", function (req, res, next) { return __await
 }); });
 // registrar nuevo cliente
 router.post("/create-cliente-from-bot", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, telefono, idsede, nombres, rpt, idcliente, rptClienteSede;
+    var _a, telefono, idsede, nombres, rpt, idcliente;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -809,12 +809,16 @@ router.post("/create-cliente-from-bot", function (req, res, next) { return __awa
                             nombres: nombres.toUpperCase(),
                             f_registro: new Date().toISOString().slice(0, 19).replace('T', ' '),
                             ruc: '',
-                            direccion: ''
+                            direccion: '',
+                            pwa_id: '',
+                            email: '',
+                            estado: 0
                         }
                     })];
             case 1:
                 rpt = _b.sent();
                 idcliente = rpt.idcliente;
+                // ahora guardamos en cliente-sede
                 return [4 /*yield*/, prisma.cliente_sede.create({
                         data: {
                             idcliente: idcliente,
@@ -823,7 +827,8 @@ router.post("/create-cliente-from-bot", function (req, res, next) { return __awa
                         }
                     })];
             case 2:
-                rptClienteSede = _b.sent();
+                // ahora guardamos en cliente-sede
+                _b.sent();
                 res.status(200).send(rpt);
                 prisma.$disconnect();
                 return [2 /*return*/];

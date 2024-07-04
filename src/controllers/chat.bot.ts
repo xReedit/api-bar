@@ -632,17 +632,20 @@ router.post("/create-cliente-from-bot", async (req, res, next) => {
             nombres: nombres.toUpperCase(),
             f_registro: new Date().toISOString().slice(0, 19).replace('T', ' '),
             ruc: '',
-            direccion: ''
+            direccion: '',
+            pwa_id: '',
+            email: '',
+            estado: 0
         }        
     })
     const idcliente = rpt.idcliente;
 
     // ahora guardamos en cliente-sede
-    const rptClienteSede = await prisma.cliente_sede.create({
+    await prisma.cliente_sede.create({
         data: {
             idcliente: idcliente,
             idsede: idsede,
-            telefono: telefono            
+            telefono: telefono         
         }
     })   
 

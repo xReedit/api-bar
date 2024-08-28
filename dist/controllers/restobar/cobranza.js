@@ -124,12 +124,12 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
             case 2:
                 // Últimos 3 días antes del vencimiento           
                 _a.sent();
-                res.json({ mostrar: true, tiempo: 5, diasRestantes: diasRestantes, msj: mensaje });
+                res.json({ mostrar: true, tiempo: 3, diasRestantes: diasRestantes, msj: mensaje });
                 return [3 /*break*/, 11];
             case 3:
                 if (!(diasRestantes <= 0)) return [3 /*break*/, 10];
                 diasPasados = Math.abs(diasRestantes);
-                tiempoAdvertencia = 5 + (diasPasados * 5);
+                tiempoAdvertencia = 5 + (diasPasados * 3);
                 if (!(diasPasados > 1 && diasPasados <= 10)) return [3 /*break*/, 5];
                 mensaje = "Hace ".concat(diasPasados, " d\u00EDas venci\u00F3 el pago del servicio. Pague a tiempo y evite cobros adicionales.");
                 // bloqueamos contador

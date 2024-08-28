@@ -86,27 +86,31 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
             case 1:
                 rptData = _a.sent();
                 rpt = rptData[0];
-                console.log('rpt', rpt);
                 if (!(rptData.length > 0)) return [3 /*break*/, 12];
                 ultimaFechaPago = rpt.ultimo_pago;
                 frecuenciaPago = rpt.frecuencia.toLowerCase();
                 fechaProximoPago = void 0;
-                if (frecuenciaPago === 'mensual') {
-                    fechaProximoPago = new Date(ultimaFechaPago);
-                    fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 1);
-                }
-                else if (frecuenciaPago === 'semestral') {
-                    fechaProximoPago = new Date(ultimaFechaPago);
-                    fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 6);
-                }
-                else if (frecuenciaPago === 'anual') {
-                    fechaProximoPago = new Date(ultimaFechaPago);
-                    fechaProximoPago.setFullYear(fechaProximoPago.getFullYear() + 1);
+                // const getNextPay: any = {
+                //     mensual: fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 1),
+                //     semestral: fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 6),
+                //     anual: fechaProximoPago.setMonth(fechaProximoPago.getFullYear() + 1)
+                // }
+                fechaProximoPago = new Date(ultimaFechaPago);
+                // fechaProximoPago = getNextPay(frecuenciaPago);
+                switch (frecuenciaPago) {
+                    case 'mensual':
+                        fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 1);
+                        break;
+                    case 'semestral':
+                        fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 6);
+                        break;
+                    case 'anual':
+                        fechaProximoPago.setFullYear(fechaProximoPago.getFullYear() + 1);
                 }
                 diasRestantes = Math.ceil((fechaProximoPago.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
                 console.log('diasRestantes', diasRestantes, fechaProximoPago, hoy);
                 mensaje = 'Le recordamos el pago del servicio.';
-                if (!(diasRestantes <= 3 && diasRestantes > -1)) return [3 /*break*/, 3];
+                if (!(diasRestantes > 0 && diasRestantes <= 1)) return [3 /*break*/, 3];
                 // Últimos 3 días antes del vencimiento           
                 return [4 /*yield*/, prisma.sede_estado.updateMany({
                         where: {

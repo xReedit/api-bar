@@ -1,8 +1,4 @@
 "use strict";
-var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cooked, raw) {
-    if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
-    return cooked;
-};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -68,7 +64,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
-var axios_1 = __importDefault(require("axios"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
 dotenv_1["default"].config();
@@ -76,100 +71,82 @@ var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        res.status(200).json({ message: 'Estás conectado al api dash ventas' });
+        res.status(200).json({ message: 'Estás conectado al api dash PRODUCTO RECETA' });
         return [2 /*return*/];
     });
 }); });
-// obtener el total de ventas
-router.post("/total", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, params, ssql, rpt, sqlExec, rptExec, error_1;
+// obtener total pedidos
+router.post("/get-productos-receta", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, params, ssql, rptExec, error_1;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
-                console.log('params', params);
                 _b.label = 1;
             case 1:
-                _b.trys.push([1, 4, , 5]);
-                ssql = "CALL procedure_module_dash_ventas(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                console.log('object', ssql);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_ventas(", ", ", ")"], ["CALL procedure_module_dash_ventas(", ", ", ")"])), idsede, JSON.stringify(params))];
+                _b.trys.push([1, 3, , 4]);
+                ssql = "CALL procedure_module_dash_productos_receta(".concat(idsede, ")");
+                console.log('ssql', ssql);
+                return [4 /*yield*/, prisma.$queryRawUnsafe(ssql)];
             case 2:
-                rpt = _b.sent();
-                sqlExec = rpt[0].f0;
-                return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
-            case 3:
                 rptExec = _b.sent();
+                rptExec = normalizeReceta(rptExec);
                 rptExec = (0, dash_util_1.normalizeResponse)(rptExec);
-                console.log(rptExec);
                 res.status(200).json(rptExec);
-                return [3 /*break*/, 5];
-            case 4:
+                return [3 /*break*/, 4];
+            case 3:
                 error_1 = _b.sent();
                 res.status(500).json(error_1);
-                return [3 /*break*/, 5];
-            case 5: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); });
-// get meta de venta diaria
-router.post("/meta-venta", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, rpt, meta, error_2;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+router.post("/get-productos-bodega", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, idproducto_stock, params, ssql, productos, error_2;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                idsede = req.body.idsede;
-                _a.label = 1;
+                _a = req.body, idsede = _a.idsede, idproducto_stock = _a.idproducto_stock, params = _a.params;
+                console.log('idproducto_stock', idproducto_stock);
+                if (idproducto_stock === '') {
+                    res.status(200).json([]);
+                }
+                _b.label = 1;
             case 1:
-                _a.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["select diaria from sede_meta where idsede = ", " and estado = '0'"], ["select diaria from sede_meta where idsede = ", " and estado = '0'"])), idsede)];
+                _b.trys.push([1, 3, , 4]);
+                ssql = " select p.idproducto, pds.idproducto_stock, p.idproducto_familia idseccion, p.precio, p.precio_unitario, p.precio_venta, pdf.descripcion nom_seccion, p.descripcion nom_producto, a.descripcion nom_almacen            \n            from producto p \n            inner join producto_familia pdf on p.idproducto_familia = pdf.idproducto_familia\n            inner join producto_stock pds on p.idproducto = pds.idproducto\n            inner join almacen a on a.idalmacen = pds.idalmacen \n            where pds.idproducto_stock in (".concat(idproducto_stock, ") and p.idsede = ").concat(idsede, " and p.estado = 0 and a.estado = 0 \n            order by p.descripcion");
+                return [4 /*yield*/, prisma.$queryRawUnsafe(ssql)];
             case 2:
-                rpt = _a.sent();
-                meta = rpt[0] ? rpt[0].diaria : 0;
-                res.status(200).json({
-                    meta: meta
+                productos = _b.sent();
+                productos.forEach(function (element) {
+                    element.cantidad = 0;
+                    element.total = 0;
+                    element.costo = 0;
+                    element.rentabilidad = 0;
                 });
+                console.log('productos', productos);
+                res.status(200).json(productos);
                 return [3 /*break*/, 4];
             case 3:
-                error_2 = _a.sent();
+                error_2 = _b.sent();
                 res.status(500).json(error_2);
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }
     });
 }); });
-// solicitar a api gpt el analisis de ventas
-router.post("/analisis-ventas", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, message, nom_assistant, assistants, assistant, url, data, response, error_3;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                _a = req.body, message = _a.message, nom_assistant = _a.nom_assistant;
-                assistants = [
-                    { id: 9, name: 'ventas', url: 'analisis-estadistico' },
-                    { id: 10, name: 'productos', url: 'analisis-estadistico' }
-                ];
-                assistant = assistants.find(function (element) { return element.name === nom_assistant; });
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 3, , 4]);
-                url = "".concat(process.env.URL_API_GPT, "/analisis-estadistico");
-                data = {
-                    message: message,
-                    idassistant: assistant === null || assistant === void 0 ? void 0 : assistant.id
-                };
-                return [4 /*yield*/, axios_1["default"].post(url, data)];
-            case 2:
-                response = _b.sent();
-                res.status(200).json(response.data);
-                return [3 /*break*/, 4];
-            case 3:
-                error_3 = _b.sent();
-                res.status(500).json(error_3);
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
-        }
+function normalizeReceta(data) {
+    var rpt = [];
+    data.forEach(function (element) {
+        rpt.push({
+            iditem: element.f0,
+            descripcion: element.f1,
+            precio: element.f2,
+            costo: element.f3,
+            rentabilidad: element.f4
+        });
     });
-}); });
+    return rpt;
+}
 exports["default"] = router;
-var templateObject_1, templateObject_2;

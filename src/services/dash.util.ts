@@ -1,5 +1,6 @@
 // normalizar respuesta procedures
 export const normalizeResponse = (rptExec: any) => {
+    if ( rptExec.length === 0 ) return [];
         return rptExec.map((item: any) => {
             return {
                 ...item,

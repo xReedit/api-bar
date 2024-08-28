@@ -42,6 +42,7 @@ var cobranza_1 = __importDefault(require("../controllers/restobar/cobranza"));
 var ventas_1 = __importDefault(require("../controllers/dashboard/ventas"));
 var iecaja_1 = __importDefault(require("../controllers/dashboard/iecaja"));
 var colaboradores_1 = __importDefault(require("../controllers/dashboard/colaboradores"));
+var producto_receta_1 = __importDefault(require("../controllers/dashboard/producto-receta"));
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a nuestra API RESTOBAR port: 20223' });
@@ -64,5 +65,6 @@ router.use('/restobar/cobranza', cobranza_1["default"]);
 router.use('/dash-ventas', ventas_1["default"]);
 router.use('/dash-iecaja', iecaja_1["default"]);
 router.use('/dash-colaboradores', colaboradores_1["default"]);
+router.use('/dash-producto-receta', producto_receta_1["default"]);
 // router.use('/usuario', auth, usuario);
 exports["default"] = router;

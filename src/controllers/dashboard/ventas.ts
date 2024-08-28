@@ -50,11 +50,21 @@ router.post("/meta-venta", async (req, res) => {
 
 // solicitar a api gpt el analisis de ventas
 router.post("/analisis-ventas", async (req, res) => {
-    const { message } = req.body;    
+    const { message, nom_assistant } = req.body;    
+
+    const assistants = [
+        {id: 9, name: 'ventas', url: 'analisis-estadistico'},
+        {id: 10, name: 'productos', url: 'analisis-estadistico'}
+    ]
+
+    const assistant = assistants.find((element: any) => element.name === nom_assistant);
+
+
     try {
         const url = `${process.env.URL_API_GPT}/analisis-estadistico`
         const data = {            
-            message: message
+            message: message,
+            idassistant: assistant?.id
         }
         const response = await axios.post(url, data);
         res.status(200).json(response.data);

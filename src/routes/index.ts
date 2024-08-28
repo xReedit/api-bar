@@ -14,6 +14,7 @@ import restobar_cobranza from "../controllers/restobar/cobranza";
 import dashboard_ventas from "../controllers/dashboard/ventas";
 import dashboard_iecaja from "../controllers/dashboard/iecaja";
 import dashboard_colaboradores from "../controllers/dashboard/colaboradores";
+import dashboard_producto_recta from "../controllers/dashboard/producto-receta";
 
 const router = express.Router();
 
@@ -41,6 +42,7 @@ router.use('/restobar/cobranza', restobar_cobranza);
 router.use('/dash-ventas', dashboard_ventas);
 router.use('/dash-iecaja', dashboard_iecaja);
 router.use('/dash-colaboradores', dashboard_colaboradores);
+router.use('/dash-producto-receta', dashboard_producto_recta);
 
 
 // router.use('/usuario', auth, usuario);

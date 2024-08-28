@@ -20,29 +20,38 @@ router.get("/advertencia/:idsede", async (req, res) => {
         }
     });
     let rpt = rptData[0];
-    console.log('rpt', rpt);
     
     if (rptData.length > 0) {
         const ultimaFechaPago = rpt.ultimo_pago;
         const frecuenciaPago = rpt.frecuencia.toLowerCase();
         let fechaProximoPago: any;
 
-        if (frecuenciaPago === 'mensual') {
-            fechaProximoPago = new Date(ultimaFechaPago);
-            fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 1);
-        } else if (frecuenciaPago === 'semestral') {
-            fechaProximoPago = new Date(ultimaFechaPago);
-            fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 6);
-        } else if (frecuenciaPago === 'anual') {
-            fechaProximoPago = new Date(ultimaFechaPago);
-            fechaProximoPago.setFullYear(fechaProximoPago.getFullYear() + 1);
+        // const getNextPay: any = {
+        //     mensual: fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 1),
+        //     semestral: fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 6),
+        //     anual: fechaProximoPago.setMonth(fechaProximoPago.getFullYear() + 1)
+        // }
+
+        fechaProximoPago = new Date(ultimaFechaPago);
+        // fechaProximoPago = getNextPay(frecuenciaPago);
+
+        switch (frecuenciaPago) {
+            case 'mensual':
+                fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 1);
+                break;
+            case 'semestral':
+                fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 6);
+                break;
+            case 'anual':
+                fechaProximoPago.setFullYear(fechaProximoPago.getFullYear() + 1);
         }
 
+        
         const diasRestantes = Math.ceil((fechaProximoPago.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
         console.log('diasRestantes', diasRestantes, fechaProximoPago, hoy);
 
         let mensaje = 'Le recordamos el pago del servicio.';
-        if (diasRestantes <= 3 && diasRestantes > -1) {
+        if (diasRestantes > 0 && diasRestantes <= 1) {
             // Últimos 3 días antes del vencimiento           
             await prisma.sede_estado.updateMany({
                         where: {

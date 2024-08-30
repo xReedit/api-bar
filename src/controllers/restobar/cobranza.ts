@@ -65,10 +65,10 @@ router.get("/advertencia/:idsede", async (req, res) => {
 
         //     res.json({ mostrar: true, tiempo: 3, diasRestantes: diasRestantes, msj: mensaje  });
         // } else 
-        if (diasRestantes > 1) {
-        // Días pasados desde el vencimiento
-            const diasPasados = Math.abs(diasRestantes);
+        const diasPasados = Math.abs(diasRestantes);
+        if (diasPasados > 1) {
             let tiempoAdvertencia = 5 + (diasPasados * 3);
+        // Días pasados desde el vencimiento
             
             if (diasPasados > 1 && diasPasados <= 10) {
                 // mensaje = `Estimado cliente, han pasado ${diasPasados} días desde la fecha de vencimiento de su pago. Pague a tiempo y evite cobros adicionales.`;

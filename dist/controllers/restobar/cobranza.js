@@ -110,8 +110,8 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                 diasRestantes = Math.ceil((fechaProximoPago.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
                 console.log('diasRestantes', diasRestantes, fechaProximoPago, hoy);
                 mensaje = 'Le recordamos el pago del servicio.';
-                if (!(diasRestantes > 1)) return [3 /*break*/, 8];
                 diasPasados = Math.abs(diasRestantes);
+                if (!(diasPasados > 1)) return [3 /*break*/, 8];
                 tiempoAdvertencia = 5 + (diasPasados * 3);
                 if (!(diasPasados > 1 && diasPasados <= 10)) return [3 /*break*/, 3];
                 // mensaje = `Estimado cliente, han pasado ${diasPasados} días desde la fecha de vencimiento de su pago. Pague a tiempo y evite cobros adicionales.`;

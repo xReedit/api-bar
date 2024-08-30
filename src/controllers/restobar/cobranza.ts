@@ -65,7 +65,7 @@ router.get("/advertencia/:idsede", async (req, res) => {
 
         //     res.json({ mostrar: true, tiempo: 3, diasRestantes: diasRestantes, msj: mensaje  });
         // } else 
-        if (diasRestantes <= 2) {
+        if (diasRestantes > 1) {
         // Días pasados desde el vencimiento
             const diasPasados = Math.abs(diasRestantes);
             let tiempoAdvertencia = 5 + (diasPasados * 3);

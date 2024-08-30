@@ -20,8 +20,10 @@ router.get("/advertencia/:idsede", async (req, res) => {
         }
     });
     let rpt = rptData[0];
+
+    res.json({ mostrar: false });
     
-    if (rptData.length > 0) {
+    /*if (rptData.length > 0) {
         const ultimaFechaPago = rpt.ultimo_pago;
         const frecuenciaPago = rpt.frecuencia.toLowerCase();
         let fechaProximoPago: any;
@@ -128,7 +130,7 @@ router.get("/advertencia/:idsede", async (req, res) => {
         
     } else {
         res.json({ mostrar: false });
-    }
+    }*/
 });
 
 export default router;

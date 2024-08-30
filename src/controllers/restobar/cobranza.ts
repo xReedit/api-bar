@@ -51,23 +51,23 @@ router.get("/advertencia/:idsede", async (req, res) => {
         console.log('diasRestantes', diasRestantes, fechaProximoPago, hoy);
 
         let mensaje = 'Le recordamos el pago del servicio.';
-        if (diasRestantes > 0 && diasRestantes <= 1) {
-            // Últimos 3 días antes del vencimiento           
-            await prisma.sede_estado.updateMany({
-                        where: {
-                            idsede: parseInt(idsede),
-                            is_advertencia: '0'
-                        },
-                        data: {                            
-                            is_advertencia: '1'                       
-                        }
-                    });
+        // if (diasRestantes > 0 && diasRestantes <= 1) {
+        //     // Últimos 3 días antes del vencimiento           
+        //     await prisma.sede_estado.updateMany({
+        //                 where: {
+        //                     idsede: parseInt(idsede),
+        //                     is_advertencia: '0'
+        //                 },
+        //                 data: {                            
+        //                     is_advertencia: '1'                       
+        //                 }
+        //             });
 
-            res.json({ mostrar: true, tiempo: 3, diasRestantes: diasRestantes, msj: mensaje  });
-        } else 
-        if (diasRestantes > 1) {
+        //     res.json({ mostrar: true, tiempo: 3, diasRestantes: diasRestantes, msj: mensaje  });
+        // } else 
+        const diasPasados = Math.abs(diasRestantes);
+        if (diasPasados > 1) {
         // Días pasados desde el vencimiento
-            const diasPasados = Math.abs(diasRestantes);
             let tiempoAdvertencia = 5 + (diasPasados * 3);
             
             if (diasPasados > 1 && diasPasados <= 10) {

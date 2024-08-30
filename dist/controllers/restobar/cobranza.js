@@ -86,7 +86,7 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
             case 1:
                 rptData = _a.sent();
                 rpt = rptData[0];
-                if (!(rptData.length > 0)) return [3 /*break*/, 12];
+                if (!(rptData.length > 0)) return [3 /*break*/, 10];
                 ultimaFechaPago = rpt.ultimo_pago;
                 frecuenciaPago = rpt.frecuencia.toLowerCase();
                 fechaProximoPago = void 0;
@@ -110,27 +110,10 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                 diasRestantes = Math.ceil((fechaProximoPago.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
                 console.log('diasRestantes', diasRestantes, fechaProximoPago, hoy);
                 mensaje = 'Le recordamos el pago del servicio.';
-                if (!(diasRestantes > 0 && diasRestantes <= 1)) return [3 /*break*/, 3];
-                // Últimos 3 días antes del vencimiento           
-                return [4 /*yield*/, prisma.sede_estado.updateMany({
-                        where: {
-                            idsede: parseInt(idsede),
-                            is_advertencia: '0'
-                        },
-                        data: {
-                            is_advertencia: '1'
-                        }
-                    })];
-            case 2:
-                // Últimos 3 días antes del vencimiento           
-                _a.sent();
-                res.json({ mostrar: true, tiempo: 3, diasRestantes: diasRestantes, msj: mensaje });
-                return [3 /*break*/, 11];
-            case 3:
-                if (!(diasRestantes > 1)) return [3 /*break*/, 10];
                 diasPasados = Math.abs(diasRestantes);
+                if (!(diasPasados > 1)) return [3 /*break*/, 8];
                 tiempoAdvertencia = 5 + (diasPasados * 3);
-                if (!(diasPasados > 1 && diasPasados <= 10)) return [3 /*break*/, 5];
+                if (!(diasPasados > 1 && diasPasados <= 10)) return [3 /*break*/, 3];
                 // mensaje = `Estimado cliente, han pasado ${diasPasados} días desde la fecha de vencimiento de su pago. Pague a tiempo y evite cobros adicionales.`;
                 mensaje = "Estimado cliente, han pasado ".concat(diasPasados, " d\u00EDas desde la fecha de vencimiento de su pago. Le recordamos amablemente que realice su pago para evitar interrupciones en el servicio. Agradecemos su atenci\u00F3n a este asunto y estamos aqu\u00ED para ayudarle con cualquier pregunta que pueda tener.");
                 // bloqueamos contador
@@ -143,19 +126,19 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                             is_advertencia: '1'
                         }
                     })];
-            case 4:
+            case 2:
                 // bloqueamos contador
                 _a.sent();
-                _a.label = 5;
-            case 5:
+                _a.label = 3;
+            case 3:
                 if (diasPasados > 10 && diasPasados <= 20) {
                     // mensaje = `Estimado cliente, han pasado ${diasPasados} días venció el pago del servicio. En caso de que el retraso o impago supere los 20 (veinte) días, EL PROVEEDOR podrá suspender el servicio, hasta la confirmación del pago debido. Papaya.com.pe no será responsable de los perjuicios que eso le pueda ocasionar al CLIENTE, o a los clientes del CLIENTE.`;
                     mensaje = "Estimado cliente, han pasado ".concat(diasPasados, " d\u00EDas desde el vencimiento de su pago. Le recordamos amablemente que, si el retraso o impago supera los 20 d\u00EDas, nos veremos en la necesidad de suspender el servicio hasta la confirmaci\u00F3n del pago. Papaya.com.pe no se har\u00E1 responsable de los posibles inconvenientes que esto pueda causar a usted o a sus clientes. Agradecemos su pronta atenci\u00F3n a este asunto.");
                 }
-                if (!(diasPasados > 20)) return [3 /*break*/, 9];
+                if (!(diasPasados > 20)) return [3 /*break*/, 7];
                 // mensaje = `Servicio suspendido por falta de pago. Regule el pago para reactivar el servicio.`;
                 mensaje = "Estimado cliente, su servicio ha sido suspendido debido a la falta de pago. Le solicitamos amablemente que regularice su pago para poder reactivar el servicio. Agradecemos su pronta atenci\u00F3n a este asunto.";
-                if (!(rpt.activo === '0')) return [3 /*break*/, 8];
+                if (!(rpt.activo === '0')) return [3 /*break*/, 6];
                 return [4 /*yield*/, prisma.sede_suscripcion.update({
                         where: {
                             idsede_suscripcion: rpt.idsede_suscripcion
@@ -164,7 +147,7 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                             activo: '1'
                         }
                     })];
-            case 6:
+            case 4:
                 _a.sent();
                 // actualizamos el estado de la sede
                 return [4 /*yield*/, prisma.sede_estado.updateMany({
@@ -176,24 +159,24 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                             fecha_bloqueo: new Date()
                         }
                     })];
-            case 7:
+            case 5:
                 // actualizamos el estado de la sede
                 _a.sent();
-                _a.label = 8;
-            case 8:
+                _a.label = 6;
+            case 6:
                 tiempoAdvertencia = 1000;
-                _a.label = 9;
-            case 9:
+                _a.label = 7;
+            case 7:
                 res.json({ mostrar: true, tiempo: tiempoAdvertencia, diasRestantes: diasRestantes, diasPasados: diasPasados, msj: mensaje });
-                return [3 /*break*/, 11];
+                return [3 /*break*/, 9];
+            case 8:
+                res.json({ mostrar: false });
+                _a.label = 9;
+            case 9: return [3 /*break*/, 11];
             case 10:
                 res.json({ mostrar: false });
                 _a.label = 11;
-            case 11: return [3 /*break*/, 13];
-            case 12:
-                res.json({ mostrar: false });
-                _a.label = 13;
-            case 13: return [2 /*return*/];
+            case 11: return [2 /*return*/];
         }
     });
 }); });

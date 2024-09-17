@@ -206,5 +206,36 @@ router.post("/get-pedidos-sin-corbrar", function (req, res) { return __awaiter(v
         }
     });
 }); });
+// obtener descuentos aplicados
+router.post("/get-descuentos-aplicados", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, params, rpt, sqlExec, rptExec, error_5;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idsede = _a.idsede, params = _a.params;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 4, , 5]);
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["CALL procedure_module_dash_descuentos(", ", ", ")"], ["CALL procedure_module_dash_descuentos(", ", ", ")"])), idsede, JSON.stringify(params))];
+            case 2:
+                rpt = _b.sent();
+                sqlExec = rpt[0].f0;
+                return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
+            case 3:
+                rptExec = _b.sent();
+                // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
+                rptExec = (0, dash_util_1.normalizeResponse)(rptExec);
+                res.status(200).json(rptExec);
+                return [3 /*break*/, 5];
+            case 4:
+                error_5 = _b.sent();
+                res.status(500).json(error_5);
+                return [3 /*break*/, 5];
+            case 5:
+                prisma.$disconnect();
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5;

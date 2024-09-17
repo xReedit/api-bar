@@ -11,6 +11,11 @@ app.use(cors());
 app.use(express.json());
 app.use(errorHandler);
 
+// Aumentar el límite de tamaño de la carga útil a 50mb
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+
 app.use('/api-restobar', routes)
 
 const portConect = env.PORT || 20223;

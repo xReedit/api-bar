@@ -1,10 +1,15 @@
-import * as express from "express";
+import express from "express";
 import { PrismaClient } from "@prisma/client";
 import axios from "axios";
 
 import dotenv from 'dotenv';
 import { normalizeResponse } from "../../services/dash.util";
 dotenv.config();
+
+const app = express();
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -26,8 +31,7 @@ router.post("/total", async (req, res) => {
         const sqlExec = rpt[0].f0            
         let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);            
         rptExec = normalizeResponse(rptExec);
-           
-        console.log(rptExec);
+                   
         res.status(200).json(rptExec);        
     } catch (error) {
         res.status(500).json(error);        

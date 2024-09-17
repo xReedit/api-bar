@@ -12,6 +12,9 @@ var app = (0, express_1["default"])();
 app.use((0, cors_1["default"])());
 app.use(express_1["default"].json());
 app.use(error_1.errorHandler);
+// Aumentar el límite de tamaño de la carga útil a 50mb
+app.use(express_1["default"].json({ limit: '50mb' }));
+app.use(express_1["default"].urlencoded({ limit: '50mb', extended: true }));
 app.use('/api-restobar', routes_1["default"]);
 var portConect = process_1.env.PORT || 20223;
 app.get('/', function (req, res) {

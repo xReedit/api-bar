@@ -92,4 +92,25 @@ router.post("/get-pedidos-sin-corbrar", async (req, res) => {
     prisma.$disconnect();        
 });
 
+// obtener descuentos aplicados
+router.post("/get-descuentos-aplicados", async (req, res) => {
+    const { idsede, params } = req.body;    
+    try {
+        // const ssql = `CALL procedure_module_dash_descuentos(${idsede}, ${JSON.stringify(params)})`;        
+        const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_descuentos(${idsede}, ${JSON.stringify(params)})`;        
+        const sqlExec = rpt[0].f0                 
+        let rptExec: any = await prisma.$queryRawUnsafe(sqlExec); 	                                    
+
+        // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
+        rptExec = normalizeResponse(rptExec);
+
+
+        res.status(200).json(rptExec);
+    } catch (error) {
+        res.status(500).json(error);        
+    }
+    
+    prisma.$disconnect();        
+});
+
 export default router;

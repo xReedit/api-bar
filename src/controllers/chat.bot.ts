@@ -745,5 +745,12 @@ router.post("/register-used-gpt-sede", async (req, res, next) => {
     prisma.$disconnect();
 })
 
+// consultar el estado del pedido
+router.get("/get-estado-pedido/:idsede/:telefono", async (req, res) => {
+    const { idsede, telefono } = req.params;
+    const rpt: any = await prisma.$queryRaw`call procedure_get_estado_pedido_bot(${idsede}, ${telefono})`
+    res.status(200).send(rpt);    
+})
+
 export default router;
 

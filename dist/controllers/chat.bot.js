@@ -970,5 +970,20 @@ router.post("/register-used-gpt-sede", function (req, res, next) { return __awai
         }
     });
 }); });
+// consultar el estado del pedido
+router.get("/get-estado-pedido/:idsede/:telefono", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, telefono, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.params, idsede = _a.idsede, telefono = _a.telefono;
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_16 || (templateObject_16 = __makeTemplateObject(["call procedure_get_estado_pedido_bot(", ", ", ")"], ["call procedure_get_estado_pedido_bot(", ", ", ")"])), idsede, telefono)];
+            case 1:
+                rpt = _b.sent();
+                res.status(200).send(rpt);
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16;

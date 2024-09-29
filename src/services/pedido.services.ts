@@ -431,9 +431,9 @@ class PedidoServices {
     }
 
     
-    private getSubtotalCostoEntrega(datosEntrega: any) {
-        let deliveryCost = datosEntrega.delivery_cost || 0;
-        let distance = datosEntrega.distance || 0;
+    private getSubtotalCostoEntrega(datosEntrega: any) {        
+        let deliveryCost = datosEntrega.delivery_cost || datosEntrega.costo_entrega || 0;
+        let distance = datosEntrega.distance || datosEntrega.distancia || 0;
 
         let subtotalCostoEntrega = {
             id: 0,

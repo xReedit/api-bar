@@ -46,31 +46,99 @@ router.get("/get-sede/:idsede", async (req, res) => {
 });
 
 // busca cliente por el numero de telefono
-router.get("/cliente/:telefono", async (req, res) => {    
-    const { telefono } = req.params;
-    const rpt = await prisma.$queryRaw`
-        SELECT c.idcliente, c.nombres, c.direccion, c.telefono, cast(COALESCE(cpd.idcliente_pwa_direccion,0) as char) pwa_direccion,
-    JSON_ARRAYAGG(
-        JSON_OBJECT(
-        'idcliente_pwa_direccion', cpd.idcliente_pwa_direccion,
-        'direccion', concat(cpd.direccion, ', ', cpd.ciudad, ' ', cpd.codigo),
-        'referencia', cpd.referencia,
-        'latitude', cpd.latitude,
-        'longitude', cpd.longitude 
-        )
-    ) AS direcciones
-FROM cliente c
-left JOIN (
-		select cp.idcliente, cp.idcliente_pwa_direccion, cp.direccion, cp.referencia, cp.latitude, cp.longitude, cp.ciudad, cp.codigo 
-		from cliente_pwa_direccion cp
-		order by cp.idcliente_pwa_direccion desc		
-	) cpd USING (idcliente)
-WHERE REPLACE(c.telefono, ' ', '') = REPLACE(${telefono}, ' ', '')
-GROUP by SOUNDEX(c.nombres)
-ORDER BY c.idcliente DESC
-LIMIT 1;`;    
+router.get("/cliente/:telefono/:idsede", async (req, res) => {    
+    const { telefono, idsede } = req.params;
+    
+    // telefono del cliente sin espacios en blanco
+    let telefono_cliente = telefono.replace(/\s/g, '');
 
-    res.status(200).send(rpt);
+    // 1. buscar cliente por telefono y sede
+    const cliente: any = await prisma.$queryRaw`SELECT c.idcliente, c.nombres, c.direccion, c.telefono FROM cliente c 
+        INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente
+        WHERE cs.idsede = ${idsede} AND REPLACE(c.telefono, ' ', '') LIKE ${'%' + telefono_cliente + '%'}`;
+
+    // sino se encuetra cliente salir
+    if (cliente.length === 0) {
+        res.status(200).send(cliente);
+        return;
+    }
+    // 2. si no encuentra el cliente por telefono, buscar direcciones registradas
+    const cliente_direcciones: any = await prisma.$queryRaw`SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude 
+            FROM cliente_pwa_direccion cpd 
+            WHERE cpd.idcliente = ${cliente[0].idcliente} 
+            GROUP BY cpd.direccion
+            ORDER BY cpd.idcliente_pwa_direccion DESC`;
+
+    // 3. Si existe cliente, agregar las direcciones
+    let lista_direcciones: any = [];
+    cliente[0].pwa_direccion = 0;
+    if ( cliente_direcciones.length > 0 ){
+        cliente[0].pwa_direccion = cliente_direcciones[0].idcliente_pwa_direccion;
+        cliente_direcciones.forEach((element: any) => {
+            lista_direcciones.push({
+                idcliente_pwa_direccion: element.idcliente_pwa_direccion,
+                direccion: element.direccion,
+                referencia: element.referencia,
+                latitude: element.latitude,
+                longitude: element.longitude
+            })
+        })
+    } else {
+        const cliente_direcciones_string: any = await prisma.$queryRaw`select c.idcliente, c.direccion, c.referencia 
+            from cliente_sede cs 
+            inner join cliente c on cs.idcliente = c.idcliente where c.idcliente=${cliente[0].idcliente} 
+            GROUP by c.direccion`;
+        
+        if ( cliente_direcciones_string.length > 0 ){
+            cliente_direcciones_string.forEach((element: any) => {
+                lista_direcciones.push({
+                    idcliente_pwa_direccion: 0,
+                    direccion: element.direccion,
+                    referencia: element.referencia,
+                    latitude: '',
+                    longitude: ''
+                })
+            })
+        }
+    }
+
+    // 4. retornar cliente con direcciones
+    const data = [{        
+        idcliente: cliente[0].idcliente,
+        nombres: cliente[0].nombres,
+        direccion: cliente[0].direccion,
+        telefono: cliente[0].telefono,
+        pwa_direccion: cliente[0].pwa_direccion,
+        direcciones: lista_direcciones
+    }]
+
+    res.status(200).send(data);
+
+    
+//     const rpt = await prisma.$queryRaw`
+//         SELECT c.idcliente, c.nombres, c.direccion, c.telefono, cast(COALESCE(cpd.idcliente_pwa_direccion,0) as char) pwa_direccion,
+//     JSON_ARRAYAGG(
+//         JSON_OBJECT(
+//         'idcliente_pwa_direccion', cpd.idcliente_pwa_direccion,
+//         'direccion', concat(cpd.direccion, ', ', cpd.ciudad, ' ', cpd.codigo),
+//         'referencia', cpd.referencia,
+//         'latitude', cpd.latitude,
+//         'longitude', cpd.longitude 
+//         )
+//     ) AS direcciones
+// FROM cliente c
+// inner join cliente_sede cs on cs.idcliente = c.idcliente
+// left JOIN (
+// 		select cp.idcliente, cp.idcliente_pwa_direccion, cp.direccion, cp.referencia, cp.latitude, cp.longitude, cp.ciudad, cp.codigo 
+// 		from cliente_pwa_direccion cp
+// 		order by cp.idcliente_pwa_direccion desc		
+// 	) cpd on cpd.idcliente = c.idcliente 
+// WHERE cs.idsede = 13 and REPLACE(c.telefono, ' ', '') = REPLACE(${telefono}, ' ', '')
+// GROUP by c.telefono, SOUNDEX(c.nombres)
+// ORDER BY c.idcliente DESC
+// LIMIT 1;`;    
+
+    // res.status(200).send(rpt);
 })
 
 // obtener horarios y dias de atención
@@ -711,21 +779,38 @@ router.get("/get-list-productos-disponibles/:idsede", async (req, res, next) => 
 // registra la direccion del cliente para el pedido - bot
 router.post("/create-direccion-cliente-pedido-bot", async (req, res, next) => {
     const { direccion, idcliente } = req.body;   
-    console.log('direccion', direccion); 
-    console.log('idcliente', idcliente);
+    // console.log('direccion', direccion); 
+    // console.log('idcliente', idcliente);
+
+    // 1 - buscar si la direccion ya existe
+    const rptDireccion: any = await prisma.cliente_pwa_direccion.findMany({
+        where: {
+            AND: {
+                idcliente: idcliente,
+                direccion: direccion.direccion
+            }
+        }
+    }).catch(next);
+
+    // si la direccion ya existe retornamos
+    if (rptDireccion.length > 0) {
+        res.status(200).send(rptDireccion);
+        prisma.$disconnect();
+        return;
+    }
 
     const rpt = await prisma.cliente_pwa_direccion.create({        
         data: {
             idcliente: idcliente,
             direccion: direccion.direccion,
-            referencia: direccion.referencia,
-            latitude: direccion.latitude,
-            longitude: direccion.longitude,
-            ciudad: direccion.ciudad,
-            provincia: direccion.provincia,
-            departamento: direccion.departamento,
-            codigo: direccion.codigo,
-            pais: direccion.pais,
+            referencia: direccion.referencia || '',
+            latitude: direccion.coordenadas.latitude || '',
+            longitude: direccion.coordenadas.longitude || '',
+            ciudad: direccion.political.ciudad || '',
+            provincia: direccion.political.provincia || '',
+            departamento: direccion.political.departamento || '',
+            codigo: direccion.political.codigo || '',
+            pais: direccion.political.pais || '',
             titulo: ''            
         }
     }).catch(next);

@@ -381,8 +381,8 @@ var PedidoServices = /** @class */ (function () {
         });
     };
     PedidoServices.prototype.getSubtotalCostoEntrega = function (datosEntrega) {
-        var deliveryCost = datosEntrega.delivery_cost || 0;
-        var distance = datosEntrega.distance || 0;
+        var deliveryCost = datosEntrega.delivery_cost || datosEntrega.costo_entrega || 0;
+        var distance = datosEntrega.distance || datosEntrega.distancia || 0;
         var subtotalCostoEntrega = {
             id: 0,
             quitar: true,

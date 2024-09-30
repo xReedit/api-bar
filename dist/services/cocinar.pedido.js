@@ -45,7 +45,7 @@ var axios_1 = __importDefault(require("axios"));
 var pedido_services_1 = __importDefault(require("./pedido.services"));
 var estructura_pedido_1 = __importDefault(require("../class/estructura.pedido"));
 var getEstructuraPedido = function (items, tipo_entrega, datos_entrega, idsede) { return __awaiter(void 0, void 0, void 0, function () {
-    var pedidoServices, classEstructuraPedido, rules, items_secciones, secciones, canales_consumo, canalConsumoMasPedido, direccion_entrega, arrTotales;
+    var pedidoServices, classEstructuraPedido, rules, items_secciones, secciones, canales_consumo, canalConsumoMasPedido, arrTotales;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -66,8 +66,7 @@ var getEstructuraPedido = function (items, tipo_entrega, datos_entrega, idsede) 
                 secciones = pedidoServices.cocinarPedido(secciones, items);
                 canalConsumoMasPedido = pedidoServices.setCanalConsumo(tipo_entrega, canales_consumo, secciones);
                 classEstructuraPedido.setTipoConsumo(canalConsumoMasPedido);
-                direccion_entrega = datos_entrega.direccion;
-                return [4 /*yield*/, pedidoServices.calcularTotalPedido(secciones, tipo_entrega, direccion_entrega)];
+                return [4 /*yield*/, pedidoServices.calcularTotalPedido(secciones, tipo_entrega, datos_entrega)];
             case 4:
                 arrTotales = _a.sent();
                 classEstructuraPedido.setSubtotal(arrTotales);

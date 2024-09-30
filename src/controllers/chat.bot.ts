@@ -64,8 +64,10 @@ router.get("/cliente/:telefono/:idsede", async (req, res) => {
     }
     // 2. si no encuentra el cliente por telefono, buscar direcciones registradas
     const cliente_direcciones: any = await prisma.$queryRaw`SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude 
-            FROM cliente_pwa_direccion cpd 
-            WHERE cpd.idcliente = ${cliente[0].idcliente} 
+            FROM cliente_pwa_direccion cpd
+            inner join cliente_sede cs on cs.idcliente = cpd.idcliente
+            inner join sede_costo_delivery scd on scd.idsede=cs.idsede
+            WHERE cpd.idcliente = ${cliente[0].idcliente} AND UPPER(scd.ciudades) LIKE CONCAT('%', UPPER(cpd.ciudad), '%')             
             GROUP BY cpd.direccion
             ORDER BY cpd.idcliente_pwa_direccion DESC`;
 
@@ -103,6 +105,8 @@ router.get("/cliente/:telefono/:idsede", async (req, res) => {
     }
 
     // 4. retornar cliente con direcciones
+    // solo enviamos los 7 primeros registros de la lista de direcciones
+    lista_direcciones = lista_direcciones.slice(0, 7);
     const data = [{        
         idcliente: cliente[0].idcliente,
         nombres: cliente[0].nombres,

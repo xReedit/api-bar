@@ -145,7 +145,7 @@ router.get("/cliente/:telefono/:idsede", function (req, res) { return __awaiter(
                     res.status(200).send(cliente);
                     return [2 /*return*/];
                 }
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude \n            FROM cliente_pwa_direccion cpd \n            WHERE cpd.idcliente = ", " \n            GROUP BY cpd.direccion\n            ORDER BY cpd.idcliente_pwa_direccion DESC"], ["SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude \n            FROM cliente_pwa_direccion cpd \n            WHERE cpd.idcliente = ", " \n            GROUP BY cpd.direccion\n            ORDER BY cpd.idcliente_pwa_direccion DESC"])), cliente[0].idcliente)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude \n            FROM cliente_pwa_direccion cpd\n            inner join cliente_sede cs on cs.idcliente = cpd.idcliente\n            inner join sede_costo_delivery scd on scd.idsede=cs.idsede\n            WHERE cpd.idcliente = ", " AND UPPER(scd.ciudades) LIKE CONCAT('%', UPPER(cpd.ciudad), '%')             \n            GROUP BY cpd.direccion\n            ORDER BY cpd.idcliente_pwa_direccion DESC"], ["SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude \n            FROM cliente_pwa_direccion cpd\n            inner join cliente_sede cs on cs.idcliente = cpd.idcliente\n            inner join sede_costo_delivery scd on scd.idsede=cs.idsede\n            WHERE cpd.idcliente = ", " AND UPPER(scd.ciudades) LIKE CONCAT('%', UPPER(cpd.ciudad), '%')             \n            GROUP BY cpd.direccion\n            ORDER BY cpd.idcliente_pwa_direccion DESC"])), cliente[0].idcliente)];
             case 2:
                 cliente_direcciones = _b.sent();
                 lista_direcciones = [];
@@ -178,6 +178,9 @@ router.get("/cliente/:telefono/:idsede", function (req, res) { return __awaiter(
                 }
                 _b.label = 5;
             case 5:
+                // 4. retornar cliente con direcciones
+                // solo enviamos los 7 primeros registros de la lista de direcciones
+                lista_direcciones = lista_direcciones.slice(0, 7);
                 data = [{
                         idcliente: cliente[0].idcliente,
                         nombres: cliente[0].nombres,

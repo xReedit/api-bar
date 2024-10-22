@@ -841,5 +841,64 @@ router.get("/get-estado-pedido/:idsede/:telefono", async (req, res) => {
     res.status(200).send(rpt);    
 })
 
+// bloquear numero de telefono
+router.post("/bloquear-telefono", async (req, res, next) => {
+    const { telefono, idsede, info } = req.body;    
+    const rpt = await prisma.chatbot_num_bloqueados.create({
+        data: {
+            telefono: telefono,
+            idsede: idsede,
+            info: info,
+            fecha_bloqueo: new Date()
+        }
+    }).catch(next);
+    res.status(200).send(rpt);    
+})
+
+// desbloquear numero de telefono
+router.post("/desbloquear-telefono", async (req, res, next) => {
+    const { telefono, idsede } = req.body;    
+    const rpt = await prisma.chatbot_num_bloqueados.deleteMany({
+        where: {
+            AND: {
+                telefono: telefono,
+                idsede: idsede
+            }
+        }
+    }).catch(next);
+    res.status(200).send(rpt);    
+})
+
+// listar telefonos bloqueados
+router.get("/list-telefonos-bloqueados/:idsede", async (req, res) => {
+    const { idsede } = req.params;
+    const rpt = await prisma.chatbot_num_bloqueados.findMany({
+        select: {
+            info: true,
+            fecha_bloqueo: true,
+        },
+        where: {
+            idsede: Number(idsede)
+        }
+    })
+    res.status(200).send(rpt);
+})
+
+// consultar numero bloqueado
+router.get("/get-telefono-bloqueado/:telefono/:idsede", async (req, res) => {
+    const { telefono, idsede } = req.params;
+    const rpt = await prisma.chatbot_num_bloqueados.findMany({
+        where: {
+            AND: {
+                telefono: telefono,
+                idsede: Number(idsede)
+            }
+        }
+    })
+
+    // retornar verdadero si el telefono esta bloqueado
+    res.status(200).send(rpt.length > 0);    
+})
+
 export default router;
 

@@ -1049,5 +1049,97 @@ router.get("/get-estado-pedido/:idsede/:telefono", function (req, res) { return 
         }
     });
 }); });
+// bloquear numero de telefono
+router.post("/bloquear-telefono", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, telefono, idsede, info, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, telefono = _a.telefono, idsede = _a.idsede, info = _a.info;
+                return [4 /*yield*/, prisma.chatbot_num_bloqueados.create({
+                        data: {
+                            telefono: telefono,
+                            idsede: idsede,
+                            info: info,
+                            fecha_bloqueo: new Date()
+                        }
+                    })["catch"](next)];
+            case 1:
+                rpt = _b.sent();
+                res.status(200).send(rpt);
+                return [2 /*return*/];
+        }
+    });
+}); });
+// desbloquear numero de telefono
+router.post("/desbloquear-telefono", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, telefono, idsede, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, telefono = _a.telefono, idsede = _a.idsede;
+                return [4 /*yield*/, prisma.chatbot_num_bloqueados.deleteMany({
+                        where: {
+                            AND: {
+                                telefono: telefono,
+                                idsede: idsede
+                            }
+                        }
+                    })["catch"](next)];
+            case 1:
+                rpt = _b.sent();
+                res.status(200).send(rpt);
+                return [2 /*return*/];
+        }
+    });
+}); });
+// listar telefonos bloqueados
+router.get("/list-telefonos-bloqueados/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rpt;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                return [4 /*yield*/, prisma.chatbot_num_bloqueados.findMany({
+                        select: {
+                            info: true,
+                            fecha_bloqueo: true
+                        },
+                        where: {
+                            idsede: Number(idsede)
+                        }
+                    })];
+            case 1:
+                rpt = _a.sent();
+                res.status(200).send(rpt);
+                return [2 /*return*/];
+        }
+    });
+}); });
+// consultar numero bloqueado
+router.get("/get-telefono-bloqueado/:telefono/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, telefono, idsede, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.params, telefono = _a.telefono, idsede = _a.idsede;
+                return [4 /*yield*/, prisma.chatbot_num_bloqueados.findMany({
+                        where: {
+                            AND: {
+                                telefono: telefono,
+                                idsede: Number(idsede)
+                            }
+                        }
+                    })
+                    // retornar verdadero si el telefono esta bloqueado
+                ];
+            case 1:
+                rpt = _b.sent();
+                // retornar verdadero si el telefono esta bloqueado
+                res.status(200).send(rpt.length > 0);
+                return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
 var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18;

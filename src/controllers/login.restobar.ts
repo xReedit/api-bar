@@ -54,6 +54,7 @@ router.post('/login', async (req: any, res: any) => {
         prisma.$disconnect();
 
         // userRestobar.idsede_restobar = _data.sede.idsede_restobar
+        console.log('0userRestobar', userRestobar);
 
         loginRestobar(req, res, userRestobar)
 

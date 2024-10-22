@@ -120,6 +120,7 @@ router.post('/login', function (req, res) { return __awaiter(void 0, void 0, voi
                 userRestobar = userRestobar[0];
                 prisma.$disconnect();
                 // userRestobar.idsede_restobar = _data.sede.idsede_restobar
+                console.log('0userRestobar', userRestobar);
                 (0, usuario_1.loginRestobar)(req, res, userRestobar);
                 return [3 /*break*/, 4];
             case 3:

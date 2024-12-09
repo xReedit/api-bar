@@ -888,7 +888,7 @@ router.get("/list-telefonos-bloqueados/:idsede", async (req, res) => {
 router.get("/get-telefono-bloqueado/:telefono/:idsede", async (req, res) => {
     const { telefono, idsede } = req.params;
     const rpt = await prisma.chatbot_num_bloqueados.findMany({
-        where: {
+        where: { 
             AND: {
                 telefono: telefono,
                 idsede: Number(idsede)

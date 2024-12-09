@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -61,6 +72,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
+var format_1 = require("date-fns/format");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -70,7 +82,7 @@ router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, f
     });
 }); });
 router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var link, permiso, registros;
+    var link, permiso, registros, formattedRegistros;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -117,8 +129,10 @@ router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, voi
                     })];
             case 2:
                 registros = _a.sent();
+                formattedRegistros = registros.map(function (registro) { return (__assign(__assign({}, registro), { fecha: (0, format_1.format)(new Date(registro.fecha), 'yyyy-MM-dd') })); });
                 // devolver los resultados
-                res.status(200).json({ success: true, data: registros });
+                // res.status(200).json({ success: true, data: registros });
+                res.status(200).json({ success: true, data: formattedRegistros });
                 prisma.$disconnect();
                 return [2 /*return*/];
         }

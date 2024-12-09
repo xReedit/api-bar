@@ -1,6 +1,7 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { fechaGuionASlash } from "../utils/utils";
+import { format } from "date-fns/format";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -56,9 +57,18 @@ router.get("/permisos/:link", async (req, res) => {
         }
     });
 
+    
+     // Formatear la fecha antes de devolver los resultados
+    const formattedRegistros = registros.map(registro => ({
+        ...registro,
+        fecha: format(new Date(registro.fecha), 'yyyy-MM-dd')
+    }));
+    
+
 
     // devolver los resultados
-    res.status(200).json({ success: true, data: registros });
+    // res.status(200).json({ success: true, data: registros });
+    res.status(200).json({ success: true, data: formattedRegistros });
     prisma.$disconnect();
 });
 

@@ -74,6 +74,7 @@ router.get('/reimprimir-comprobante/:idregistro_pago', function (req, res) { ret
             case 0:
                 idregistro_pago = req.params.idregistro_pago;
                 return [4 /*yield*/, prisma.registro_pago.findFirst({
+                        select: { idce: true },
                         where: { idregistro_pago: Number(idregistro_pago) }
                     })];
             case 1:

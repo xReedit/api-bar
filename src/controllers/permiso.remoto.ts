@@ -2,6 +2,7 @@ import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { fechaGuionASlash } from "../utils/utils";
 import { format } from "date-fns/format";
+import { parseISO } from "date-fns/parseISO";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -59,10 +60,14 @@ router.get("/permisos/:link", async (req, res) => {
 
     
      // Formatear la fecha antes de devolver los resultados
-    const formattedRegistros = registros.map(registro => ({
-        ...registro,
-        fecha: format(new Date(registro.fecha), 'yyyy-MM-dd')
-    }));
+    const formattedRegistros = registros.map(registro => {
+        // Asegurarse de que la fecha se maneje correctamente sin ajuste de zona horaria
+        const fechaISO = typeof registro.fecha === 'string' ? registro.fecha : registro.fecha.toISOString();
+        return {
+            ...registro,
+            fecha: format(parseISO(fechaISO), 'yyyy-MM-dd')
+        };
+    });
     
 
 

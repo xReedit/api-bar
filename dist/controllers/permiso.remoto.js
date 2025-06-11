@@ -73,6 +73,7 @@ exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var format_1 = require("date-fns/format");
+var parseISO_1 = require("date-fns/parseISO");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -129,7 +130,11 @@ router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, voi
                     })];
             case 2:
                 registros = _a.sent();
-                formattedRegistros = registros.map(function (registro) { return (__assign(__assign({}, registro), { fecha: (0, format_1.format)(new Date(registro.fecha), 'yyyy-MM-dd') })); });
+                formattedRegistros = registros.map(function (registro) {
+                    // Asegurarse de que la fecha se maneje correctamente sin ajuste de zona horaria
+                    var fechaISO = typeof registro.fecha === 'string' ? registro.fecha : registro.fecha.toISOString();
+                    return __assign(__assign({}, registro), { fecha: (0, format_1.format)((0, parseISO_1.parseISO)(fechaISO), 'yyyy-MM-dd') });
+                });
                 // devolver los resultados
                 // res.status(200).json({ success: true, data: registros });
                 res.status(200).json({ success: true, data: formattedRegistros });

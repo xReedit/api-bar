@@ -16,7 +16,7 @@ router.post("/get-productos-receta", async (req, res) => {
     const { idsede, params } = req.body;
     try {        
         const ssql = `CALL procedure_module_dash_productos_receta(${idsede})`;
-        console.log('ssql', ssql);        
+        //console.log('ssql', ssql);        
         let rptExec: any = await prisma.$queryRawUnsafe(ssql);
         rptExec = normalizeReceta(rptExec);
         rptExec = normalizeResponse(rptExec);       
@@ -29,7 +29,7 @@ router.post("/get-productos-receta", async (req, res) => {
 router.post("/get-productos-bodega", async (req, res) => {
     const { idsede, idproducto_stock, params } = req.body;
 
-    console.log('idproducto_stock', idproducto_stock);
+    //console.log('idproducto_stock', idproducto_stock);
     if (idproducto_stock === '')  {
         res.status(200).json([]);
     }
@@ -59,7 +59,7 @@ router.post("/get-productos-bodega", async (req, res) => {
             element.rentabilidad = 0;
         });
         
-        console.log('productos', productos);
+        //console.log('productos', productos);
         res.status(200).json(productos);
     } catch (error) {
         res.status(500).json(error);

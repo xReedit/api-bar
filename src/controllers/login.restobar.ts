@@ -54,7 +54,7 @@ router.post('/login', async (req: any, res: any) => {
         prisma.$disconnect();
 
         // userRestobar.idsede_restobar = _data.sede.idsede_restobar
-        console.log('0userRestobar', userRestobar);
+        //////console.log('0userRestobar', userRestobar);
 
         loginRestobar(req, res, userRestobar)
 
@@ -67,10 +67,10 @@ router.post('/login', async (req: any, res: any) => {
 // login user
 router.post('/login-bot', async (req: any, res: any) => {
     const _data = req.body
-    console.log('_data', _data);    
+    //////console.log('_data', _data);    
     const us = _data;
-    console.log('us', us);
-    console.log('usuario', us.idsede);
+    //////console.log('us', us);
+    //////console.log('usuario', us.idsede);
     // try {
         // verificar si existe usuario restobar
     let userRestobar: any = await getUserRestobar(_data.id, _data.idsede)
@@ -126,7 +126,7 @@ router.post('/login-bot', async (req: any, res: any) => {
 })
 
 const getUserRestobar = async (idusuario: number, idsede: number) => {
-    console.log('=======', idusuario);
+    ////console.log('=======', idusuario);
     return await prisma.usuario.findMany({
         where: {  AND: {
             idusuario: Number(idusuario),

@@ -70,6 +70,7 @@ var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
+var utils_1 = require("../../utils/utils");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -86,11 +87,11 @@ router.post("/get-pedidos", function (req, res) { return __awaiter(void 0, void 
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
+                params = (0, utils_1.validarYCorregirRangoPeriodo)(params);
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
                 ssql = "CALL procedure_module_dash_pedidos(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                console.log('object', ssql);
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_pedidos(", ", ", ")"], ["CALL procedure_module_dash_pedidos(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();

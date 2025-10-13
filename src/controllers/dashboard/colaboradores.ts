@@ -2,6 +2,7 @@ import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
 import { normalizeResponse } from "../../services/dash.util";
+import { validarYCorregirRangoPeriodo } from "../../utils/utils";
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -13,10 +14,11 @@ router.get("/", async (req, res) => {
 
 // obtener total pedidos
 router.post("/get-pedidos", async (req, res) => {
-    const { idsede, params } = req.body;
+    let { idsede, params } = req.body;
+    params = validarYCorregirRangoPeriodo(params);
     try {        
         const ssql = `CALL procedure_module_dash_pedidos(${idsede}, ${JSON.stringify(params)})`;
-        console.log('object', ssql);
+        //console.log('object', ssql);
         const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_pedidos(${idsede}, ${JSON.stringify(params)})`;
         const sqlExec = rpt[0].f0
         let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);

@@ -4,6 +4,7 @@ import axios from "axios";
 
 import dotenv from 'dotenv';
 import { normalizeResponse } from "../../services/dash.util";
+import { validarYCorregirRangoPeriodo } from "../../utils/utils";
 dotenv.config();
 
 const app = express();
@@ -21,12 +22,17 @@ router.get("/", async (req, res) => {
 
 // obtener el total de ventas
 router.post("/total", async (req, res) => {
-    const { idsede, params } = req.body;    
-    console.log('params', params);    
+    let { idsede, params } = req.body;    
+    //console.log('params originales:', params);
+    
+    // Validar y corregir el rango de período si es necesario
+    params = validarYCorregirRangoPeriodo(params);
+    //console.log('params corregidos:', params);
+    
     // res.status(200).send(params);
     try {
         const ssql = `CALL procedure_module_dash_ventas(${idsede}, ${JSON.stringify(params)})`;
-        console.log('object', ssql);    
+        //console.log('object', ssql);    
         const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_ventas(${idsede}, ${JSON.stringify(params)})`;        
         const sqlExec = rpt[0].f0            
         let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);            

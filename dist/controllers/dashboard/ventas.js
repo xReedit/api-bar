@@ -48,6 +48,7 @@ var client_1 = require("@prisma/client");
 var axios_1 = __importDefault(require("axios"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
+var utils_1 = require("../../utils/utils");
 dotenv_1["default"].config();
 var app = (0, express_1["default"])();
 app.use(express_1["default"].json({ limit: '50mb' }));
@@ -67,12 +68,13 @@ router.post("/total", function (req, res) { return __awaiter(void 0, void 0, voi
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
-                console.log('params', params);
+                //console.log('params originales:', params);
+                // Validar y corregir el rango de período si es necesario
+                params = (0, utils_1.validarYCorregirRangoPeriodo)(params);
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
                 ssql = "CALL procedure_module_dash_ventas(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                console.log('object', ssql);
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_ventas(", ", ", ")"], ["CALL procedure_module_dash_ventas(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();

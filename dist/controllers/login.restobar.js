@@ -120,7 +120,7 @@ router.post('/login', function (req, res) { return __awaiter(void 0, void 0, voi
                 userRestobar = userRestobar[0];
                 prisma.$disconnect();
                 // userRestobar.idsede_restobar = _data.sede.idsede_restobar
-                console.log('0userRestobar', userRestobar);
+                //////console.log('0userRestobar', userRestobar);
                 (0, usuario_1.loginRestobar)(req, res, userRestobar);
                 return [3 /*break*/, 4];
             case 3:
@@ -138,10 +138,7 @@ router.post('/login-bot', function (req, res) { return __awaiter(void 0, void 0,
         switch (_a.label) {
             case 0:
                 _data = req.body;
-                console.log('_data', _data);
                 us = _data;
-                console.log('us', us);
-                console.log('usuario', us.idsede);
                 return [4 /*yield*/, getUserRestobar(_data.id, _data.idsede)
                     // si el usuario es correcto
                 ];
@@ -187,15 +184,15 @@ router.post('/login-bot', function (req, res) { return __awaiter(void 0, void 0,
 var getUserRestobar = function (idusuario, idsede) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0:
-                console.log('=======', idusuario);
-                return [4 /*yield*/, prisma.usuario.findMany({
-                        where: { AND: {
-                                idusuario: Number(idusuario),
-                                idsede: Number(idsede)
-                            } }
-                    })];
-            case 1: return [2 /*return*/, _a.sent()];
+            case 0: return [4 /*yield*/, prisma.usuario.findMany({
+                    where: { AND: {
+                            idusuario: Number(idusuario),
+                            idsede: Number(idsede)
+                        } }
+                })];
+            case 1: 
+            ////console.log('=======', idusuario);
+            return [2 /*return*/, _a.sent()];
         }
     });
 }); };

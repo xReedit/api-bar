@@ -70,6 +70,7 @@ var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
+var utils_1 = require("../../utils/utils");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -86,6 +87,7 @@ router.post("/get-iecaja", function (req, res) { return __awaiter(void 0, void 0
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
+                params = (0, utils_1.validarYCorregirRangoPeriodo)(params);
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
@@ -117,6 +119,7 @@ router.post("/get-otros-ingresos", function (req, res) { return __awaiter(void 0
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
+                params = (0, utils_1.validarYCorregirRangoPeriodo)(params);
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
@@ -149,6 +152,7 @@ router.post("/get-pedidos-borrados", function (req, res) { return __awaiter(void
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
+                params = (0, utils_1.validarYCorregirRangoPeriodo)(params);
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
@@ -181,6 +185,7 @@ router.post("/get-pedidos-sin-corbrar", function (req, res) { return __awaiter(v
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
+                params = (0, utils_1.validarYCorregirRangoPeriodo)(params);
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
@@ -213,6 +218,7 @@ router.post("/get-descuentos-aplicados", function (req, res) { return __awaiter(
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
+                params = (0, utils_1.validarYCorregirRangoPeriodo)(params);
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);

@@ -15,6 +15,10 @@ import dashboard_ventas from "../controllers/dashboard/ventas";
 import dashboard_iecaja from "../controllers/dashboard/iecaja";
 import dashboard_colaboradores from "../controllers/dashboard/colaboradores";
 import dashboard_producto_recta from "../controllers/dashboard/producto-receta";
+import dashboard_clientes from "../controllers/dashboard/clientes";
+import dashboard_usuarios from "../controllers/dashboard/usuarios";
+import dashboard_compras from "../controllers/dashboard/compras";
+import dashboard_punto_equilibrio from "../controllers/dashboard/punto-equilibrio";
 
 const router = express.Router();
 
@@ -25,6 +29,7 @@ router.get('/', function (req, res) {
 router.use('/login', login);
 router.use('/login-bot', loginRestobar);
 router.use('/login-restobar', loginRestobar);
+router.use('/login-user', loginRestobar);
 router.use('/verify-login', authVerify);
 router.use('/rol', auth, rol);
 router.use('/sede', auth, sede);
@@ -38,11 +43,15 @@ router.use('/app-repartidor', app_repartidor);
 // restobar
 router.use('/restobar/cobranza', restobar_cobranza);
 
-// dashboardñ
-router.use('/dash-ventas', dashboard_ventas);
-router.use('/dash-iecaja', dashboard_iecaja);
-router.use('/dash-colaboradores', dashboard_colaboradores);
-router.use('/dash-producto-receta', dashboard_producto_recta);
+// dashboard
+router.use('/dash-ventas', auth, dashboard_ventas);
+router.use('/dash-iecaja', auth, dashboard_iecaja);
+router.use('/dash-colaboradores', auth, dashboard_colaboradores);
+router.use('/dash-producto-receta', auth, dashboard_producto_recta);
+router.use('/dash-clientes', auth, dashboard_clientes);
+router.use('/dash-usuarios', auth, dashboard_usuarios);
+router.use('/dash-compras', auth, dashboard_compras);
+router.use('/dash-punto-equilibrio', auth, dashboard_punto_equilibrio);
 
 
 // router.use('/usuario', auth, usuario);

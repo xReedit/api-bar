@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import axios from "axios";
 
 import dotenv from 'dotenv';
-import { normalizeResponse } from "../../services/dash.util";
+import { normalizeResponse, normalizeResponseDash, normalizeResponseDashVentasTotal } from "../../services/dash.util";
 import { validarYCorregirRangoPeriodo } from "../../utils/utils";
 dotenv.config();
 
@@ -23,24 +23,64 @@ router.get("/", async (req, res) => {
 // obtener el total de ventas
 router.post("/total", async (req, res) => {
     let { idsede, params } = req.body;    
-    //console.log('params originales:', params);
+
+
+    
     
     // Validar y corregir el rango de período si es necesario
-    params = validarYCorregirRangoPeriodo(params);
+    // params = validarYCorregirRangoPeriodo(params);
     //console.log('params corregidos:', params);
     
     // res.status(200).send(params);
     try {
-        const ssql = `CALL procedure_module_dash_ventas(${idsede}, ${JSON.stringify(params)})`;
-        //console.log('object', ssql);    
-        const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_ventas(${idsede}, ${JSON.stringify(params)})`;        
+        const ssql = `CALL procedure_module_dash_ventas(${idsede}, '${JSON.stringify(params)}')`;
+
+        const rpt: any = await prisma.$queryRawUnsafe(ssql);        
+
         const sqlExec = rpt[0].f0            
+
         let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);            
-        rptExec = normalizeResponse(rptExec);
+        rptExec = normalizeResponseDashVentasTotal(rptExec);        
+
                    
         res.status(200).json(rptExec);        
     } catch (error) {
         res.status(500).json(error);        
+    }
+});
+
+router.post("/ventas-detalle", async (req, res) => {
+    let { idsede, params } = req.body;     
+    try {
+        // Validar parámetros
+        if (!idsede || !params || !params.periodo) {
+            return res.status(400).json({
+                error: 'Parámetros inválidos. Se requiere idsede y params.periodo'
+            });
+        }
+
+        let ventas = await prisma.$transaction(async (tx) => {
+            await tx.$executeRawUnsafe(`SET @xidsede = ${idsede}`);
+            await tx.$executeRawUnsafe(`SET @periodo_params = '${JSON.stringify(params)}'`);
+            const result = await tx.$queryRawUnsafe(`CALL procedure_module_dash_pedidos_ventas(@xidsede, @periodo_params)`);
+            return result;
+        });        
+
+        ventas = normalizeResponseDash(ventas);
+
+        // const sql = `CALL procedure_module_dash_pedidos_ventas(${idsede}, '${JSON.stringify(params)}')`;
+        // const rpt: any = await prisma.$queryRawUnsafe(sql);
+        // const sqlExec = rpt[0].f0;
+        // let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);
+        // rptExec = normalizeResponse(rptExec);
+        
+        res.status(200).json(ventas);
+
+    } catch (error) {
+        res.status(500).json({ 
+            error: error instanceof Error ? error.message : 'Error desconocido',
+            details: String(error)
+        });
     }
 });
 
@@ -72,11 +112,13 @@ router.post("/analisis-ventas", async (req, res) => {
 
     try {
         const url = `${process.env.URL_API_GPT}/analisis-estadistico`
+
+
         const data = {            
             message: message,
             idassistant: assistant?.id
         }
-        const response = await axios.post(url, data);
+        const response = await axios.post(url, data);        
         res.status(200).json(response.data);
     } catch (error) {
         res.status(500).json(error);        

@@ -3,7 +3,7 @@ import * as express from "express";
 import * as bcrypt from 'bcryptjs';
 import * as userServices from '../services/usuario.service';
 import { getErrorMessage } from '../utils/errors.util';
-import { loginRestobar, loginRestobarBot } from './usuario'
+import { loginRestobar, loginRestobarBot, loginDashboard } from './usuario'
 
 
 import { PrismaClient } from "@prisma/client";
@@ -59,7 +59,6 @@ router.post('/login', async (req: any, res: any) => {
         loginRestobar(req, res, userRestobar)
 
     } catch (error) {
-        console.error(error);
         return res.status(500).send(getErrorMessage(error));
     }
 })
@@ -123,6 +122,14 @@ router.post('/login-bot', async (req: any, res: any) => {
     //     console.error(error);
     //     return res.status(500).send(getErrorMessage(error));
     // }
+})
+
+router.post('/login-dashboard', async (req: any, res: any) => {
+    const { usuario, pass, code } = req.body
+    const user = {
+        usuario, pass, code
+    }
+    return loginDashboard(req, res, user)
 })
 
 const getUserRestobar = async (idusuario: number, idsede: number) => {

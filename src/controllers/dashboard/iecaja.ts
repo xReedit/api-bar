@@ -1,7 +1,7 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
-import { normalizeResponse } from "../../services/dash.util";
+import { normalizeResponse, normalizeResponseDashCaja } from "../../services/dash.util";
 import { validarYCorregirRangoPeriodo } from "../../utils/utils";
 dotenv.config();
 
@@ -27,8 +27,6 @@ router.post("/get-iecaja", async (req, res) => {
     } catch (error) {
         res.status(500).json(error);        
     }
-    
-    prisma.$disconnect();        
 });
 
 // obtener el total de otros ingreoss
@@ -49,8 +47,6 @@ router.post("/get-otros-ingresos", async (req, res) => {
     } catch (error) {
         res.status(500).json(error);        
     }
-    
-    prisma.$disconnect();        
 });
 
 // obtener pedidos borrados
@@ -70,8 +66,6 @@ router.post("/get-pedidos-borrados", async (req, res) => {
     } catch (error) {
         res.status(500).json(error);        
     }
-    
-    prisma.$disconnect();        
 });
 
 
@@ -93,8 +87,6 @@ router.post("/get-pedidos-sin-corbrar", async (req, res) => {
     } catch (error) {
         res.status(500).json(error);        
     }
-    
-    prisma.$disconnect();        
 });
 
 // obtener descuentos aplicados
@@ -115,8 +107,51 @@ router.post("/get-descuentos-aplicados", async (req, res) => {
     } catch (error) {
         res.status(500).json(error);        
     }
+});
+
+router.post("/get-dash-caja", async (req, res) => {
+    let { idsede, params } = req.body;        
+    let cajaResultados: any;
+    try {
+
+
+
+        
+
+        const p_tipo_consulta = params.tipo_consulta;
+        const p_fecha_inicio = params.rango_start_date;
+        const p_fecha_fin = params.rango_end_date;
+
+        cajaResultados = await prisma.$transaction(async (tx) => {      
+
+
+
+
+
+
+            await tx.$executeRawUnsafe(`SET @xidsede = ${idsede}`);            
+            await tx.$executeRawUnsafe(`SET @tipo_consulta = '${p_tipo_consulta}'`);
+            await tx.$executeRawUnsafe(`SET @fecha_inicio = '${p_fecha_inicio}'`);
+            await tx.$executeRawUnsafe(`SET @fecha_fin = '${p_fecha_fin}'`);
+
+            try {
+                const result = await tx.$queryRawUnsafe(`CALL procedure_module_dash_caja2(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)`);
+                return result;
+            } catch (error) {
+                console.error('Error al ejecutar el stored procedure:', error);
+                throw error;
+            }
+        });     
+
+
+
+        // Mapear los resultados con los nombres correctos
+        const cajaFormateada = normalizeResponseDashCaja(cajaResultados, p_tipo_consulta);
     
-    prisma.$disconnect();        
+        res.status(200).json(cajaFormateada);
+    } catch (error) {
+        res.status(500).json(error);        
+    }
 });
 
 export default router;

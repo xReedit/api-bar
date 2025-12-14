@@ -185,6 +185,7 @@ model carta_lista {
   @@index([iditem], map: "carta_lista_iditem_IDX")
   @@index([idseccion, iditem, sec_orden], map: "carta_lista_idseccion_IDX")
   @@index([sec_orden], map: "carta_lista_sec_orden_IDX")
+  @@index([iditem, estado], map: "idx_carta_lista_item")
 }
 
 model carta_lista_historial {
@@ -589,15 +590,16 @@ model conf_print_adicionales {
 }
 
 model conf_print_detalle {
-  idconf_print_detalle Int    @id @default(autoincrement())
+  idconf_print_detalle Int     @id @default(autoincrement())
   idconf_print         Int
-  descripcion          String @db.VarChar(80)
-  porcentaje           String @db.VarChar(4)
-  es_impuesto          Int    @default(0)
-  activo               Int    @default(0)
-  estado               Int    @default(0)
+  descripcion          String  @db.VarChar(80)
+  porcentaje           String  @db.VarChar(4)
+  es_impuesto          Int     @default(0)
+  activo               Int     @default(0)
+  estado               Int     @default(0)
   idorg                Int?
   idsede               Int?
+  is_opcional          String? @default("0") @db.Char(1)
 }
 
 model conf_print_otros {
@@ -947,21 +949,28 @@ model item_cat_kiosko {
 }
 
 model item_ingrediente {
-  iditem_ingrediente Int     @id @default(autoincrement())
+  iditem_ingrediente Int      @id @default(autoincrement())
   iditem             Int
-  idporcion          Int     @default(0)
-  descripcion        String  @db.VarChar(80)
-  cantidad           String  @db.VarChar(10)
-  costo              String  @db.VarChar(10)
-  estado             Int     @default(0)
-  necesario          String  @default("0") @db.Char(1)
-  viene_de           String? @default("1") @db.Char(1)
-  idproducto_stock   Int?    @default(0)
-  und_medida         String? @default("") @db.Char(6)
-  cantidad_show      String? @db.VarChar(10)
+  idporcion          Int      @default(0)
+  descripcion        String   @db.VarChar(80)
+  cantidad           Decimal  @db.Decimal(7, 5)
+  costo              String   @db.VarChar(10)
+  estado             Int      @default(0)
+  necesario          String   @default("0") @db.Char(1)
+  viene_de           String?  @default("1") @db.Char(1)
+  idproducto_stock   Int?     @default(0)
+  und_medida         String?  @default("") @db.Char(6)
+  und_kardex         String?  @db.VarChar(10)
+  factor_conversion  Decimal? @db.Decimal(10, 4)
+  cantidad_show      String?  @db.VarChar(10)
+  idsubreceta        Int?     @default(0)
 
   @@index([idporcion], map: "item_ingrediente_idporcion_IDX")
   @@index([idproducto_stock], map: "item_ingrediente_idproducto_stock_IDX")
+  @@index([idporcion, estado], map: "idx_item_ingrediente_porcion")
+  @@index([idproducto_stock, estado], map: "idx_item_ingrediente_producto")
+  @@index([iditem, estado, idporcion, idproducto_stock], map: "idx_item_ingrediente_receta")
+  @@index([iditem], map: "item_ingrediente_iditem_IDX")
 }
 
 model item_kiosko {
@@ -998,6 +1007,8 @@ model item_subitem {
   precio                 String @default("0") @db.VarChar(10)
   estado                 Int    @default(0)
   idproducto_stock       Int?
+  idsubreceta            Int?   @default(0)
+  descuenta              Float? @default(1)
 
   @@index([iditem], map: "item_subitem_iditem_IDX")
   @@index([iditem_subitem_content], map: "item_subitem_iditem_subitem_content_IDX")
@@ -1223,6 +1234,7 @@ model pedido {
   sede                            sede                       @relation(fields: [idsede], references: [idsede], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_2")
   tipo_consumo                    tipo_consumo               @relation(fields: [idtipo_consumo], references: [idtipo_consumo], onDelete: NoAction, onUpdate: NoAction, map: "pedido_ibfk_3")
   pedido_bot                      pedido_bot[]
+  pedido_datos_delivery           pedido_datos_delivery?
   pedido_repartidor_pagado        pedido_repartidor_pagado[]
 
   @@index([correlativo_dia], map: "pedido_correlativo_dia_IDX")
@@ -1241,6 +1253,7 @@ model pedido {
   @@index([idsede, fecha_hora], map: "idx_idsede_fecha_hora")
   @@index([confirmar_pago], map: "pedido_confirmar_pago_IDX")
   @@index([fecha_hora], map: "pedido_fecha_hora_IDX")
+  @@index([idsede, fecha_hora, idpedido], map: "idx_sede_fecha_id")
 }
 
 model pedido_app_sede_last_week {
@@ -1302,11 +1315,11 @@ model pedido_detalle {
   idcarta_lista     String       @db.VarChar(20)
   iditem            Int
   idseccion         String       @db.Char(10)
-  cantidad          String       @db.VarChar(5)
-  punitario         String       @db.VarChar(5)
-  ptotal            String       @db.VarChar(5)
-  ptotal_r          String       @db.VarChar(5)
-  cantidad_r        String       @db.VarChar(5)
+  cantidad          String       @db.VarChar(15)
+  punitario         String       @db.VarChar(15)
+  ptotal            String       @db.VarChar(15)
+  ptotal_r          String       @db.VarChar(15)
+  cantidad_r        String       @db.VarChar(15)
   descripcion       String       @db.VarChar(200)
   secambio          Int          @default(0)
   borrado           Int          @default(0)
@@ -1428,43 +1441,61 @@ model porcion {
   idproducto_de         Int
   descripcion           String  @db.VarChar(180)
   peso                  String  @db.VarChar(10)
-  stock                 String  @db.VarChar(10)
+  stock                 Decimal @db.Decimal(7, 4)
   estado                Int     @default(0)
   flag_last_date_salida String? @db.Char(30)
   sede                  sede    @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "porcion_sede_FK")
 
   @@index([idproducto_de], map: "porcion_idproducto_de_IDX")
-  @@index([idsede], map: "porcion_sede_FK")
+  @@index([idsede, estado], map: "idx_porcion_idsede")
+  @@index([idporcion, idsede, estado], map: "idx_porcion_lock")
 }
 
 model porcion_historial {
-  idporcion_historial Int    @id @default(autoincrement())
-  tipo_movimiento     String @db.Char(20)
-  fecha               String @db.Char(30)
-  hora                String @db.Char(15)
-  cantidad            String @db.Char(5)
-  idusuario           Int
-  idporcion           Int
-  idsede              Int
-  estado              String @default("0") @db.Char(1)
+  idporcion_historial     Int                    @id @default(autoincrement())
+  tipo_movimiento         String                 @db.Char(20)
+  fecha                   String                 @db.Char(30)
+  hora                    String                 @db.Char(15)
+  cantidad                String                 @db.Char(5)
+  idusuario               Int
+  idporcion               Int
+  idsede                  Int
+  estado                  String                 @default("0") @db.Char(1)
+  stock_total             String?                @db.Char(10)
+  fecha_date              DateTime?              @db.Date
+  idtipo_movimiento_stock Int?
+  idpedido                Int?
+  iditem                  Int?
+  tipo_movimiento_stock   tipo_movimiento_stock? @relation(fields: [idtipo_movimiento_stock], references: [idtipo_movimiento_stock], onDelete: Restrict, onUpdate: Restrict, map: "porcion_historial_tipo_movimiento_stock_FK")
+
+  @@index([idporcion, fecha_date, idtipo_movimiento_stock], map: "idx_porcion_historial_consulta")
+  @@index([iditem, fecha_date], map: "idx_porcion_historial_item")
+  @@index([idpedido, fecha_date], map: "idx_porcion_historial_pedido")
+  @@index([idsede, fecha_date, idtipo_movimiento_stock], map: "idx_porcion_historial_sede_fecha")
+  @@index([idporcion], map: "porcion_historial_idporcion_IDX")
+  @@index([idtipo_movimiento_stock], map: "porcion_historial_idtipo_movimiento_stock_IDX")
+  @@index([idusuario], map: "porcion_historial_idusuario_IDX")
+  @@index([tipo_movimiento], map: "porcion_historial_tipo_movimiento_IDX")
 }
 
 model print_server_detalle {
-  idprint_server_detalle    Int    @id @default(autoincrement())
+  idprint_server_detalle    Int       @id @default(autoincrement())
   idorg                     Int
   idsede                    Int
   idprint_server_estructura Int
-  descripcion_doc           String @db.VarChar(20)
+  descripcion_doc           String    @db.VarChar(20)
   detalle_json              Json
-  fecha                     String @db.VarChar(30)
-  hora                      String @db.VarChar(30)
+  fecha                     String    @db.VarChar(30)
+  hora                      String    @db.VarChar(30)
   idusuario                 Int
-  impreso                   Int    @default(0)
-  error                     Int    @default(0)
-  estado                    Int    @default(0)
-  isreserva                 Int    @default(0) @db.TinyInt
+  impreso                   Int       @default(0)
+  error                     Int       @default(0)
+  estado                    Int       @default(0)
+  isreserva                 Int       @default(0) @db.TinyInt
+  fecha_hora_dt             DateTime? @db.DateTime(0)
 
   @@index([idorg, idsede, idprint_server_estructura, impreso], map: "print_server_detalle_idorg_IDX")
+  @@index([idsede, impreso, estado, fecha_hora_dt], map: "idx_print_server_fecha_hora")
 }
 
 model print_server_estructura {
@@ -1541,6 +1572,7 @@ model producto_familia {
   idimpresora        Int    @default(0)
   estado             Int    @default(0)
   img                String @db.VarChar(100)
+  idimpresora_otro   Int    @default(0)
 
   @@index([idsede], map: "producto_familia_idsede_IDX")
 }
@@ -1572,7 +1604,7 @@ model producto_historial_precio {
 model producto_stock {
   idproducto                  Int
   idalmacen                   Int
-  stock                       Float                         @db.Float
+  stock                       Decimal                       @db.Decimal(10, 5)
   estado                      Int                           @default(0)
   idproducto_stock            Int                           @id @default(autoincrement())
   flag_last_date_salida       String?                       @db.Char(30)
@@ -1756,20 +1788,21 @@ model registro_pago {
   idtipo_consumo           Int
   idtipo_comprobante_serie Int                       @default(0)
   idce                     Int?
-  correlativo              String                    @db.VarChar(15)
-  external_id_comprobante  String                    @db.VarChar(150)
+  correlativo              String?                   @db.VarChar(15)
+  external_id_comprobante  String?                   @db.VarChar(150)
   fecha                    String                    @db.VarChar(80)
   total                    String                    @db.Char(10)
-  fecha_cierre             String                    @db.VarChar(80)
+  fecha_cierre             String?                   @db.VarChar(80)
   cierre                   Int                       @default(0)
   motivo_anular            String                    @db.VarChar(180)
   estado                   Int                       @default(0)
   from_pwa                 String                    @default("0") @db.VarChar(1)
   confirmado               String                    @default("0") @db.VarChar(1)
-  data_pago_pwa            Json
+  data_pago_pwa            Json?
   fecha_hora               DateTime?                 @db.DateTime(0)
   idtipo_descuento         Int?
   importe_dsc              String?                   @default("0") @db.Char(10)
+  permission_delete        String                    @default("0") @db.Char(1)
   registro_pago_descuento  registro_pago_descuento[]
 
   @@index([cierre], map: "registro_pago_cierre_IDX")
@@ -1779,6 +1812,7 @@ model registro_pago {
   @@index([idsede], map: "registro_pago_idsede_IDX")
   @@index([idtipo_comprobante_serie, idce, idtipo_consumo], map: "registro_pago_idtipo_comprobante_serie_IDX")
   @@index([idusuario], map: "registro_pago_idusuario_IDX")
+  @@index([idsede, fecha_hora], map: "idx_registro_pago_sede_fecha")
 }
 
 model registro_pago_cpe {
@@ -1891,36 +1925,37 @@ model regla_carta {
 }
 
 model repartidor {
-  idrepartidor             Int                        @id @default(autoincrement())
-  nombre                   String                     @db.VarChar(100)
-  apellido                 String                     @db.VarChar(100)
-  ciudad                   String                     @db.VarChar(100)
-  codigo_postal            String                     @db.VarChar(100)
-  f_registro               String                     @db.VarChar(50)
-  dni                      String                     @db.VarChar(10)
-  telefono                 String                     @db.VarChar(20)
-  pwa_code_verification    String                     @db.Text
-  estado                   Int                        @default(0)
-  usuario                  String                     @db.VarChar(50)
-  pass                     String?                    @db.VarChar(50)
-  efectivo_mano            String                     @default("0") @db.VarChar(10)
-  position_now             Json?
-  online                   Boolean                    @default(false)
-  ocupado                  Boolean                    @default(false)
-  calificacion             Float                      @default(0) @db.Float
-  pedidos_atendidos        Int                        @default(0)
-  pedidos_reasignados      Int                        @default(0) @db.TinyInt
-  socketid                 String?                    @db.VarChar(50)
-  pedido_por_aceptar       Json?
-  flag_paso_pedido         Int                        @default(0)
-  idsede_suscrito          Int?
-  cuenta                   String                     @db.VarChar(200)
-  last_notification        DateTime?                  @db.DateTime(0)
-  solicita_liberar_pedido  Boolean                    @default(false)
-  pedido_paso_va           Boolean                    @default(false)
-  time_line                Json?
-  atm_retiros              atm_retiros[]
-  pedido_repartidor_pagado pedido_repartidor_pagado[]
+  idrepartidor               Int                          @id @default(autoincrement())
+  nombre                     String                       @db.VarChar(100)
+  apellido                   String                       @db.VarChar(100)
+  ciudad                     String                       @db.VarChar(100)
+  codigo_postal              String                       @db.VarChar(100)
+  f_registro                 String                       @db.VarChar(50)
+  dni                        String                       @db.VarChar(10)
+  telefono                   String                       @db.VarChar(20)
+  pwa_code_verification      String                       @db.Text
+  estado                     Int                          @default(0)
+  usuario                    String                       @db.VarChar(50)
+  pass                       String?                      @db.VarChar(50)
+  efectivo_mano              String                       @default("0") @db.VarChar(10)
+  position_now               Json?
+  online                     Boolean                      @default(false)
+  ocupado                    Boolean                      @default(false)
+  calificacion               Float                        @default(0) @db.Float
+  pedidos_atendidos          Int                          @default(0)
+  pedidos_reasignados        Int                          @default(0) @db.TinyInt
+  socketid                   String?                      @db.VarChar(50)
+  pedido_por_aceptar         Json?
+  flag_paso_pedido           Int                          @default(0)
+  idsede_suscrito            Int?
+  cuenta                     String                       @db.VarChar(200)
+  last_notification          DateTime?                    @db.DateTime(0)
+  solicita_liberar_pedido    Boolean                      @default(false)
+  pedido_paso_va             Boolean                      @default(false)
+  time_line                  Json?
+  atm_retiros                atm_retiros[]
+  pedido_repartidor_pagado   pedido_repartidor_pagado[]
+  repartidor_pedido_asignado repartidor_pedido_asignado[]
 }
 
 model repartidor_calificacion {
@@ -2056,6 +2091,9 @@ model sede {
   metodo_pago_aceptados_chatbot                       String?                        @db.VarChar(100)
   is_bloqueado_facturacion                            String                         @default("0") @db.Char(1)
   msj_cpe_alert                                       String?                        @default("") @db.VarChar(200)
+  is_active_pinpad                                    String?                        @default("0") @db.Char(1)
+  is_holding                                          String?                        @default("0") @db.Char(1)
+  is_mozo_accept_payments                             String?                        @default("0") @db.Char(1)
   almacen_ie                                          almacen_ie[]
   cambios_tipo_pago                                   cambios_tipo_pago[]
   chatbot_num_bloqueados                              chatbot_num_bloqueados[]
@@ -2068,15 +2106,21 @@ model sede {
   distribuicion_distribuicion_idsede_aTosede          distribuicion[]                @relation("distribuicion_idsede_aTosede")
   pedido                                              pedido[]
   pedido_bot                                          pedido_bot[]
+  pedido_despachado                                   pedido_despachado[]
+  pedido_json                                         pedido_json[]
   pedido_repartidor_pagado                            pedido_repartidor_pagado[]
   permiso_remoto                                      permiso_remoto[]
   porcion                                             porcion[]
   produccion_producto                                 produccion_producto[]
   promocion                                           promocion[]
+  punto_equilibrio                                    punto_equilibrio[]
   registro_pago_descuento                             registro_pago_descuento[]
   sede_plan_contratado                                sede_plan_contratado?          @relation(fields: [idsede_plan_contratado], references: [idsede_plan_contratado], onDelete: Restrict, onUpdate: Restrict, map: "sede_FK")
   sede_estado                                         sede_estado[]
   sede_flags                                          sede_flags[]
+  sede_holding                                        sede_holding[]
+  sede_holding_marcas                                 sede_holding_marcas[]
+  sede_holding_metodo_pago                            sede_holding_metodo_pago[]
   sede_opciones                                       sede_opciones?
   sede_pago_servicio                                  sede_pago_servicio[]
   sede_suscripcion                                    sede_suscripcion[]
@@ -2455,7 +2499,9 @@ model tipo_pago {
   orden                        Boolean                        @default(false)
   habilitado_chatbot           String?                        @default("0") @db.Char(1)
   visible                      String?                        @default("0") @db.Char(1)
+  habilitado_mozo_holding      String?                        @default("0") @db.Char(1)
   cliente_paga_credito_detalle cliente_paga_credito_detalle[]
+  sede_holding_metodo_pago     sede_holding_metodo_pago[]
 }
 
 model tipo_vehiculo {
@@ -2528,6 +2574,7 @@ model usuario {
   cliente_paga_credito_detalle cliente_paga_credito_detalle[]
   cupon                        cupon[]
   ingreso_varios               ingreso_varios[]
+  pedido_despachado            pedido_despachado[]
   produccion_producto          produccion_producto[]
   promocion                    promocion[]
 
@@ -2877,6 +2924,7 @@ model cupon {
   cantidad_emitido       Int?                     @default(0) @db.TinyInt
   importe_minimo         Float?                   @default(0)
   solo_clientes          String?                  @default("0") @db.Char(1)
+  no_imprimir            String?                  @default("0") @db.Char(1)
   sede                   sede                     @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "cupon_FK")
   usuario                usuario                  @relation(fields: [idusuario], references: [idusuario], onUpdate: Restrict, map: "cupon_FK_1")
   cupon_codigo           cupon_codigo[]
@@ -3060,4 +3108,465 @@ model unidad_medida {
   conversion_a_base Decimal? @db.Decimal(10, 5)
   estado            String?  @default("0") @db.Char(1)
   abreviatura       String?  @db.VarChar(5)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model app_version {
+  name_app   String? @db.VarChar(100)
+  version    String? @db.Char(10)
+  id         String  @id @db.Char(1)
+  properties Json?
+}
+
+model archivado_log {
+  idlog                 Int       @id @default(autoincrement())
+  fecha_ejecucion       DateTime? @default(now()) @db.DateTime(0)
+  pedidos_archivados    Int?      @default(0)
+  detalles_archivados   Int?      @default(0)
+  subtotales_archivados Int?      @default(0)
+  duracion_segundos     Int?
+  estado                String?   @default("EXITOSO") @db.VarChar(20)
+  mensaje               String?   @db.Text
+
+  @@index([fecha_ejecucion], map: "idx_fecha")
+}
+
+model cliente_holding_suscripcion {
+  idcliente_holding_suscripcion Int    @id @default(autoincrement())
+  key_suscripcion_push          Json
+  codigo_localizador            String @db.Char(8)
+  estado                        String @default("0") @db.Char(1)
+}
+
+model historial_error_detallado {
+  id               Int       @id @default(autoincrement())
+  error            String    @db.Text
+  origen           String    @db.VarChar(255)
+  categoria        String    @db.VarChar(50)
+  fecha            DateTime  @db.DateTime(0)
+  resuelto         Boolean?  @default(false)
+  fecha_resolucion DateTime? @db.DateTime(0)
+  notas            String?   @db.Text
+
+  @@index([categoria], map: "idx_categoria")
+  @@index([fecha], map: "idx_fecha")
+  @@index([origen], map: "idx_origen")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model mensaje_login {
+  id      Int
+  mensaje String   @db.VarChar(255)
+  url_img String   @db.VarChar(255)
+  fecha   DateTime @db.Date
+  estado  String   @default("0") @db.Char(1)
+
+  @@ignore
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model pedido_cliente_confirmar_holding {
+  idpedido_cliente_confirmar_holding Int      @id @default(autoincrement())
+  json_pedido                        Json
+  idusuario                          Int?
+  estado                             String   @default("0") @db.Char(1)
+  fecha_hora                         DateTime @db.DateTime(0)
+  idcliente                          Int?
+  idsede_holding                     Int?
+  pagado                             String?  @default("0") @db.Char(1)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model pedido_codigo_localizador {
+  idpedido_codigo_localizador Int       @id @default(autoincrement())
+  idsede                      Int
+  idorg                       Int
+  idpedido                    Int
+  codigo_localizador          String    @db.Char(10)
+  estado                      String    @default("0") @db.Char(1)
+  table_number                String?   @db.VarChar(100)
+  fecha_hora_listo            DateTime? @db.DateTime(0)
+}
+
+model pedido_datos_delivery {
+  idpedido            Int     @id
+  json_datos_delivery String? @db.LongText
+  pedido              pedido  @relation(fields: [idpedido], references: [idpedido], onDelete: Cascade, onUpdate: Restrict, map: "pedido_datos_delivery_ibfk_1")
+}
+
+model pedido_despachado {
+  idpedido_despachado Int      @id @default(autoincrement())
+  idpedido            Int
+  idsede              Int
+  fecha_hora          DateTime @db.DateTime(0)
+  estado              String   @default("0") @db.Char(1)
+  tiempo_despacho     String?  @default("0") @db.VarChar(50)
+  color_despacho      String?  @default("0") @db.VarChar(5)
+  idusuario           Int?
+  sede                sede     @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "pedido_despachado_sede_FK")
+  usuario             usuario? @relation(fields: [idusuario], references: [idusuario], onDelete: Restrict, onUpdate: Restrict, map: "pedido_despachado_usuario_FK")
+
+  @@index([idsede], map: "pedido_despachado_sede_FK")
+  @@index([idusuario], map: "pedido_despachado_usuario_FK")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model pedido_detalle_hist {
+  idpedido_detalle  Int       @id @default(autoincrement())
+  idpedido          Int
+  idtipo_consumo    Int
+  idcategoria       Int
+  idcarta_lista     String    @db.VarChar(20)
+  iditem            Int
+  idseccion         String    @db.Char(10)
+  cantidad          String    @db.VarChar(15)
+  punitario         String    @db.VarChar(15)
+  ptotal            String    @db.VarChar(15)
+  ptotal_r          String    @db.VarChar(15)
+  cantidad_r        String    @db.VarChar(15)
+  descripcion       String    @db.VarChar(200)
+  secambio          Int       @default(0)
+  borrado           Int       @default(0)
+  pagado            Int       @default(0)
+  procede           Int       @default(0)
+  procede_tabla     Int
+  estado_trigger    Int       @default(0)
+  idregistro_pago   Int       @default(0)
+  modificado        Int       @default(0)
+  despachado        Int       @default(0)
+  despachado_hora   String?   @db.VarChar(60)
+  despachado_tiempo String?   @db.VarChar(60)
+  pwa               Int       @default(0)
+  subitems          Json?
+  estado            Int       @default(0)
+  confirmar_pago    Boolean   @default(false)
+  iditem_subitem    Int?
+  permission_delete String?   @default("0") @db.Char(1)
+  motivo_borrado    String?   @db.VarChar(100)
+  fecha_archivado   DateTime? @db.DateTime(0)
+
+  @@index([fecha_archivado], map: "idx_fecha_archivado")
+  @@index([descripcion], map: "pedido_detalle_descripcion_IDX")
+  @@index([idcarta_lista], map: "pedido_detalle_idcarta_lista_IDX")
+  @@index([idcategoria], map: "pedido_detalle_idcategoria_IDX")
+  @@index([iditem], map: "pedido_detalle_iditem_IDX")
+  @@index([idpedido, idregistro_pago, idseccion, iditem, idcarta_lista, idcategoria, idtipo_consumo], map: "pedido_detalle_idpedido_IDX")
+  @@index([idseccion], map: "pedido_detalle_idseccion_IDX")
+  @@index([idtipo_consumo], map: "pedido_detalle_idtipo_consumo_IDX")
+  @@index([procede_tabla, procede], map: "pedido_detalle_procede_tabla_IDX")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model pedido_hist {
+  idpedido                        Int       @id @default(autoincrement())
+  idorg                           Int
+  idsede                          Int
+  idcliente                       Int?
+  idusuario                       Int
+  idregistro_pago                 Int       @default(0)
+  fecha                           String    @db.VarChar(25)
+  hora                            String    @db.VarChar(25)
+  fecha_hora                      DateTime  @db.DateTime(0)
+  nummesa                         Int
+  numpedido                       Int?
+  correlativo_dia                 Int
+  reserva                         Int       @default(0)
+  referencia                      String    @default("") @db.VarChar(50)
+  total                           String    @db.VarChar(10)
+  total_r                         String    @db.Char(10)
+  total_total                     String?   @db.VarChar(10)
+  solo_llevar                     Int       @default(0)
+  idtipo_consumo                  Int
+  idcategoria                     Int
+  tiempo_atencion                 String    @default("0") @db.VarChar(50)
+  val_color_despachado            String?   @db.Char(1)
+  cierre                          Int       @default(0)
+  motivo_anular                   String?   @db.VarChar(80)
+  despachado                      Int       @default(0)
+  subtotales_tachados             String    @default("") @db.VarChar(250)
+  estado                          Int       @default(0)
+  json_datos_delivery             String?   @db.LongText
+  is_from_client_pwa              Int       @default(0)
+  pwa_delivery_status             String    @default("0") @db.Char(1)
+  idrepartidor                    Int?
+  pwa_estado                      String    @default("P") @db.Char(1)
+  pwa_facturado                   Boolean   @default(false)
+  pwa_is_delivery                 Boolean   @default(false)
+  num_reasignaciones              Int       @default(0)
+  last_id_repartidor_reasigno     Int?
+  pwa_delivery_tiempo_atendido    String    @default("0") @db.VarChar(10)
+  flag_solicita_repartidor_papaya Boolean   @default(false)
+  flag_abonado                    Boolean   @default(false)
+  check_liquidado                 String    @default("0") @db.Char(1)
+  check_pagado                    String    @default("0") @db.Char(1)
+  check_pago_fecha                String    @default("") @db.VarChar(50)
+  check_pago_repartidor           String    @default("0") @db.Char(1)
+  flag_pedido_programado          Boolean   @default(false)
+  fecha_hora_registro             DateTime? @db.DateTime(0)
+  flag_calificado                 Boolean   @default(false)
+  confirmar_pago                  Boolean   @default(false)
+  idpwa_pago_transaction          Int?
+  idregistra_scan_qr              Int?
+  is_precuenta                    Boolean   @default(false)
+  is_printer                      Boolean   @default(false)
+  flag_is_cliente                 Boolean?  @default(false)
+  pwa_delivery_atendido           Boolean   @default(false)
+  permission_delete               String?   @default("0") @db.Char(1)
+  fecha_archivado                 DateTime? @db.DateTime(0)
+
+  @@index([fecha_archivado], map: "idx_fecha_archivado")
+  @@index([idsede, fecha_hora], map: "idx_idsede_fecha_hora")
+  @@index([confirmar_pago], map: "pedido_confirmar_pago_IDX")
+  @@index([correlativo_dia], map: "pedido_correlativo_dia_IDX")
+  @@index([fecha_hora], map: "pedido_fecha_hora_IDX")
+  @@index([idcategoria], map: "pedido_idcategoria_IDX")
+  @@index([idcliente], map: "pedido_idcliente_IDX")
+  @@index([idorg, idsede, idregistro_pago, idcategoria, idcliente, idusuario, idtipo_consumo], map: "pedido_idorg_IDX")
+  @@index([idregistro_pago], map: "pedido_idregistro_pago_IDX")
+  @@index([idregistro_pago, idusuario], map: "pedido_idregistro_pago_userIDX")
+  @@index([idrepartidor], map: "pedido_idrepartidor_IDX")
+  @@index([idsede], map: "pedido_idsede_IDX")
+  @@index([idtipo_consumo], map: "pedido_idtipo_consumo_IDX")
+  @@index([idusuario], map: "pedido_idusuario_IDX")
+  @@index([is_from_client_pwa, pwa_delivery_status], map: "pedido_is_from_client_pwa_IDX")
+  @@index([nummesa, numpedido], map: "pedido_nummesa_IDX")
+  @@index([numpedido], map: "pedido_numpedido_IDX")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model pedido_holding_estado_entregado {
+  idpedido_holding_estado_entregado Int    @id @default(autoincrement())
+  idpedido                          Int
+  estado                            String @default("0") @db.Char(1)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model pedido_json {
+  idpedido_json         Int       @id @default(autoincrement())
+  idsede                Int
+  idsede_holding        Int
+  pedido_json           Json
+  estado                String    @default("0") @db.Char(1)
+  fecha                 DateTime? @db.DateTime(0)
+  idpedido              Int?
+  idregistro_pago       Int?
+  debitado              String?   @default("0") @db.Char(1)
+  idregistro_pago_marca Int?
+  cerrado_mesero        String?   @default("0") @db.Char(1)
+  estado_llamado        String?   @default("0") @db.Char(1)
+  sede                  sede      @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "pedido_json_sede_FK")
+
+  @@index([idsede], map: "pedido_json_sede_FK")
+}
+
+model pedido_subtotales_hist {
+  idpedido_subtotales Int       @id @default(autoincrement())
+  idpedido            Int
+  idorg               Int
+  idsede              Int
+  descripcion         String    @db.VarChar(80)
+  importe             String    @db.VarChar(10)
+  tachado             Int       @default(0)
+  estado              Int       @default(0)
+  fecha_archivado     DateTime? @db.DateTime(0)
+
+  @@index([fecha_archivado], map: "idx_fecha_archivado")
+  @@index([idpedido, idorg, idsede], map: "pedido_subtotales_idpedido_IDX")
+}
+
+model porcion_movimientos {
+  idmovimiento            Int      @id @default(autoincrement())
+  iditem                  Int
+  idtipo_movimiento_stock Int
+  motivo                  String?  @db.VarChar(50)
+  fecha_hora              DateTime @db.DateTime(0)
+  cantidad                Decimal  @db.Decimal(10, 2)
+  estado                  Boolean? @default(false)
+  idpedido                Int?
+
+  @@index([idtipo_movimiento_stock], map: "idx_tipo_movimiento")
+}
+
+model punto_equilibrio {
+  id     Int    @id @default(autoincrement())
+  idsede Int
+  mes    String @db.Char(10)
+  anio   String @db.Char(10)
+  datos  Json
+  estado String @default("0") @db.Char(1)
+  sede   sede   @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "punto_equilibrio_sede_FK")
+
+  @@index([idsede], map: "punto_equilibrio_sede_FK")
+}
+
+model registro_pago_marca {
+  idregistro_pago_marca Int      @id @default(autoincrement())
+  resumen               Json
+  fecha                 DateTime @db.DateTime(0)
+  idusuario             Int
+  num_operacion         String   @db.Char(50)
+  idsede                Int
+  estado                String   @default("0") @db.Char(1)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model registro_pago_pinpad {
+  idregistro_pago_pinpad Int     @id @default(autoincrement())
+  idregistro_pago        Int
+  idsede                 Int
+  data_response          Json
+  estado                 String  @default("0") @db.Char(1)
+  anulado                String? @default("0") @db.Char(1)
+  motivo_anulacion       String? @db.VarChar(150)
+}
+
+model repartidor_pedido_asignado {
+  idrepartidor_pedido_asignado Int        @id @default(autoincrement())
+  idrepartidor                 Int
+  idpedidos                    String     @db.VarChar(150)
+  repartidor                   repartidor @relation(fields: [idrepartidor], references: [idrepartidor], onUpdate: Restrict, map: "repartidor_pedido_asignado_repartidor_FK")
+
+  @@index([idrepartidor], map: "repartidor_pedido_asignado_repartidor_FK")
+}
+
+model sede_holding {
+  idsede_holding      Int                   @id @default(autoincrement())
+  idsede              Int
+  nombre              String                @db.VarChar(200)
+  ciudad              String                @db.VarChar(200)
+  estado              String                @default("0") @db.Char(1)
+  idorg               Int?
+  sede                sede                  @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "sede_holding_sede_FK")
+  sede_holding_marcas sede_holding_marcas[]
+
+  @@index([idsede], map: "sede_holding_sede_FK")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sede_holding_call_pedido_listo {
+  idsede_holding_call_pedido_listo Int      @id @default(autoincrement())
+  fecha                            DateTime @db.Date
+  data                             Json
+  estado                           String   @default("0") @db.Char(1)
+  idpedido                         Int?
+  idusuario                        Int?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sede_holding_marcas {
+  idsede_holding_marcas Int          @id @default(autoincrement())
+  idsede_holding        Int
+  idsede_marca          Int
+  estado                String       @default("0") @db.Char(1)
+  fecha_ingreso         DateTime     @db.Date
+  fecha_salida          DateTime     @db.Date
+  imagen_url_comercial  String       @db.VarChar(180)
+  nombre_comercial      String       @db.VarChar(100)
+  oferta_comercial      String?      @db.VarChar(100)
+  idorg_marca           Int?
+  impresora_ip          String?      @db.VarChar(100)
+  cuenta_debitar        String?      @db.VarChar(150)
+  sede                  sede         @relation(fields: [idsede_marca], references: [idsede], onUpdate: Restrict, map: "sede_holding_marcas_sede_FK")
+  sede_holding          sede_holding @relation(fields: [idsede_holding], references: [idsede_holding], onUpdate: Restrict, map: "sede_holding_marcas_sede_holding_FK")
+
+  @@index([idsede_marca], map: "sede_holding_marcas_sede_FK")
+  @@index([idsede_holding], map: "sede_holding_marcas_sede_holding_FK")
+}
+
+model sede_holding_metodo_pago {
+  idsede_holding_metodo_pago Int       @id @default(autoincrement())
+  idsede                     Int
+  idtipo_pago                Int
+  comision                   Decimal   @db.Decimal(5, 2)
+  estado                     String    @default("0") @db.Char(1)
+  idsede_holding             Int?
+  sede                       sede      @relation(fields: [idsede], references: [idsede], onUpdate: Restrict, map: "sede_holding_metodo_pago_sede_FK")
+  tipo_pago                  tipo_pago @relation(fields: [idtipo_pago], references: [idtipo_pago], onUpdate: Restrict, map: "sede_holding_metodo_pago_tipo_pago_FK")
+
+  @@index([idsede], map: "sede_holding_metodo_pago_sede_FK")
+  @@index([idtipo_pago], map: "sede_holding_metodo_pago_tipo_pago_FK")
+}
+
+model sede_pinpad {
+  idsede_pinpad  Int      @id @default(autoincrement())
+  idsede         Int
+  pinpad_sn      String   @db.Char(30)
+  area           String   @db.Char(30)
+  idusuario      Int
+  fecha_registro DateTime @db.DateTime(0)
+  estado         String   @default("0") @db.Char(1)
+  descripcion    String?  @db.VarChar(50)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model tipo_movimiento_stock {
+  idtipo_movimiento_stock Int                 @id @default(autoincrement())
+  descripcion             String              @db.Char(20)
+  tipo                    String              @default("0") @db.Char(1)
+  estado                  String              @default("0") @db.Char(1)
+  porcion_historial       porcion_historial[]
+}
+
+model pedido_detalle_subitem {
+  idpedido_detalle_subitem Int       @id @default(autoincrement())
+  idpedido_detalle         Int
+  idpedido                 Int
+  iditem_subitem           Int?      @default(0)
+  idporcion                Int?      @default(0)
+  idproducto               Int?      @default(0)
+  idsubreceta              Int?      @default(0)
+  descripcion              String?   @db.VarChar(255)
+  cantidad                 Decimal?  @default(1.0000) @db.Decimal(10, 4)
+  cantidad_porcion         String?   @default("1") @db.VarChar(10)
+  descuenta                Decimal?  @default(1.0000) @db.Decimal(10, 4)
+  precio                   Decimal?  @default(0.00) @db.Decimal(10, 2)
+  idsede                   Int
+  fecha_date               DateTime? @db.Date
+  estado                   Int?      @default(0) @db.TinyInt
+
+  @@index([idpedido], map: "idx_pds_pedido")
+  @@index([idpedido_detalle], map: "idx_pds_pedido_detalle")
+  @@index([idporcion, idsede, fecha_date], map: "idx_pds_porcion")
+  @@index([idsede, fecha_date], map: "idx_pds_sede_fecha")
+  @@index([idsubreceta], map: "idx_pds_subreceta")
+}
+
+model platos_food_cost {
+  id                   BigInt   @id @unique(map: "id") @default(autoincrement()) @db.UnsignedBigInt
+  idsede               Int
+  iditem               Int
+  plato                String   @db.VarChar(255)
+  precio_venta         Decimal  @db.Decimal(10, 2)
+  food_cost            Decimal  @db.Decimal(10, 2)
+  porcentaje_food_cost Decimal  @db.Decimal(5, 2)
+  resumen              String?  @db.Text
+  receta_sugerida      Json?
+  fuente               String?  @default("gpt") @db.VarChar(20)
+  created_at           DateTime @default(now()) @db.Timestamp(0)
+  updated_at           DateTime @default(now()) @db.Timestamp(0)
+}
+
+model subreceta {
+  idsubreceta    Int      @id @default(autoincrement())
+  descripcion    String   @db.VarChar(255)
+  costo          Decimal? @default(0.00) @db.Decimal(10, 2)
+  idorg          Int?
+  idsede         Int?
+  estado         Int?     @default(0)
+  fecha_creacion DateTime @default(now()) @db.Timestamp(0)
+}
+
+model subreceta_ingrediente {
+  idsubreceta_ingrediente Int      @id @default(autoincrement())
+  idsubreceta             Int
+  descripcion             String?  @db.VarChar(255)
+  cantidad                Decimal? @default(1.0000) @db.Decimal(10, 4)
+  cantidad_show           String?  @default("1") @db.VarChar(20)
+  costo                   Decimal? @default(0.00) @db.Decimal(10, 2)
+  idporcion               Int?     @default(0)
+  idproducto_stock        Int?     @default(0)
+  viene_de                String?  @default("1") @db.Char(1)
+  necesario               Int?     @default(1)
+  und_medida              String?  @default("") @db.VarChar(20)
+  estado                  Int?     @default(0)
 }

@@ -248,13 +248,13 @@ router.post('/save-timeline-pedido', async (req: any, res) => {
     const listClienteNotificar:any = [];
     listClienteNotificar.push(rowCliente);
 
-    console.log('listClienteNotificar', listClienteNotificar);
+
 
     // se comunica mediante socket
     const socketServices = new SocketService();
     let querySocket = socketServices.querySocket('repartidor');
     querySocket.idrepartidor = parseInt(idrepartidor);
-    console.log('querySocket', querySocket);
+
     await socketServices.connectSocket(querySocket);
 
     socketServices.emitEvent('repartidor-notifica-cliente-time-line', listClienteNotificar);

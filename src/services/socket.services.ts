@@ -11,13 +11,13 @@ class SocketService {
     async connectSocket(query: any): Promise<boolean> {
         return new Promise((resolve, reject) => {
             const socketServer = process.env.SOCKET_SERVER_URL_RESTOBAR || 'http://localhost:5819';
-            console.log('socketServer', socketServer);
+
             this.socket = io(socketServer, {
                 query
             });
 
             this.socket.on('connect', () => {
-                console.log('Conectado al socket');
+
                 resolve(true);
             });
         });
@@ -40,7 +40,7 @@ class SocketService {
     }
 
     emitEvent(eventName: string, eventData: any) {
-        console.log('eventName', eventName);
+
         this.socket.emit(eventName, eventData);                
     }
 

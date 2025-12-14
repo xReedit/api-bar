@@ -9,6 +9,7 @@ export function fechaGuionASlash(fecha: string) {
  * @returns Objeto params corregido si es necesario
  */
 export function validarYCorregirRangoPeriodo(params: any): any {
+
     // Verificar si existe periodo_params y si el período es "rango"
     if (!params.periodo_params || params.periodo_params.periodo !== 'rango') {
         return params; // No es rango, retornar sin cambios
@@ -41,8 +42,8 @@ export function validarYCorregirRangoPeriodo(params: any): any {
         // Formatear la fecha en formato YYYY-MM-DD
         const fechaFinCorregida = nuevaFechaFin.toISOString().split('T')[0];
         
-        console.log(`Rango ajustado: el período de ${diferenciaEnMeses} meses fue reducido a 4 meses`);
-        console.log(`Fecha fin original: ${rango_end_date}, Fecha fin corregida: ${fechaFinCorregida}`);
+
+
 
         // Retornar params con la fecha corregida
         return {

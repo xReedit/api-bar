@@ -56,7 +56,7 @@ class PedidoServices {
                 })
             })
         } catch (error) {
-            console.log('error setDescripcionCantidadItems', error);
+
         }     
         
         return seccionMasItems;

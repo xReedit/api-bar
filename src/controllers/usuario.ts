@@ -41,3 +41,22 @@ export const loginRestobarBot = async (req: Request, res: Response, user: any) =
         return res.status(500).send(getErrorMessage(error));
     }
 }
+
+// login para dashboard
+export const loginDashboard = async (req: Request, res: Response, user: any) => {
+    try {
+        // Verificar si viene desde restobar (código base64: ZnJvbS1yZXN0b2Jhci0wMDE= = from-restobar-001)
+        const fromRestobar = user?.code ? user.code === 'ZnJvbS1yZXN0b2Jhci0wMDE=' : false;
+        
+        const foundUser = await userServices.loginDashboard(user, fromRestobar);
+        delete foundUser.usuario['pass'];
+        res.status(200).send(foundUser);
+    } catch (error: any) {
+        const mensaje = error?.message || 'Error desconocido';
+        // 401 para errores de autenticación/autorización
+        return res.status(401).json({ 
+            success: false, 
+            message: mensaje 
+        });
+    }
+}

@@ -26,6 +26,4 @@ app.get('/', function (req, res) {
 
 
 
-app.listen(portConect, () =>
-    console.log('REST API server ready at: http://localhost:20223'),
-)
+app.listen(portConect, () => {})

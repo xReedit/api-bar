@@ -51,7 +51,7 @@ async function getSeccionItemsCartaSelected  (idsede: number, items: any[]): Pro
         });
         return response.data;
     } catch (error) {
-        console.log(error);
+
         return [];
     }
 }

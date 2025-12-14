@@ -12,6 +12,8 @@ router.get("/", async (req, res) => {
 
 router.get("/advertencia/:idsede", async (req, res) => {
     const { idsede } = req.params;
+
+    return res.json({ mostrar: false });
     
     try {
         const rptData = await prisma.sede_suscripcion.findMany({

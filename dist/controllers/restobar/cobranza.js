@@ -76,7 +76,7 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
         switch (_a.label) {
             case 0:
                 idsede = req.params.idsede;
-                _a.label = 1;
+                return [2 /*return*/, res.json({ mostrar: false })];
             case 1:
                 _a.trys.push([1, 12, , 13]);
                 return [4 /*yield*/, prisma.sede_suscripcion.findMany({

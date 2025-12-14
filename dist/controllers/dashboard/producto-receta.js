@@ -135,6 +135,111 @@ router.post("/get-productos-bodega", function (req, res) { return __awaiter(void
         }
     });
 }); });
+router.post("/get-dash-productos", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, params, productoResultados, p_tipo_consulta, p_fecha_inicio, p_fecha_fin, productoResultadosFormateados, error_3;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idsede = _a.idsede, params = _a.params;
+                p_tipo_consulta = params.tipo_consulta;
+                p_fecha_inicio = params.rango_start_date;
+                p_fecha_fin = params.rango_end_date;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                        var result, error_4;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @xidsede = ".concat(idsede))];
+                                case 1:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @tipo_consulta = '".concat(p_tipo_consulta, "'"))];
+                                case 2:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_inicio = '".concat(p_fecha_inicio, "'"))];
+                                case 3:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_fin = '".concat(p_fecha_fin, "'"))];
+                                case 4:
+                                    _a.sent();
+                                    _a.label = 5;
+                                case 5:
+                                    _a.trys.push([5, 7, , 8]);
+                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_module_dash_productos(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)")];
+                                case 6:
+                                    result = _a.sent();
+                                    return [2 /*return*/, result];
+                                case 7:
+                                    error_4 = _a.sent();
+                                    throw error_4;
+                                case 8: return [2 /*return*/];
+                            }
+                        });
+                    }); })];
+            case 2:
+                productoResultados = _b.sent();
+                productoResultadosFormateados = (0, dash_util_1.normalizeResponseDashProductos)(productoResultados, p_tipo_consulta);
+                res.status(200).json(productoResultadosFormateados);
+                return [3 /*break*/, 4];
+            case 3:
+                error_3 = _b.sent();
+                res.status(500).json(error_3);
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });
+router.post("/save-food-cost", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var items, inserted, updated, _i, items_1, item, idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, receta_sugerida, existingRecord, error_5;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                items = req.body.items;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 9, , 10]);
+                inserted = 0;
+                updated = 0;
+                _i = 0, items_1 = items;
+                _a.label = 2;
+            case 2:
+                if (!(_i < items_1.length)) return [3 /*break*/, 8];
+                item = items_1[_i];
+                idsede = item.idsede, iditem = item.iditem, plato = item.plato, precio_venta = item.precio_venta, food_cost = item.food_cost, porcentaje_food_cost = item.porcentaje_food_cost, resumen = item.resumen, receta_sugerida = item.receta_sugerida;
+                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT id FROM platos_food_cost WHERE idsede = ".concat(idsede, " AND iditem = ").concat(iditem, " LIMIT 1"))];
+            case 3:
+                existingRecord = _a.sent();
+                if (!(existingRecord && existingRecord.length > 0)) return [3 /*break*/, 5];
+                return [4 /*yield*/, prisma.$executeRawUnsafe("UPDATE platos_food_cost SET \n                        plato = ?, \n                        precio_venta = ?, \n                        food_cost = ?, \n                        porcentaje_food_cost = ?, \n                        resumen = ?, \n                        receta_sugerida = ?,\n                        updated_at = NOW()\n                    WHERE idsede = ? AND iditem = ?", plato, precio_venta, food_cost, porcentaje_food_cost, resumen, JSON.stringify(receta_sugerida), idsede, iditem)];
+            case 4:
+                _a.sent();
+                updated++;
+                return [3 /*break*/, 7];
+            case 5: return [4 /*yield*/, prisma.$executeRawUnsafe("INSERT INTO platos_food_cost (idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, receta_sugerida) \n                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)", idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, JSON.stringify(receta_sugerida))];
+            case 6:
+                _a.sent();
+                inserted++;
+                _a.label = 7;
+            case 7:
+                _i++;
+                return [3 /*break*/, 2];
+            case 8:
+                res.status(200).json({
+                    message: 'Food costs guardados correctamente',
+                    inserted: inserted,
+                    updated: updated,
+                    total: items.length
+                });
+                return [3 /*break*/, 10];
+            case 9:
+                error_5 = _a.sent();
+                res.status(500).json({ error: 'Error al guardar el food cost', details: error_5 });
+                return [3 /*break*/, 10];
+            case 10: return [2 /*return*/];
+        }
+    });
+}); });
 function normalizeReceta(data) {
     var rpt = [];
     data.forEach(function (element) {

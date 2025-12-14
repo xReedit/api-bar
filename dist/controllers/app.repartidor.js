@@ -270,11 +270,9 @@ router.post('/save-timeline-pedido', function (req, res) { return __awaiter(void
                 };
                 listClienteNotificar = [];
                 listClienteNotificar.push(rowCliente);
-                console.log('listClienteNotificar', listClienteNotificar);
                 socketServices = new socket_services_1["default"]();
                 querySocket = socketServices.querySocket('repartidor');
                 querySocket.idrepartidor = parseInt(idrepartidor);
-                console.log('querySocket', querySocket);
                 return [4 /*yield*/, socketServices.connectSocket(querySocket)];
             case 1:
                 _b.sent();

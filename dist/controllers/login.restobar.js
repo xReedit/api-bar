@@ -125,7 +125,6 @@ router.post('/login', function (req, res) { return __awaiter(void 0, void 0, voi
                 return [3 /*break*/, 4];
             case 3:
                 error_1 = _a.sent();
-                console.error(error_1);
                 return [2 /*return*/, res.status(500).send((0, errors_util_1.getErrorMessage)(error_1))];
             case 4: return [2 /*return*/];
         }
@@ -179,6 +178,18 @@ router.post('/login-bot', function (req, res) { return __awaiter(void 0, void 0,
                 (0, usuario_1.loginRestobarBot)(req, res, userRestobar);
                 return [2 /*return*/];
         }
+    });
+}); });
+router.post('/login-dashboard', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, usuario, pass, code, user;
+    return __generator(this, function (_b) {
+        _a = req.body, usuario = _a.usuario, pass = _a.pass, code = _a.code;
+        user = {
+            usuario: usuario,
+            pass: pass,
+            code: code
+        };
+        return [2 /*return*/, (0, usuario_1.loginDashboard)(req, res, user)];
     });
 }); });
 var getUserRestobar = function (idusuario, idsede) { return __awaiter(void 0, void 0, void 0, function () {

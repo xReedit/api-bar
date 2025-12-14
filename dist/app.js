@@ -20,6 +20,4 @@ var portConect = process_1.env.PORT || 20223;
 app.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a nuestra API RESTOBAR port: ' + portConect });
 });
-app.listen(portConect, function () {
-    return console.log('REST API server ready at: http://localhost:20223');
-});
+app.listen(portConect, function () { });

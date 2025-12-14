@@ -43,6 +43,10 @@ var ventas_1 = __importDefault(require("../controllers/dashboard/ventas"));
 var iecaja_1 = __importDefault(require("../controllers/dashboard/iecaja"));
 var colaboradores_1 = __importDefault(require("../controllers/dashboard/colaboradores"));
 var producto_receta_1 = __importDefault(require("../controllers/dashboard/producto-receta"));
+var clientes_1 = __importDefault(require("../controllers/dashboard/clientes"));
+var usuarios_1 = __importDefault(require("../controllers/dashboard/usuarios"));
+var compras_1 = __importDefault(require("../controllers/dashboard/compras"));
+var punto_equilibrio_1 = __importDefault(require("../controllers/dashboard/punto-equilibrio"));
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a nuestra API RESTOBAR port: 20223' });
@@ -50,6 +54,7 @@ router.get('/', function (req, res) {
 router.use('/login', usuario_1.login);
 router.use('/login-bot', login_restobar_1["default"]);
 router.use('/login-restobar', login_restobar_1["default"]);
+router.use('/login-user', login_restobar_1["default"]);
 router.use('/verify-login', auth_1.authVerify);
 router.use('/rol', auth_1.auth, rol_1["default"]);
 router.use('/sede', auth_1.auth, sede_1["default"]);
@@ -61,10 +66,14 @@ router.use('/reimpresion', reimpresion_1["default"]);
 router.use('/app-repartidor', app_repartidor_1["default"]);
 // restobar
 router.use('/restobar/cobranza', cobranza_1["default"]);
-// dashboardñ
-router.use('/dash-ventas', ventas_1["default"]);
-router.use('/dash-iecaja', iecaja_1["default"]);
-router.use('/dash-colaboradores', colaboradores_1["default"]);
-router.use('/dash-producto-receta', producto_receta_1["default"]);
+// dashboard
+router.use('/dash-ventas', auth_1.auth, ventas_1["default"]);
+router.use('/dash-iecaja', auth_1.auth, iecaja_1["default"]);
+router.use('/dash-colaboradores', auth_1.auth, colaboradores_1["default"]);
+router.use('/dash-producto-receta', auth_1.auth, producto_receta_1["default"]);
+router.use('/dash-clientes', auth_1.auth, clientes_1["default"]);
+router.use('/dash-usuarios', auth_1.auth, usuarios_1["default"]);
+router.use('/dash-compras', auth_1.auth, compras_1["default"]);
+router.use('/dash-punto-equilibrio', auth_1.auth, punto_equilibrio_1["default"]);
 // router.use('/usuario', auth, usuario);
 exports["default"] = router;

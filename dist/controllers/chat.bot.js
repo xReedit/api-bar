@@ -456,12 +456,9 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', fu
                     fecha: fecha,
                     isSearchByFecha: isSearchByFecha ? 1 : 0
                 };
-                console.log('_dataSend', _dataSend);
-                console.log('query', "call procedure_chatbot_getidexternal_comprobante(".concat(JSON.stringify(_dataSend), ")"));
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["call procedure_chatbot_getidexternal_comprobante(", ")"], ["call procedure_chatbot_getidexternal_comprobante(", ")"])), JSON.stringify(_dataSend))];
             case 1:
                 rpt = _b.sent();
-                console.log('rpt', rpt);
                 if (rpt.length > 0) {
                     external_id = rpt[0].f0;
                     numero_comprobante = rpt[0].f1;
@@ -570,7 +567,6 @@ router.put('/update-config-delivery/:id', function (req, res, next) { return __a
                 return [3 /*break*/, 5];
             case 3:
                 error_2 = _a.sent();
-                console.error(error_2);
                 res.status(500).send({ error: 'error al actualizar update-config-delivery.' });
                 return [3 /*break*/, 5];
             case 4:

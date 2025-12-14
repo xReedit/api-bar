@@ -48,7 +48,6 @@ var client_1 = require("@prisma/client");
 var axios_1 = __importDefault(require("axios"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
-var utils_1 = require("../../utils/utils");
 dotenv_1["default"].config();
 var app = (0, express_1["default"])();
 app.use(express_1["default"].json({ limit: '50mb' }));
@@ -68,21 +67,18 @@ router.post("/total", function (req, res) { return __awaiter(void 0, void 0, voi
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
-                //console.log('params originales:', params);
-                // Validar y corregir el rango de período si es necesario
-                params = (0, utils_1.validarYCorregirRangoPeriodo)(params);
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
-                ssql = "CALL procedure_module_dash_ventas(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_ventas(", ", ", ")"], ["CALL procedure_module_dash_ventas(", ", ", ")"])), idsede, JSON.stringify(params))];
+                ssql = "CALL procedure_module_dash_ventas(".concat(idsede, ", '").concat(JSON.stringify(params), "')");
+                return [4 /*yield*/, prisma.$queryRawUnsafe(ssql)];
             case 2:
                 rpt = _b.sent();
                 sqlExec = rpt[0].f0;
                 return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
-                rptExec = (0, dash_util_1.normalizeResponse)(rptExec);
+                rptExec = (0, dash_util_1.normalizeResponseDashVentasTotal)(rptExec);
                 res.status(200).json(rptExec);
                 return [3 /*break*/, 5];
             case 4:
@@ -93,9 +89,62 @@ router.post("/total", function (req, res) { return __awaiter(void 0, void 0, voi
         }
     });
 }); });
+router.post("/ventas-detalle", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, params, ventas, error_2;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idsede = _a.idsede, params = _a.params;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                // Validar parámetros
+                if (!idsede || !params || !params.periodo) {
+                    return [2 /*return*/, res.status(400).json({
+                            error: 'Parámetros inválidos. Se requiere idsede y params.periodo'
+                        })];
+                }
+                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                        var result;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @xidsede = ".concat(idsede))];
+                                case 1:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @periodo_params = '".concat(JSON.stringify(params), "'"))];
+                                case 2:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_module_dash_pedidos_ventas(@xidsede, @periodo_params)")];
+                                case 3:
+                                    result = _a.sent();
+                                    return [2 /*return*/, result];
+                            }
+                        });
+                    }); })];
+            case 2:
+                ventas = _b.sent();
+                ventas = (0, dash_util_1.normalizeResponseDash)(ventas);
+                // const sql = `CALL procedure_module_dash_pedidos_ventas(${idsede}, '${JSON.stringify(params)}')`;
+                // const rpt: any = await prisma.$queryRawUnsafe(sql);
+                // const sqlExec = rpt[0].f0;
+                // let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);
+                // rptExec = normalizeResponse(rptExec);
+                res.status(200).json(ventas);
+                return [3 /*break*/, 4];
+            case 3:
+                error_2 = _b.sent();
+                res.status(500).json({
+                    error: error_2 instanceof Error ? error_2.message : 'Error desconocido',
+                    details: String(error_2)
+                });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });
 // get meta de venta diaria
 router.post("/meta-venta", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, rpt, meta, error_2;
+    var idsede, rpt, meta, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -103,7 +152,7 @@ router.post("/meta-venta", function (req, res) { return __awaiter(void 0, void 0
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["select diaria from sede_meta where idsede = ", " and estado = '0'"], ["select diaria from sede_meta where idsede = ", " and estado = '0'"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["select diaria from sede_meta where idsede = ", " and estado = '0'"], ["select diaria from sede_meta where idsede = ", " and estado = '0'"])), idsede)];
             case 2:
                 rpt = _a.sent();
                 meta = rpt[0] ? rpt[0].diaria : 0;
@@ -112,8 +161,8 @@ router.post("/meta-venta", function (req, res) { return __awaiter(void 0, void 0
                 });
                 return [3 /*break*/, 4];
             case 3:
-                error_2 = _a.sent();
-                res.status(500).json(error_2);
+                error_3 = _a.sent();
+                res.status(500).json(error_3);
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }
@@ -121,7 +170,7 @@ router.post("/meta-venta", function (req, res) { return __awaiter(void 0, void 0
 }); });
 // solicitar a api gpt el analisis de ventas
 router.post("/analisis-ventas", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, message, nom_assistant, assistants, assistant, url, data, response, error_3;
+    var _a, message, nom_assistant, assistants, assistant, url, data, response, error_4;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -145,12 +194,12 @@ router.post("/analisis-ventas", function (req, res) { return __awaiter(void 0, v
                 res.status(200).json(response.data);
                 return [3 /*break*/, 4];
             case 3:
-                error_3 = _b.sent();
-                res.status(500).json(error_3);
+                error_4 = _b.sent();
+                res.status(500).json(error_4);
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }
     });
 }); });
 exports["default"] = router;
-var templateObject_1, templateObject_2;
+var templateObject_1;

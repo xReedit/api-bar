@@ -58,99 +58,78 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
-exports.loginDashboard = exports.loginRestobarBot = exports.loginRestobar = exports.login = void 0;
 var express = __importStar(require("express"));
-var userServices = __importStar(require("../services/usuario.service"));
-var errors_util_1 = require("../utils/errors.util");
 var client_1 = require("@prisma/client");
+var dotenv_1 = __importDefault(require("dotenv"));
+var dash_util_1 = require("../../services/dash.util");
+dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
-// login user
-var login = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var foundUser, error_1;
+router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        switch (_a.label) {
+        res.status(200).json({ message: 'Estás conectado al api dash COMPRAS' });
+        return [2 /*return*/];
+    });
+}); });
+// obtener dashboard de compras
+router.post("/get-dash-compras", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, params, comprasResultados, p_tipo_consulta, p_fecha_inicio, p_fecha_fin, comprasResultadosFormateados, error_1;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, userServices.login(req.body)];
+                _a = req.body, idsede = _a.idsede, params = _a.params;
+                p_tipo_consulta = params.tipo_consulta;
+                p_fecha_inicio = params.rango_start_date;
+                p_fecha_fin = params.rango_end_date;
+                _b.label = 1;
             case 1:
-                foundUser = _a.sent();
-                delete foundUser.usuario['pass'];
-                res.status(200).send(foundUser);
-                return [3 /*break*/, 3];
+                _b.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                        var result, error_2;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @xidsede = ".concat(idsede))];
+                                case 1:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @tipo_consulta = '".concat(p_tipo_consulta, "'"))];
+                                case 2:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_inicio = '".concat(p_fecha_inicio, "'"))];
+                                case 3:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_fin = '".concat(p_fecha_fin, "'"))];
+                                case 4:
+                                    _a.sent();
+                                    _a.label = 5;
+                                case 5:
+                                    _a.trys.push([5, 7, , 8]);
+                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_module_dash_compras(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)")];
+                                case 6:
+                                    result = _a.sent();
+                                    return [2 /*return*/, result];
+                                case 7:
+                                    error_2 = _a.sent();
+                                    console.error('Error al ejecutar el stored procedure:', error_2);
+                                    throw error_2;
+                                case 8: return [2 /*return*/];
+                            }
+                        });
+                    }); })];
             case 2:
-                error_1 = _a.sent();
-                return [2 /*return*/, res.status(500).send((0, errors_util_1.getErrorMessage)(error_1))];
-            case 3: return [2 /*return*/];
+                comprasResultados = _b.sent();
+                comprasResultadosFormateados = (0, dash_util_1.normalizeResponseDashCompras)(comprasResultados, p_tipo_consulta);
+                res.status(200).json(comprasResultadosFormateados);
+                return [3 /*break*/, 4];
+            case 3:
+                error_1 = _b.sent();
+                res.status(500).json(error_1);
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
-}); };
-exports.login = login;
-var loginRestobar = function (req, res, user) { return __awaiter(void 0, void 0, void 0, function () {
-    var foundUser, error_2;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, userServices.login(user)];
-            case 1:
-                foundUser = _a.sent();
-                delete foundUser.usuario['pass'];
-                res.status(200).send(foundUser);
-                return [3 /*break*/, 3];
-            case 2:
-                error_2 = _a.sent();
-                return [2 /*return*/, res.status(500).send((0, errors_util_1.getErrorMessage)(error_2))];
-            case 3: return [2 /*return*/];
-        }
-    });
-}); };
-exports.loginRestobar = loginRestobar;
-var loginRestobarBot = function (req, res, user) { return __awaiter(void 0, void 0, void 0, function () {
-    var foundUser, error_3;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, userServices.loginBot(user)];
-            case 1:
-                foundUser = _a.sent();
-                delete foundUser.usuario['pass'];
-                res.status(200).send(foundUser);
-                return [3 /*break*/, 3];
-            case 2:
-                error_3 = _a.sent();
-                return [2 /*return*/, res.status(500).send((0, errors_util_1.getErrorMessage)(error_3))];
-            case 3: return [2 /*return*/];
-        }
-    });
-}); };
-exports.loginRestobarBot = loginRestobarBot;
-// login para dashboard
-var loginDashboard = function (req, res, user) { return __awaiter(void 0, void 0, void 0, function () {
-    var fromRestobar, foundUser, error_4, mensaje;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 2, , 3]);
-                fromRestobar = (user === null || user === void 0 ? void 0 : user.code) ? user.code === 'ZnJvbS1yZXN0b2Jhci0wMDE=' : false;
-                return [4 /*yield*/, userServices.loginDashboard(user, fromRestobar)];
-            case 1:
-                foundUser = _a.sent();
-                delete foundUser.usuario['pass'];
-                res.status(200).send(foundUser);
-                return [3 /*break*/, 3];
-            case 2:
-                error_4 = _a.sent();
-                mensaje = (error_4 === null || error_4 === void 0 ? void 0 : error_4.message) || 'Error desconocido';
-                // 401 para errores de autenticación/autorización
-                return [2 /*return*/, res.status(401).json({
-                        success: false,
-                        message: mensaje
-                    })];
-            case 3: return [2 /*return*/];
-        }
-    });
-}); };
-exports.loginDashboard = loginDashboard;
+}); });
+exports["default"] = router;

@@ -71,24 +71,126 @@ router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, f
 }); });
 // verificar advertencia de pago del servicio
 router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, hoy, rptData, rpt;
+    var idsede, rptData, rpt, ultimaFechaPago, frecuenciaPago, fechaProximoPago, hoy, diasRestantes, mensaje, diasPasados, tiempoAdvertencia, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 idsede = req.params.idsede;
-                hoy = new Date();
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 12, , 13]);
                 return [4 /*yield*/, prisma.sede_suscripcion.findMany({
                         where: {
                             idsede: parseInt(idsede),
                             estado: '0'
                         }
                     })];
-            case 1:
+            case 2:
                 rptData = _a.sent();
+                // Si no hay suscripción, no mostrar advertencia
+                if (rptData.length === 0) {
+                    return [2 /*return*/, res.json({ mostrar: false })];
+                }
                 rpt = rptData[0];
-                console.log('0rpt', rpt);
-                res.json({ mostrar: false });
-                return [2 /*return*/];
+                ultimaFechaPago = rpt.ultimo_pago;
+                // Validar fecha de último pago (evitar fechas inválidas como 1969-12-31)
+                if (!ultimaFechaPago || new Date(ultimaFechaPago).getFullYear() < 2000) {
+                    return [2 /*return*/, res.json({ mostrar: false })];
+                }
+                frecuenciaPago = rpt.frecuencia.toLowerCase();
+                fechaProximoPago = new Date(ultimaFechaPago);
+                switch (frecuenciaPago) {
+                    case 'mensual':
+                        fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 1);
+                        break;
+                    case 'semestral':
+                        fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 6);
+                        break;
+                    case 'anual':
+                        fechaProximoPago.setFullYear(fechaProximoPago.getFullYear() + 1);
+                        break;
+                    default:
+                        // Si no hay frecuencia válida, asumir mensual
+                        fechaProximoPago.setMonth(fechaProximoPago.getMonth() + 1);
+                }
+                hoy = new Date();
+                hoy.setHours(0, 0, 0, 0);
+                fechaProximoPago.setHours(0, 0, 0, 0);
+                diasRestantes = Math.ceil((fechaProximoPago.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+                mensaje = 'Le recordamos el pago del servicio.';
+                if (!(diasRestantes > 0 && diasRestantes <= 3)) return [3 /*break*/, 4];
+                return [4 /*yield*/, prisma.sede_estado.updateMany({
+                        where: {
+                            idsede: parseInt(idsede),
+                            is_advertencia: '0'
+                        },
+                        data: {
+                            is_advertencia: '1'
+                        }
+                    })];
+            case 3:
+                _a.sent();
+                mensaje = "Su pago vence en ".concat(diasRestantes, " d\u00EDa").concat(diasRestantes > 1 ? 's' : '', ". Le recordamos realizar el pago a tiempo.");
+                return [2 /*return*/, res.json({ mostrar: true, tiempo: 5, diasRestantes: diasRestantes, msj: mensaje })];
+            case 4:
+                if (!(diasRestantes <= 0)) return [3 /*break*/, 11];
+                diasPasados = Math.abs(diasRestantes);
+                tiempoAdvertencia = 5 + (diasPasados * 3);
+                if (!(diasPasados >= 1 && diasPasados <= 10)) return [3 /*break*/, 6];
+                mensaje = "Estimado cliente, han pasado ".concat(diasPasados, " d\u00EDa").concat(diasPasados > 1 ? 's' : '', " desde la fecha de vencimiento de su pago. Le recordamos amablemente que realice su pago para evitar interrupciones en el servicio.");
+                return [4 /*yield*/, prisma.sede_estado.updateMany({
+                        where: { idsede: parseInt(idsede) },
+                        data: {
+                            is_bloqueo_contador: '1',
+                            is_advertencia: '1'
+                        }
+                    })];
+            case 5:
+                _a.sent();
+                _a.label = 6;
+            case 6:
+                // 11-20 días vencidos: Advertencia de suspensión
+                if (diasPasados > 10 && diasPasados <= 20) {
+                    mensaje = "Estimado cliente, han pasado ".concat(diasPasados, " d\u00EDas desde el vencimiento de su pago. Si el retraso supera los 20 d\u00EDas, el servicio ser\u00E1 suspendido. Papaya.com.pe no se har\u00E1 responsable de los inconvenientes que esto pueda causar.");
+                    tiempoAdvertencia = Math.min(tiempoAdvertencia, 60); // Máximo 60 segundos
+                }
+                if (!(diasPasados > 20)) return [3 /*break*/, 10];
+                mensaje = "Estimado cliente, su servicio ha sido suspendido debido a la falta de pago. Regularice su pago para reactivar el servicio.";
+                if (!(rpt.activo === '0')) return [3 /*break*/, 9];
+                return [4 /*yield*/, prisma.sede_suscripcion.update({
+                        where: { idsede_suscripcion: rpt.idsede_suscripcion },
+                        data: { activo: '1' } // 1 = no activo/suspendido
+                    })];
+            case 7:
+                _a.sent();
+                return [4 /*yield*/, prisma.sede_estado.updateMany({
+                        where: { idsede: parseInt(idsede) },
+                        data: {
+                            is_bloqueado: '1',
+                            fecha_bloqueo: new Date()
+                        }
+                    })];
+            case 8:
+                _a.sent();
+                _a.label = 9;
+            case 9:
+                tiempoAdvertencia = 1000; // No se puede omitir fácilmente
+                _a.label = 10;
+            case 10: return [2 /*return*/, res.json({
+                    mostrar: true,
+                    tiempo: tiempoAdvertencia,
+                    diasRestantes: diasRestantes,
+                    diasPasados: diasPasados,
+                    msj: mensaje
+                })];
+            case 11: 
+            // CASO 3: Faltan más de 3 días, todo bien
+            return [2 /*return*/, res.json({ mostrar: false })];
+            case 12:
+                error_1 = _a.sent();
+                console.error('Error en advertencia cobranza:', error_1);
+                return [2 /*return*/, res.json({ mostrar: false })];
+            case 13: return [2 /*return*/];
         }
     });
 }); });

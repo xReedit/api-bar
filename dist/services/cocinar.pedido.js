@@ -115,7 +115,6 @@ function getSeccionItemsCartaSelected(idsede, items) {
                     return [2 /*return*/, response.data];
                 case 3:
                     error_2 = _a.sent();
-                    console.log(error_2);
                     return [2 /*return*/, []];
                 case 4: return [2 /*return*/];
             }

@@ -106,9 +106,7 @@ router.post("/get-iecaja", function (req, res) { return __awaiter(void 0, void 0
                 error_1 = _b.sent();
                 res.status(500).json(error_1);
                 return [3 /*break*/, 5];
-            case 5:
-                prisma.$disconnect();
-                return [2 /*return*/];
+            case 5: return [2 /*return*/];
         }
     });
 }); });
@@ -139,9 +137,7 @@ router.post("/get-otros-ingresos", function (req, res) { return __awaiter(void 0
                 error_2 = _b.sent();
                 res.status(500).json(error_2);
                 return [3 /*break*/, 5];
-            case 5:
-                prisma.$disconnect();
-                return [2 /*return*/];
+            case 5: return [2 /*return*/];
         }
     });
 }); });
@@ -172,9 +168,7 @@ router.post("/get-pedidos-borrados", function (req, res) { return __awaiter(void
                 error_3 = _b.sent();
                 res.status(500).json(error_3);
                 return [3 /*break*/, 5];
-            case 5:
-                prisma.$disconnect();
-                return [2 /*return*/];
+            case 5: return [2 /*return*/];
         }
     });
 }); });
@@ -205,9 +199,7 @@ router.post("/get-pedidos-sin-corbrar", function (req, res) { return __awaiter(v
                 error_4 = _b.sent();
                 res.status(500).json(error_4);
                 return [3 /*break*/, 5];
-            case 5:
-                prisma.$disconnect();
-                return [2 /*return*/];
+            case 5: return [2 /*return*/];
         }
     });
 }); });
@@ -237,9 +229,63 @@ router.post("/get-descuentos-aplicados", function (req, res) { return __awaiter(
                 error_5 = _b.sent();
                 res.status(500).json(error_5);
                 return [3 /*break*/, 5];
-            case 5:
-                prisma.$disconnect();
-                return [2 /*return*/];
+            case 5: return [2 /*return*/];
+        }
+    });
+}); });
+router.post("/get-dash-caja", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, params, cajaResultados, p_tipo_consulta_1, p_fecha_inicio_1, p_fecha_fin_1, cajaFormateada, error_6;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idsede = _a.idsede, params = _a.params;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                p_tipo_consulta_1 = params.tipo_consulta;
+                p_fecha_inicio_1 = params.rango_start_date;
+                p_fecha_fin_1 = params.rango_end_date;
+                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                        var result, error_7;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @xidsede = ".concat(idsede))];
+                                case 1:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @tipo_consulta = '".concat(p_tipo_consulta_1, "'"))];
+                                case 2:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_inicio = '".concat(p_fecha_inicio_1, "'"))];
+                                case 3:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_fin = '".concat(p_fecha_fin_1, "'"))];
+                                case 4:
+                                    _a.sent();
+                                    _a.label = 5;
+                                case 5:
+                                    _a.trys.push([5, 7, , 8]);
+                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_module_dash_caja2(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)")];
+                                case 6:
+                                    result = _a.sent();
+                                    return [2 /*return*/, result];
+                                case 7:
+                                    error_7 = _a.sent();
+                                    console.error('Error al ejecutar el stored procedure:', error_7);
+                                    throw error_7;
+                                case 8: return [2 /*return*/];
+                            }
+                        });
+                    }); })];
+            case 2:
+                cajaResultados = _b.sent();
+                cajaFormateada = (0, dash_util_1.normalizeResponseDashCaja)(cajaResultados, p_tipo_consulta_1);
+                res.status(200).json(cajaFormateada);
+                return [3 /*break*/, 4];
+            case 3:
+                error_6 = _b.sent();
+                res.status(500).json(error_6);
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); });

@@ -51,12 +51,10 @@ var SocketService = /** @class */ (function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) {
                         var socketServer = process.env.SOCKET_SERVER_URL_RESTOBAR || 'http://localhost:5819';
-                        console.log('socketServer', socketServer);
                         _this.socket = (0, socket_io_client_1["default"])(socketServer, {
                             query: query
                         });
                         _this.socket.on('connect', function () {
-                            console.log('Conectado al socket');
                             resolve(true);
                         });
                     })];
@@ -78,7 +76,6 @@ var SocketService = /** @class */ (function () {
         return _querySocket;
     };
     SocketService.prototype.emitEvent = function (eventName, eventData) {
-        console.log('eventName', eventName);
         this.socket.emit(eventName, eventData);
     };
     // evento para desconectarse del socket

@@ -59,7 +59,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.loginBot = exports.login = void 0;
+exports.loginDashboard = exports.loginBot = exports.login = void 0;
 var jwt = __importStar(require("jsonwebtoken"));
 var express = __importStar(require("express"));
 var auth_1 = require("../middleware/auth");
@@ -133,3 +133,85 @@ function loginBot(_usuario) {
     });
 }
 exports.loginBot = loginBot;
+function loginDashboard(_usuario, fromRestobar) {
+    if (fromRestobar === void 0) { fromRestobar = false; }
+    return __awaiter(this, void 0, void 0, function () {
+        var usuario, permisos, isMatch, err_3;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, prisma.usuario.findFirst({ where: { usuario: _usuario.usuario } })];
+                case 1:
+                    usuario = _a.sent();
+                    if (!usuario) {
+                        throw new Error("Usuario o Clave incorrectos");
+                    }
+                    permisos = usuario.acc ? usuario.acc.split(',') : [];
+                    if (!permisos.includes('A14')) {
+                        throw new Error("No tiene permisos para acceder al dashboard");
+                    }
+                    if (fromRestobar) {
+                        return [2 /*return*/, datosUser(usuario)];
+                    }
+                    isMatch = _usuario.pass === usuario.pass;
+                    if (isMatch) {
+                        return [2 /*return*/, datosUser(usuario)];
+                    }
+                    else {
+                        throw new Error("Usuario o Clave incorrectos");
+                    }
+                    return [3 /*break*/, 3];
+                case 2:
+                    err_3 = _a.sent();
+                    throw err_3;
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.loginDashboard = loginDashboard;
+function datosUser(usuario) {
+    return __awaiter(this, void 0, void 0, function () {
+        var sedes, esPrimeraSede, listSedes, token, error_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, prisma.sede.findMany({
+                            where: {
+                                idorg: usuario.idorg,
+                                estado: 0
+                            },
+                            select: {
+                                idsede: true,
+                                nombre: true
+                            },
+                            orderBy: {
+                                idsede: 'asc'
+                            }
+                        })];
+                case 1:
+                    sedes = _a.sent();
+                    esPrimeraSede = sedes.length > 0 && sedes[0].idsede === usuario.idsede;
+                    listSedes = esPrimeraSede
+                        ? sedes
+                        : sedes.filter(function (s) { return s.idsede === usuario.idsede; });
+                    token = jwt.sign({
+                        id: usuario.idusuario,
+                        usuario: usuario.usuario,
+                        idsede: usuario.idsede,
+                        idorg: usuario.idorg,
+                        sedes: listSedes
+                    }, auth_1.SECRET_KEY, {
+                        expiresIn: "1d"
+                    });
+                    return [2 /*return*/, { usuario: usuario, token: token, sedes: listSedes }];
+                case 2:
+                    error_1 = _a.sent();
+                    throw new Error("Usuario o Clave incorrectos");
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}

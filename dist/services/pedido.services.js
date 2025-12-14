@@ -76,7 +76,6 @@ var PedidoServices = /** @class */ (function () {
             });
         }
         catch (error) {
-            console.log('error setDescripcionCantidadItems', error);
         }
         return seccionMasItems;
     };

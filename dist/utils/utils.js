@@ -47,8 +47,6 @@ function validarYCorregirRangoPeriodo(params) {
         nuevaFechaFin.setMonth(nuevaFechaFin.getMonth() + 4);
         // Formatear la fecha en formato YYYY-MM-DD
         var fechaFinCorregida = nuevaFechaFin.toISOString().split('T')[0];
-        console.log("Rango ajustado: el per\u00EDodo de ".concat(diferenciaEnMeses, " meses fue reducido a 4 meses"));
-        console.log("Fecha fin original: ".concat(rango_end_date, ", Fecha fin corregida: ").concat(fechaFinCorregida));
         // Retornar params con la fecha corregida
         return __assign(__assign({}, params), { periodo_params: __assign(__assign({}, params.periodo_params), { rango_end_date: fechaFinCorregida }) });
     }

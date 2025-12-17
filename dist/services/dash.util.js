@@ -11,7 +11,7 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 exports.__esModule = true;
-exports.normalizeResponseDashPuntoEquilibrio = exports.normalizeResponseDashUsuarios = exports.normalizeResponseDashCompras = exports.normalizeResponseDashClientes = exports.normalizeResponseDashProductos = exports.normalizeResponseDashCaja = exports.normalizeResponseDashVentasTotal = exports.normalizeResponseDash = exports.normalizeResponse = void 0;
+exports.normalizeResponseDashPromocionesCupones = exports.normalizeResponseCompararLocales = exports.normalizeResponseDashPuntoEquilibrio = exports.normalizeResponseDashUsuarios = exports.normalizeResponseDashCompras = exports.normalizeResponseDashClientes = exports.normalizeResponseDashProductos = exports.normalizeResponseDashCaja = exports.normalizeResponseDashVentasTotal = exports.normalizeResponseDash = exports.normalizeResponse = void 0;
 // Convertir BigInt a Number en un objeto
 var convertBigIntToNumber = function (obj) {
     if (obj === null || obj === undefined)
@@ -1017,3 +1017,159 @@ var normalizeResponseDashPuntoEquilibrio = function (data, tipo_consulta) {
     }
 };
 exports.normalizeResponseDashPuntoEquilibrio = normalizeResponseDashPuntoEquilibrio;
+// Mapeo para comparar locales/sedes
+var normalizeResponseCompararLocales = function (data) {
+    if (!data || data.length === 0)
+        return [];
+    return data.map(function (item) { return ({
+        idsede: typeof item.f0 === 'bigint' ? Number(item.f0) : parseInt(item.f0 || 0),
+        nombre_sede: item.f1,
+        fecha: item.f2,
+        total_ventas: parseFloat(item.f3 || 0),
+        cantidad_ventas: typeof item.f4 === 'bigint' ? Number(item.f4) : parseInt(item.f4 || 0),
+        total_anulado: parseFloat(item.f5 || 0),
+        cantidad_anuladas: typeof item.f6 === 'bigint' ? Number(item.f6) : parseInt(item.f6 || 0)
+    }); });
+};
+exports.normalizeResponseCompararLocales = normalizeResponseCompararLocales;
+// Mapeo para el módulo de promociones y cupones (procedure_dash_promociones_cupones)
+var normalizeResponseDashPromocionesCupones = function (data, tipo_consulta) {
+    if (!data)
+        return tipo_consulta === 'all' ? { cupones: [], promociones: [], promociones_detalle: [], descuentos: [] } : [];
+    var toNumber = function (val) {
+        if (val === null || val === undefined)
+            return 0;
+        if (typeof val === 'bigint')
+            return Number(val);
+        if (typeof val === 'number')
+            return val;
+        var n = parseFloat(val);
+        return Number.isFinite(n) ? n : 0;
+    };
+    var toInt = function (val) {
+        if (val === null || val === undefined)
+            return 0;
+        if (typeof val === 'bigint')
+            return Number(val);
+        var n = parseInt(val, 10);
+        return Number.isFinite(n) ? n : 0;
+    };
+    var toBoolNumber = function (val) {
+        if (val === null || val === undefined)
+            return 0;
+        if (typeof val === 'boolean')
+            return val ? 1 : 0;
+        if (typeof val === 'bigint')
+            return Number(val);
+        if (val === '1' || val === 1)
+            return 1;
+        return 0;
+    };
+    // Mapeo cupones: f0=idcupon, f1=titulo, f2=descripcion, f3=fecha_inicio, f4=fecha_termina,
+    // f5=idsede, f6=activo, f7=estado, f8=cantidad_maxima, f9=cantidad_activado, f10=cantidad_emitido,
+    // f11=importe_minimo, f12=is_automatico, f13=cupon_manual, f14=solo_clientes, f15=codigos_generados,
+    // f16=codigos_usados, f17=tasa_canje, f18=estado_calculado
+    var mapCupones = function (items) {
+        if (!items || items.length === 0)
+            return [];
+        return items.map(function (item) { return ({
+            idcupon: toInt(item.f0),
+            titulo: item.f1,
+            descripcion: item.f2,
+            fecha_inicio: item.f3,
+            fecha_termina: item.f4,
+            idsede: toInt(item.f5),
+            activo: toBoolNumber(item.f6),
+            estado: item.f7,
+            cantidad_maxima: toInt(item.f8),
+            cantidad_activado: toInt(item.f9),
+            cantidad_emitido: toInt(item.f10),
+            importe_minimo: toNumber(item.f11),
+            is_automatico: toBoolNumber(item.f12),
+            cupon_manual: toBoolNumber(item.f13),
+            solo_clientes: toBoolNumber(item.f14),
+            codigos_generados: toInt(item.f15),
+            codigos_usados: toInt(item.f16),
+            tasa_canje: toNumber(item.f17),
+            estado_calculado: item.f18
+        }); });
+    };
+    // Mapeo promociones: f0=idpromocion, f1=idsede, f2=estado, f3=activo, f4=fecha_registro,
+    // f5=tipo_promocion, f6=titulo, f7=descripcion, f8=fecha_inicio, f9=fecha_fin,
+    // f10=hora_inicio, f11=hora_fin, f12=dias_semana, f13=solo_app, f14=cantidad_items, f15=estado_calculado
+    var mapPromociones = function (items) {
+        if (!items || items.length === 0)
+            return [];
+        return items.map(function (item) { return ({
+            idpromocion: toInt(item.f0),
+            idsede: toInt(item.f1),
+            estado: item.f2,
+            activo: toBoolNumber(item.f3),
+            fecha_registro: item.f4,
+            tipo_promocion: item.f5,
+            titulo: item.f6,
+            descripcion: item.f7,
+            fecha_inicio: item.f8,
+            fecha_fin: item.f9,
+            hora_inicio: item.f10,
+            hora_fin: item.f11,
+            dias_semana: item.f12,
+            solo_app: toBoolNumber(item.f13),
+            cantidad_items: toInt(item.f14),
+            estado_calculado: item.f15
+        }); });
+    };
+    // Mapeo promociones_detalle: f0=idpromocion_detalle, f1=idpromocion, f2=tipo, f3=descripcion,
+    // f4=porc_descuento, f5=cantidad, f6=precio, f7=precio_final
+    var mapPromocionesDetalle = function (items) {
+        if (!items || items.length === 0)
+            return [];
+        return items.map(function (item) { return ({
+            idpromocion_detalle: toInt(item.f0),
+            idpromocion: toInt(item.f1),
+            tipo: item.f2,
+            descripcion: item.f3,
+            porc_descuento: toNumber(item.f4),
+            cantidad: toNumber(item.f5),
+            precio: toNumber(item.f6),
+            precio_final: toNumber(item.f7)
+        }); });
+    };
+    // Mapeo descuentos: f0=idtipo_descuento, f1=tipo_descuento, f2=cantidad_usos, f3=total_descuento
+    var mapDescuentos = function (items) {
+        if (!items || items.length === 0)
+            return [];
+        return items.map(function (item) { return ({
+            idtipo_descuento: toInt(item.f0),
+            tipo_descuento: item.f1,
+            cantidad_usos: toInt(item.f2),
+            total_descuento: toNumber(item.f3)
+        }); });
+    };
+    if (tipo_consulta === 'all') {
+        var r0 = Array.isArray(data === null || data === void 0 ? void 0 : data[0]) ? data[0] : [];
+        var r1 = Array.isArray(data === null || data === void 0 ? void 0 : data[1]) ? data[1] : [];
+        var r2 = Array.isArray(data === null || data === void 0 ? void 0 : data[2]) ? data[2] : [];
+        var r3 = Array.isArray(data === null || data === void 0 ? void 0 : data[3]) ? data[3] : [];
+        return {
+            cupones: mapCupones(r0),
+            promociones: mapPromociones(r1),
+            promociones_detalle: mapPromocionesDetalle(r2),
+            descuentos: mapDescuentos(r3)
+        };
+    }
+    var items = Array.isArray(data) ? data : (Array.isArray(data === null || data === void 0 ? void 0 : data[0]) ? data[0] : []);
+    switch (tipo_consulta) {
+        case 'cupones':
+            return mapCupones(items);
+        case 'promociones':
+            return mapPromociones(items);
+        case 'promociones_detalle':
+            return mapPromocionesDetalle(items);
+        case 'descuentos':
+            return mapDescuentos(items);
+        default:
+            return items;
+    }
+};
+exports.normalizeResponseDashPromocionesCupones = normalizeResponseDashPromocionesCupones;

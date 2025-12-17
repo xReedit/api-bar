@@ -11,7 +11,7 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 exports.__esModule = true;
-exports.validarYCorregirRangoPeriodo = exports.fechaGuionASlash = void 0;
+exports.limitarRangoFechasDashboard = exports.validarYCorregirRangoPeriodo = exports.fechaGuionASlash = void 0;
 function fechaGuionASlash(fecha) {
     return fecha.replace(/-/g, '/');
 }
@@ -71,3 +71,54 @@ function calcularDiferenciaEnMeses(fechaInicio, fechaFin) {
     }
     return mesesTotales;
 }
+var MAX_MESES_DASHBOARD = 5;
+/**
+ * Limita el rango de fechas a máximo 5 meses para endpoints de dashboard.
+ * Si fecha_fin es el mes actual o fecha de hoy, ajusta fecha_inicio hacia adelante.
+ * Si no, ajusta fecha_fin hacia atrás.
+ * @param fecha_inicio - Fecha inicio en formato 'YYYY-MM-DD'
+ * @param fecha_fin - Fecha fin en formato 'YYYY-MM-DD'
+ * @returns Objeto con fecha_inicio y fecha_fin ajustadas
+ */
+function limitarRangoFechasDashboard(fecha_inicio, fecha_fin) {
+    if (!fecha_inicio || !fecha_fin) {
+        return { fecha_inicio: fecha_inicio, fecha_fin: fecha_fin };
+    }
+    var fechaInicio = new Date(fecha_inicio + 'T00:00:00');
+    var fechaFin = new Date(fecha_fin + 'T00:00:00');
+    var hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    // Validar que las fechas sean válidas
+    if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+        return { fecha_inicio: fecha_inicio, fecha_fin: fecha_fin };
+    }
+    // Calcular diferencia en meses
+    var diferenciaEnMeses = calcularDiferenciaEnMeses(fechaInicio, fechaFin);
+    // Si no supera el máximo, retornar sin cambios
+    if (diferenciaEnMeses <= MAX_MESES_DASHBOARD) {
+        return { fecha_inicio: fecha_inicio, fecha_fin: fecha_fin };
+    }
+    // Verificar si fecha_fin es el mes actual o fecha de hoy
+    var esFinMesActual = (fechaFin.getFullYear() === hoy.getFullYear() &&
+        fechaFin.getMonth() === hoy.getMonth());
+    var esFinHoy = fechaFin.getTime() >= hoy.getTime();
+    if (esFinMesActual || esFinHoy) {
+        // Ajustar fecha_inicio hacia adelante (mantener fecha_fin)
+        var nuevaFechaInicio = new Date(fechaFin);
+        nuevaFechaInicio.setMonth(nuevaFechaInicio.getMonth() - MAX_MESES_DASHBOARD);
+        return {
+            fecha_inicio: nuevaFechaInicio.toISOString().split('T')[0],
+            fecha_fin: fecha_fin
+        };
+    }
+    else {
+        // Ajustar fecha_fin hacia atrás (mantener fecha_inicio)
+        var nuevaFechaFin = new Date(fechaInicio);
+        nuevaFechaFin.setMonth(nuevaFechaFin.getMonth() + MAX_MESES_DASHBOARD);
+        return {
+            fecha_inicio: fecha_inicio,
+            fecha_fin: nuevaFechaFin.toISOString().split('T')[0]
+        };
+    }
+}
+exports.limitarRangoFechasDashboard = limitarRangoFechasDashboard;

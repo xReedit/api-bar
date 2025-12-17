@@ -66,6 +66,7 @@ var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
+var utils_1 = require("../../utils/utils");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -77,14 +78,15 @@ router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, f
 }); });
 // obtener dashboard de compras
 router.post("/get-dash-compras", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, params, comprasResultados, p_tipo_consulta, p_fecha_inicio, p_fecha_fin, comprasResultadosFormateados, error_1;
+    var _a, idsede, params, comprasResultados, p_tipo_consulta, fechasLimitadas, p_fecha_inicio, p_fecha_fin, comprasResultadosFormateados, error_1;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
                 p_tipo_consulta = params.tipo_consulta;
-                p_fecha_inicio = params.rango_start_date;
-                p_fecha_fin = params.rango_end_date;
+                fechasLimitadas = (0, utils_1.limitarRangoFechasDashboard)(params.rango_start_date, params.rango_end_date);
+                p_fecha_inicio = fechasLimitadas.fecha_inicio;
+                p_fecha_fin = fechasLimitadas.fecha_fin;
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);

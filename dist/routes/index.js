@@ -47,6 +47,7 @@ var clientes_1 = __importDefault(require("../controllers/dashboard/clientes"));
 var usuarios_1 = __importDefault(require("../controllers/dashboard/usuarios"));
 var compras_1 = __importDefault(require("../controllers/dashboard/compras"));
 var punto_equilibrio_1 = __importDefault(require("../controllers/dashboard/punto-equilibrio"));
+var promociones_cupones_1 = __importDefault(require("../controllers/dashboard/promociones-cupones"));
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a nuestra API RESTOBAR port: 20223' });
@@ -75,5 +76,6 @@ router.use('/dash-clientes', auth_1.auth, clientes_1["default"]);
 router.use('/dash-usuarios', auth_1.auth, usuarios_1["default"]);
 router.use('/dash-compras', auth_1.auth, compras_1["default"]);
 router.use('/dash-punto-equilibrio', auth_1.auth, punto_equilibrio_1["default"]);
+router.use('/dash-promociones-cupones', auth_1.auth, promociones_cupones_1["default"]);
 // router.use('/usuario', auth, usuario);
 exports["default"] = router;

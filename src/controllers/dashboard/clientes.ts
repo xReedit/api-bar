@@ -2,6 +2,7 @@ import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
 import { normalizeResponseDashClientes } from "../../services/dash.util";
+import { limitarRangoFechasDashboard } from "../../utils/utils";
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -19,8 +20,11 @@ router.post("/get-dash-clientes", async (req, res) => {
     let clienteResultados: any;
 
     const p_tipo_consulta = params.tipo_consulta;
-    const p_fecha_inicio = params.rango_start_date;
-    const p_fecha_fin = params.rango_end_date;
+    
+    // Limitar rango de fechas a máximo 5 meses
+    const fechasLimitadas = limitarRangoFechasDashboard(params.rango_start_date, params.rango_end_date);
+    const p_fecha_inicio = fechasLimitadas.fecha_inicio;
+    const p_fecha_fin = fechasLimitadas.fecha_fin;
     
     try {        
         clienteResultados = await prisma.$transaction(async (tx) => {

@@ -3,8 +3,8 @@ import { PrismaClient } from "@prisma/client";
 import axios from "axios";
 
 import dotenv from 'dotenv';
-import { normalizeResponse, normalizeResponseDash, normalizeResponseDashVentasTotal } from "../../services/dash.util";
-import { validarYCorregirRangoPeriodo } from "../../utils/utils";
+import { normalizeResponse, normalizeResponseDash, normalizeResponseDashVentasTotal, normalizeResponseCompararLocales } from "../../services/dash.util";
+import { validarYCorregirRangoPeriodo, limitarRangoFechasDashboard } from "../../utils/utils";
 dotenv.config();
 
 const app = express();
@@ -95,6 +95,43 @@ router.post("/meta-venta", async (req, res) => {
         });        
     } catch (error) {
         res.status(500).json(error);        
+    }
+});
+
+// comparar ventas entre sedes
+router.post("/comparar-locales", async (req, res) => {
+    const { sedes, params } = req.body;
+    
+    try {
+        if (!sedes || !Array.isArray(sedes) || sedes.length === 0) {
+            return res.status(400).json({
+                error: 'Se requiere un array de sedes'
+            });
+        }        
+
+        const tipo_consulta = params?.periodo || 'dia';
+        
+        // Limitar rango de fechas a máximo 5 meses
+        const fechasLimitadas = limitarRangoFechasDashboard(params?.rango_start_date || '', params?.rango_end_date || '');
+        const fecha_inicio = fechasLimitadas.fecha_inicio;
+        const fecha_fin = fechasLimitadas.fecha_fin;
+
+        let result: any = await prisma.$transaction(async (tx) => {
+            await tx.$executeRawUnsafe(`SET @sedes_json = '${JSON.stringify(sedes)}'`);
+            await tx.$executeRawUnsafe(`SET @tipo_consulta = '${tipo_consulta}'`);
+            await tx.$executeRawUnsafe(`SET @fecha_inicio = '${fecha_inicio}'`);
+            await tx.$executeRawUnsafe(`SET @fecha_fin = '${fecha_fin}'`);
+            return await tx.$queryRawUnsafe(`CALL procedure_dash_comparar_locales(@sedes_json, @tipo_consulta, @fecha_inicio, @fecha_fin)`);
+        });
+
+        result = normalizeResponseCompararLocales(result);
+
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ 
+            error: error instanceof Error ? error.message : 'Error desconocido',
+            details: String(error)
+        });
     }
 });
 

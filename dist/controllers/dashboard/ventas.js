@@ -48,6 +48,7 @@ var client_1 = require("@prisma/client");
 var axios_1 = __importDefault(require("axios"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
+var utils_1 = require("../../utils/utils");
 dotenv_1["default"].config();
 var app = (0, express_1["default"])();
 app.use(express_1["default"].json({ limit: '50mb' }));
@@ -168,9 +169,64 @@ router.post("/meta-venta", function (req, res) { return __awaiter(void 0, void 0
         }
     });
 }); });
+// comparar ventas entre sedes
+router.post("/comparar-locales", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, sedes, params, tipo_consulta_1, fechasLimitadas, fecha_inicio_1, fecha_fin_1, result, error_4;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, sedes = _a.sedes, params = _a.params;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                if (!sedes || !Array.isArray(sedes) || sedes.length === 0) {
+                    return [2 /*return*/, res.status(400).json({
+                            error: 'Se requiere un array de sedes'
+                        })];
+                }
+                tipo_consulta_1 = (params === null || params === void 0 ? void 0 : params.periodo) || 'dia';
+                fechasLimitadas = (0, utils_1.limitarRangoFechasDashboard)((params === null || params === void 0 ? void 0 : params.rango_start_date) || '', (params === null || params === void 0 ? void 0 : params.rango_end_date) || '');
+                fecha_inicio_1 = fechasLimitadas.fecha_inicio;
+                fecha_fin_1 = fechasLimitadas.fecha_fin;
+                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @sedes_json = '".concat(JSON.stringify(sedes), "'"))];
+                                case 1:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @tipo_consulta = '".concat(tipo_consulta_1, "'"))];
+                                case 2:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_inicio = '".concat(fecha_inicio_1, "'"))];
+                                case 3:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_fin = '".concat(fecha_fin_1, "'"))];
+                                case 4:
+                                    _a.sent();
+                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_dash_comparar_locales(@sedes_json, @tipo_consulta, @fecha_inicio, @fecha_fin)")];
+                                case 5: return [2 /*return*/, _a.sent()];
+                            }
+                        });
+                    }); })];
+            case 2:
+                result = _b.sent();
+                result = (0, dash_util_1.normalizeResponseCompararLocales)(result);
+                res.status(200).json(result);
+                return [3 /*break*/, 4];
+            case 3:
+                error_4 = _b.sent();
+                res.status(500).json({
+                    error: error_4 instanceof Error ? error_4.message : 'Error desconocido',
+                    details: String(error_4)
+                });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });
 // solicitar a api gpt el analisis de ventas
 router.post("/analisis-ventas", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, message, nom_assistant, assistants, assistant, url, data, response, error_4;
+    var _a, message, nom_assistant, assistants, assistant, url, data, response, error_5;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -194,8 +250,8 @@ router.post("/analisis-ventas", function (req, res) { return __awaiter(void 0, v
                 res.status(200).json(response.data);
                 return [3 /*break*/, 4];
             case 3:
-                error_4 = _b.sent();
-                res.status(500).json(error_4);
+                error_5 = _b.sent();
+                res.status(500).json(error_5);
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }

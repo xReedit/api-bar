@@ -72,21 +72,31 @@ var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        res.status(200).json({ message: 'Estás conectado al api dash CLIENTES' });
+        res.status(200).json({ message: 'Estás conectado al api dash PROMOCIONES Y CUPONES' });
         return [2 /*return*/];
     });
 }); });
-// obtener dashboard de clientes
-router.post("/get-dash-clientes", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, params, clienteResultados, p_tipo_consulta, fechasLimitadas, p_fecha_inicio, p_fecha_fin, clienteResultadosFormateados, error_1;
+// obtener dashboard de cupones y promociones
+router.post("/get-dash-promociones-cupones", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, params, p_tipo_consulta, fechasOriginales, fechasLimitadas, p_fecha_inicio, p_fecha_fin, resultados, resultadosFormateados, error_1;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
-                p_tipo_consulta = params.tipo_consulta;
-                fechasLimitadas = (0, utils_1.limitarRangoFechasDashboard)(params.rango_start_date, params.rango_end_date);
+                p_tipo_consulta = (params === null || params === void 0 ? void 0 : params.tipo_consulta) || 'all';
+                fechasOriginales = {
+                    fecha_inicio: (params === null || params === void 0 ? void 0 : params.rango_start_date) || (params === null || params === void 0 ? void 0 : params.fecha_inicio) || '',
+                    fecha_fin: (params === null || params === void 0 ? void 0 : params.rango_end_date) || (params === null || params === void 0 ? void 0 : params.fecha_fin) || ''
+                };
+                fechasLimitadas = (0, utils_1.limitarRangoFechasDashboard)(fechasOriginales.fecha_inicio, fechasOriginales.fecha_fin);
                 p_fecha_inicio = fechasLimitadas.fecha_inicio;
                 p_fecha_fin = fechasLimitadas.fecha_fin;
+                if (!idsede) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Parámetro inválido. Se requiere idsede' })];
+                }
+                if (!p_tipo_consulta) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Parámetro inválido. Se requiere params.tipo_consulta' })];
+                }
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);
@@ -109,7 +119,7 @@ router.post("/get-dash-clientes", function (req, res) { return __awaiter(void 0,
                                     _a.label = 5;
                                 case 5:
                                     _a.trys.push([5, 7, , 8]);
-                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_module_dash_clientes(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)")];
+                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_dash_promociones_cupones(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)")];
                                 case 6:
                                     result = _a.sent();
                                     return [2 /*return*/, result];
@@ -122,9 +132,9 @@ router.post("/get-dash-clientes", function (req, res) { return __awaiter(void 0,
                         });
                     }); })];
             case 2:
-                clienteResultados = _b.sent();
-                clienteResultadosFormateados = (0, dash_util_1.normalizeResponseDashClientes)(clienteResultados, p_tipo_consulta);
-                res.status(200).json(clienteResultadosFormateados);
+                resultados = _b.sent();
+                resultadosFormateados = (0, dash_util_1.normalizeResponseDashPromocionesCupones)(resultados, p_tipo_consulta);
+                res.status(200).json(resultadosFormateados);
                 return [3 /*break*/, 4];
             case 3:
                 error_1 = _b.sent();

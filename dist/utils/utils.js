@@ -23,20 +23,29 @@ exports.fechaGuionASlash = fechaGuionASlash;
  * @returns Objeto params corregido si es necesario
  */
 function validarYCorregirRangoPeriodo(params) {
-    // Verificar si existe periodo_params y si el período es "rango"
-    if (!params.periodo_params || params.periodo_params.periodo !== 'rango') {
+    // Soportar ambos formatos:
+    // 1. params.periodo_params.periodo (formato antiguo)
+    // 2. params.periodo (formato nuevo/directo)
+    var usaPeriodoParams = params.periodo_params && params.periodo_params.periodo === 'rango';
+    var usaParamsDirecto = params.periodo === 'rango';
+    if (!usaPeriodoParams && !usaParamsDirecto) {
         return params; // No es rango, retornar sin cambios
     }
-    var _a = params.periodo_params, rango_start_date = _a.rango_start_date, rango_end_date = _a.rango_end_date;
+    // Obtener fechas según el formato usado
+    var rango_start_date = usaPeriodoParams
+        ? params.periodo_params.rango_start_date
+        : params.rango_start_date;
+    var rango_end_date = usaPeriodoParams
+        ? params.periodo_params.rango_end_date
+        : params.rango_end_date;
     // Validar que existan ambas fechas
     if (!rango_start_date || !rango_end_date) {
         return params;
     }
-    var fechaInicio = new Date(rango_start_date);
-    var fechaFin = new Date(rango_end_date);
+    var fechaInicio = new Date(rango_start_date + 'T00:00:00');
+    var fechaFin = new Date(rango_end_date + 'T00:00:00');
     // Validar que las fechas sean válidas
     if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
-        console.warn('Fechas inválidas en el rango de período');
         return params;
     }
     // Calcular la diferencia en meses
@@ -47,8 +56,13 @@ function validarYCorregirRangoPeriodo(params) {
         nuevaFechaFin.setMonth(nuevaFechaFin.getMonth() + 4);
         // Formatear la fecha en formato YYYY-MM-DD
         var fechaFinCorregida = nuevaFechaFin.toISOString().split('T')[0];
-        // Retornar params con la fecha corregida
-        return __assign(__assign({}, params), { periodo_params: __assign(__assign({}, params.periodo_params), { rango_end_date: fechaFinCorregida }) });
+        // Retornar params con la fecha corregida según el formato usado
+        if (usaPeriodoParams) {
+            return __assign(__assign({}, params), { periodo_params: __assign(__assign({}, params.periodo_params), { rango_end_date: fechaFinCorregida }) });
+        }
+        else {
+            return __assign(__assign({}, params), { rango_end_date: fechaFinCorregida });
+        }
     }
     return params; // El rango es válido, retornar sin cambios
 }
@@ -81,22 +95,26 @@ var MAX_MESES_DASHBOARD = 5;
  * @returns Objeto con fecha_inicio y fecha_fin ajustadas
  */
 function limitarRangoFechasDashboard(fecha_inicio, fecha_fin) {
-    if (!fecha_inicio || !fecha_fin) {
-        return { fecha_inicio: fecha_inicio, fecha_fin: fecha_fin };
+    // Convertir undefined/null a string vacío
+    var fi = fecha_inicio || '';
+    var ff = fecha_fin || '';
+    // Si alguna fecha está vacía, retornar como strings vacíos (no undefined)
+    if (!fi || !ff) {
+        return { fecha_inicio: fi, fecha_fin: ff };
     }
-    var fechaInicio = new Date(fecha_inicio + 'T00:00:00');
-    var fechaFin = new Date(fecha_fin + 'T00:00:00');
+    var fechaInicio = new Date(fi + 'T00:00:00');
+    var fechaFin = new Date(ff + 'T00:00:00');
     var hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     // Validar que las fechas sean válidas
     if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
-        return { fecha_inicio: fecha_inicio, fecha_fin: fecha_fin };
+        return { fecha_inicio: fi, fecha_fin: ff };
     }
     // Calcular diferencia en meses
     var diferenciaEnMeses = calcularDiferenciaEnMeses(fechaInicio, fechaFin);
     // Si no supera el máximo, retornar sin cambios
     if (diferenciaEnMeses <= MAX_MESES_DASHBOARD) {
-        return { fecha_inicio: fecha_inicio, fecha_fin: fecha_fin };
+        return { fecha_inicio: fi, fecha_fin: ff };
     }
     // Verificar si fecha_fin es el mes actual o fecha de hoy
     var esFinMesActual = (fechaFin.getFullYear() === hoy.getFullYear() &&
@@ -108,7 +126,7 @@ function limitarRangoFechasDashboard(fecha_inicio, fecha_fin) {
         nuevaFechaInicio.setMonth(nuevaFechaInicio.getMonth() - MAX_MESES_DASHBOARD);
         return {
             fecha_inicio: nuevaFechaInicio.toISOString().split('T')[0],
-            fecha_fin: fecha_fin
+            fecha_fin: ff
         };
     }
     else {
@@ -116,7 +134,7 @@ function limitarRangoFechasDashboard(fecha_inicio, fecha_fin) {
         var nuevaFechaFin = new Date(fechaInicio);
         nuevaFechaFin.setMonth(nuevaFechaFin.getMonth() + MAX_MESES_DASHBOARD);
         return {
-            fecha_inicio: fecha_inicio,
+            fecha_inicio: fi,
             fecha_fin: nuevaFechaFin.toISOString().split('T')[0]
         };
     }

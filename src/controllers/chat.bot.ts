@@ -171,6 +171,8 @@ router.get("/horarios/:idsede", async (req, res) => {
     res.status(200).send(rpt);
 });
 
+// horarios por dia y hora
+
 
 // obtener los canales de consumot
 router.get("/canales/:idsede", async (req, res) => {
@@ -898,6 +900,65 @@ router.get("/get-telefono-bloqueado/:telefono/:idsede", async (req, res) => {
     // retornar verdadero si el telefono esta bloqueado
     res.status(200).send(rpt.length > 0);    
 })
+
+// horarios por dia y hora
+// obtener horarios de trabajo por dia
+router.get("/get-horario-dias/:idsede", async (req, res) => {
+    const { idsede } = req.params;
+    try {
+        const rpt: any = await prisma.$queryRaw`
+            SELECT 
+                idsede_horario_trabajo,
+                idsede,
+                de,
+                a,
+                estado,
+                numdia,
+                desdia
+            FROM sede_horario_trabajo
+            WHERE idsede = ${Number(idsede)}
+            and estado = '0'
+            ORDER BY numdia
+        `;
+        res.status(200).send(rpt);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
+// guardar o modificar horario de trabajo
+router.post("/set-horario-dias", async (req, res, next) => {
+    const { idsede, horarios } = req.body;
+    
+    try {
+        // Eliminar todos los horarios existentes de la sede
+        await prisma.$executeRaw`
+            DELETE FROM sede_horario_trabajo 
+            WHERE idsede = ${idsede}
+        `;
+        
+        // Insertar los nuevos horarios del array
+        let insertados = 0;
+        for (const horario of horarios) {
+            const { de, a, estado, numdia } = horario;
+            
+            // Guardar todos los días en una sola fila
+            await prisma.$executeRaw`
+                INSERT INTO sede_horario_trabajo (idsede, de, a, estado, numdia, desdia)
+                VALUES (${idsede}, ${de}, ${a}, ${estado}, ${numdia}, ${null})
+            `;
+            insertados++;
+        }
+        
+        res.status(200).send({ 
+            success: true, 
+            message: 'Horarios actualizados correctamente',
+            horariosInsertados: insertados 
+        });
+    } catch (error) {
+        next(error);
+    }
+});
 
 export default router;
 

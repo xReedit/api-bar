@@ -1,4 +1,8 @@
 "use strict";
+var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cooked, raw) {
+    if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
+    return cooked;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -47,14 +51,23 @@ var PedidoServices = /** @class */ (function () {
     };
     PedidoServices.prototype.cocinarPedido = function (seccionMasItems, itemsFromBot) {
         seccionMasItems = this.setDescripcionCantidadItems(seccionMasItems, itemsFromBot);
+        this.arrSeccionesPedido = seccionMasItems; // Asignar antes de validar reglas
         seccionMasItems = this.validarReglasCarta(this.arrReglasCarta.reglas, seccionMasItems);
         return seccionMasItems;
     };
     PedidoServices.prototype.setCanalConsumo = function (canalFromBot, listCanalConsumo, seccionMasItems) {
         var canalSeleted = listCanalConsumo.find(function (canal) { return canal.idtipo_consumo === canalFromBot.idtipo_consumo; });
         if (!canalSeleted) {
+            // Mapear nombres alternativos
+            var nombreBusqueda_1 = canalFromBot.descripcion.toLowerCase();
+            if (nombreBusqueda_1 === 'recoger en local') {
+                nombreBusqueda_1 = 'para llevar';
+            }
             // buscamos por el nombre
-            canalSeleted = listCanalConsumo.find(function (canal) { return canal.descripcion.toLowerCase() === canalFromBot.descripcion.toLowerCase(); });
+            canalSeleted = listCanalConsumo.find(function (canal) { return canal.descripcion.toLowerCase() === nombreBusqueda_1; });
+        }
+        if (!canalSeleted) {
+            throw new Error("Canal de consumo no encontrado: ".concat(canalFromBot.descripcion, ". Canales disponibles: ").concat(listCanalConsumo.map(function (c) { return c.descripcion; }).join(', ')));
         }
         canalSeleted.secciones = seccionMasItems;
         return canalSeleted;
@@ -331,6 +344,11 @@ var PedidoServices = /** @class */ (function () {
             seccion.items.map(function (item) {
                 var _newItem = { descripcion: "".concat(item.cantidad_seleccionada, " ").concat(item.des), importe: parseFloat(item.precio_print).toFixed(2).toString() };
                 listItemSesccion.push(_newItem);
+                // Agregar indicaciones en línea separada si existen
+                if (item.indicaciones) {
+                    var _indicaciones = { descripcion: "     (".concat(item.indicaciones, ")"), importe: '' };
+                    listItemSesccion.push(_indicaciones);
+                }
             });
             stringFormatted += _this.formatPadArrayToString(listItemSesccion, true);
         });
@@ -396,6 +414,30 @@ var PedidoServices = /** @class */ (function () {
         };
         return subtotalCostoEntrega;
     };
+    PedidoServices.prototype.generarPreviewId = function () {
+        var caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        var id = '';
+        for (var i = 0; i < 5; i++) {
+            id += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+        }
+        return id;
+    };
+    PedidoServices.prototype.guardarPedidoPreview = function (prisma, estructuraPedido, ticketFormateado) {
+        return __awaiter(this, void 0, void 0, function () {
+            var previewId;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        previewId = this.generarPreviewId();
+                        return [4 /*yield*/, prisma.$executeRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n            INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado)\n            VALUES (", ", ", ", ", ", 'pending')\n        "], ["\n            INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado)\n            VALUES (", ", ", ", ", ", 'pending')\n        "])), previewId, JSON.stringify(estructuraPedido), ticketFormateado)];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/, previewId];
+                }
+            });
+        });
+    };
     return PedidoServices;
 }());
 exports["default"] = PedidoServices;
+var templateObject_1;

@@ -66,7 +66,7 @@ var getEstructuraPedido = function (items, tipo_entrega, datos_entrega, idsede) 
                 secciones = pedidoServices.cocinarPedido(secciones, items);
                 canalConsumoMasPedido = pedidoServices.setCanalConsumo(tipo_entrega, canales_consumo, secciones);
                 classEstructuraPedido.setTipoConsumo(canalConsumoMasPedido);
-                return [4 /*yield*/, pedidoServices.calcularTotalPedido(secciones, tipo_entrega, datos_entrega)];
+                return [4 /*yield*/, pedidoServices.calcularTotalPedido(secciones, canalConsumoMasPedido, datos_entrega)];
             case 4:
                 arrTotales = _a.sent();
                 classEstructuraPedido.setSubtotal(arrTotales);

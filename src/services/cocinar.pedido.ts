@@ -24,7 +24,7 @@ export const getEstructuraPedido = async (items: any[], tipo_entrega: any, datos
     classEstructuraPedido.setTipoConsumo(canalConsumoMasPedido)
 
     // const direccion_entrega = datos_entrega;
-    const arrTotales = await pedidoServices.calcularTotalPedido(secciones, tipo_entrega, datos_entrega);    
+    const arrTotales = await pedidoServices.calcularTotalPedido(secciones, canalConsumoMasPedido, datos_entrega);    
     classEstructuraPedido.setSubtotal(arrTotales);
 
     return classEstructuraPedido.getEstructura();

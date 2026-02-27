@@ -227,6 +227,7 @@ router.get("/horarios/:idsede", function (req, res) { return __awaiter(void 0, v
         }
     });
 }); });
+// horarios por dia y hora
 // obtener los canales de consumot
 router.get("/canales/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var idsede, rpt;
@@ -1137,5 +1138,76 @@ router.get("/get-telefono-bloqueado/:telefono/:idsede", function (req, res) { re
         }
     });
 }); });
+// horarios por dia y hora
+// obtener horarios de trabajo por dia
+router.get("/get-horario-dias/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rpt, error_4;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_19 || (templateObject_19 = __makeTemplateObject(["\n            SELECT \n                idsede_horario_trabajo,\n                idsede,\n                de,\n                a,\n                estado,\n                numdia,\n                desdia\n            FROM sede_horario_trabajo\n            WHERE idsede = ", "\n            and estado = '0'\n            ORDER BY numdia\n        "], ["\n            SELECT \n                idsede_horario_trabajo,\n                idsede,\n                de,\n                a,\n                estado,\n                numdia,\n                desdia\n            FROM sede_horario_trabajo\n            WHERE idsede = ", "\n            and estado = '0'\n            ORDER BY numdia\n        "])), Number(idsede))];
+            case 2:
+                rpt = _a.sent();
+                res.status(200).send(rpt);
+                return [3 /*break*/, 4];
+            case 3:
+                error_4 = _a.sent();
+                res.status(500).send(error_4);
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });
+// guardar o modificar horario de trabajo
+router.post("/set-horario-dias", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, horarios, insertados, _i, horarios_1, horario, de, a, estado, numdia, error_5;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idsede = _a.idsede, horarios = _a.horarios;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 7, , 8]);
+                // Eliminar todos los horarios existentes de la sede
+                return [4 /*yield*/, prisma.$executeRaw(templateObject_20 || (templateObject_20 = __makeTemplateObject(["\n            DELETE FROM sede_horario_trabajo \n            WHERE idsede = ", "\n        "], ["\n            DELETE FROM sede_horario_trabajo \n            WHERE idsede = ", "\n        "])), idsede)];
+            case 2:
+                // Eliminar todos los horarios existentes de la sede
+                _b.sent();
+                insertados = 0;
+                _i = 0, horarios_1 = horarios;
+                _b.label = 3;
+            case 3:
+                if (!(_i < horarios_1.length)) return [3 /*break*/, 6];
+                horario = horarios_1[_i];
+                de = horario.de, a = horario.a, estado = horario.estado, numdia = horario.numdia;
+                // Guardar todos los días en una sola fila
+                return [4 /*yield*/, prisma.$executeRaw(templateObject_21 || (templateObject_21 = __makeTemplateObject(["\n                INSERT INTO sede_horario_trabajo (idsede, de, a, estado, numdia, desdia)\n                VALUES (", ", ", ", ", ", ", ", ", ", ", ")\n            "], ["\n                INSERT INTO sede_horario_trabajo (idsede, de, a, estado, numdia, desdia)\n                VALUES (", ", ", ", ", ", ", ", ", ", ", ")\n            "])), idsede, de, a, estado, numdia, null)];
+            case 4:
+                // Guardar todos los días en una sola fila
+                _b.sent();
+                insertados++;
+                _b.label = 5;
+            case 5:
+                _i++;
+                return [3 /*break*/, 3];
+            case 6:
+                res.status(200).send({
+                    success: true,
+                    message: 'Horarios actualizados correctamente',
+                    horariosInsertados: insertados
+                });
+                return [3 /*break*/, 8];
+            case 7:
+                error_5 = _b.sent();
+                next(error_5);
+                return [3 /*break*/, 8];
+            case 8: return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18, templateObject_19, templateObject_20, templateObject_21;

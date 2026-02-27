@@ -23,6 +23,7 @@ class PedidoServices {
 
     cocinarPedido(seccionMasItems: any, itemsFromBot: any) {        
         seccionMasItems = this.setDescripcionCantidadItems(seccionMasItems, itemsFromBot)
+        this.arrSeccionesPedido = seccionMasItems; // Asignar antes de validar reglas
         seccionMasItems = this.validarReglasCarta(this.arrReglasCarta.reglas, seccionMasItems)
         return seccionMasItems
     }
@@ -31,8 +32,18 @@ class PedidoServices {
         let canalSeleted = listCanalConsumo.find((canal: any) => canal.idtipo_consumo === canalFromBot.idtipo_consumo)    
         
         if ( !canalSeleted ) {
+            // Mapear nombres alternativos
+            let nombreBusqueda = canalFromBot.descripcion.toLowerCase();
+            if (nombreBusqueda === 'recoger en local') {
+                nombreBusqueda = 'para llevar';
+            }
+            
             // buscamos por el nombre
-            canalSeleted = listCanalConsumo.find((canal: any) => canal.descripcion.toLowerCase() === canalFromBot.descripcion.toLowerCase())
+            canalSeleted = listCanalConsumo.find((canal: any) => canal.descripcion.toLowerCase() === nombreBusqueda)
+        }
+        
+        if (!canalSeleted) {
+            throw new Error(`Canal de consumo no encontrado: ${canalFromBot.descripcion}. Canales disponibles: ${listCanalConsumo.map((c: any) => c.descripcion).join(', ')}`);
         }
         
         canalSeleted.secciones = seccionMasItems;
@@ -368,9 +379,15 @@ class PedidoServices {
             stringFormatted += this.formatPadArrayToString(_tituloSeccion, false)
 
 
-            seccion.items.map((item: any) => {                
+            seccion.items.map((item: any) => {
                 const _newItem = { descripcion: `${item.cantidad_seleccionada} ${item.des}`, importe: parseFloat(item.precio_print).toFixed(2).toString() } 
                 listItemSesccion.push(_newItem)
+                
+                // Agregar indicaciones en línea separada si existen
+                if (item.indicaciones) {
+                    const _indicaciones = { descripcion: `     (${item.indicaciones})`, importe: '' }
+                    listItemSesccion.push(_indicaciones)
+                }
             })
             
 
@@ -450,7 +467,27 @@ class PedidoServices {
 
         return subtotalCostoEntrega;
     }
-    
+
+
+    generarPreviewId(): string {
+        const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let id = '';
+        for (let i = 0; i < 5; i++) {
+            id += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+        }
+        return id;
+    }
+
+    async guardarPedidoPreview(prisma: any, estructuraPedido: any, ticketFormateado: string): Promise<string> {
+        const previewId = this.generarPreviewId();
+        
+        await prisma.$executeRaw`
+            INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado)
+            VALUES (${previewId}, ${JSON.stringify(estructuraPedido)}, ${ticketFormateado}, 'pending')
+        `;
+        
+        return previewId;
+    }
     
 }
 

@@ -119,7 +119,8 @@ router.get("/get-sede/:idsede", function (req, res) { return __awaiter(void 0, v
                             pwa_min_despacho: true,
                             id_api_comprobante: true,
                             metodo_pago_aceptados_chatbot: true,
-                            link_carta: true
+                            link_carta: true,
+                            chatbot_run: true
                         }
                     })];
             case 1:
@@ -1206,6 +1207,67 @@ router.post("/set-horario-dias", function (req, res, next) { return __awaiter(vo
                 next(error_5);
                 return [3 /*break*/, 8];
             case 8: return [2 /*return*/];
+        }
+    });
+}); });
+// end point donde se pone run o stop al chatbot
+router.get('/run/:idsede', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, idSedeNum, sede, error_6;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                idsede = req.params.idsede;
+                idSedeNum = Number(idsede);
+                if (isNaN(idSedeNum) || idSedeNum <= 0) {
+                    return [2 /*return*/, res.status(400).json({ error: 'ID de sede inválido' })];
+                }
+                return [4 /*yield*/, prisma.sede.update({
+                        where: { idsede: idSedeNum },
+                        data: { chatbot_run: '1' }
+                    })];
+            case 1:
+                sede = _a.sent();
+                res.status(200).json({ message: 'Chatbot iniciado', sede: sede });
+                return [3 /*break*/, 3];
+            case 2:
+                error_6 = _a.sent();
+                if (error_6.code === 'P2025') {
+                    return [2 /*return*/, res.status(404).json({ error: 'Sede no encontrada' })];
+                }
+                next(error_6);
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); });
+router.get('/stop/:idsede', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, idSedeNum, sede, error_7;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                idsede = req.params.idsede;
+                idSedeNum = Number(idsede);
+                if (isNaN(idSedeNum) || idSedeNum <= 0) {
+                    return [2 /*return*/, res.status(400).json({ error: 'ID de sede inválido' })];
+                }
+                return [4 /*yield*/, prisma.sede.update({
+                        where: { idsede: idSedeNum },
+                        data: { chatbot_run: '0' }
+                    })];
+            case 1:
+                sede = _a.sent();
+                res.status(200).json({ message: 'Chatbot detenido', sede: sede });
+                return [3 /*break*/, 3];
+            case 2:
+                error_7 = _a.sent();
+                if (error_7.code === 'P2025') {
+                    return [2 /*return*/, res.status(404).json({ error: 'Sede no encontrada' })];
+                }
+                next(error_7);
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); });

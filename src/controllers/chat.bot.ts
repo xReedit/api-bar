@@ -962,23 +962,50 @@ router.post("/set-horario-dias", async (req, res, next) => {
 });
 
 // end point donde se pone run o stop al chatbot
-router.get('/run/:idsede', async (req, res) => {
-    const { idsede } = req.params;
-    // actualizar sede.chatbot_run=1
-    await prisma.sede.update({
-        where: { idsede: Number(idsede) },
-        data: { chatbot_run: '1' }
-    });
-    res.status(200).json({ message: 'Chatbot iniciado' });
+router.get('/run/:idsede', async (req, res, next) => {
+    try {
+        const { idsede } = req.params;
+        
+        const idSedeNum = Number(idsede);
+        if (isNaN(idSedeNum) || idSedeNum <= 0) {
+            return res.status(400).json({ error: 'ID de sede inválido' });
+        }
+        
+        const sede = await prisma.sede.update({
+            where: { idsede: idSedeNum },
+            data: { chatbot_run: '1' }
+        });
+        
+        res.status(200).json({ message: 'Chatbot iniciado', sede });
+    } catch (error: any) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: 'Sede no encontrada' });
+        }
+        next(error);
+    }
 });
 
-router.get('/stop/:idsede', async (req, res) => {
-    const { idsede } = req.params;
-    await prisma.sede.update({
-        where: { idsede: Number(idsede) },
-        data: { chatbot_run: '0' }
-    });
-    res.status(200).json({ message: 'Chatbot detenido' });
+router.get('/stop/:idsede', async (req, res, next) => {
+    try {
+        const { idsede } = req.params;
+        
+        const idSedeNum = Number(idsede);
+        if (isNaN(idSedeNum) || idSedeNum <= 0) {
+            return res.status(400).json({ error: 'ID de sede inválido' });
+        }
+        
+        const sede = await prisma.sede.update({
+            where: { idsede: idSedeNum },
+            data: { chatbot_run: '0' }
+        });
+        
+        res.status(200).json({ message: 'Chatbot detenido', sede });
+    } catch (error: any) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: 'Sede no encontrada' });
+        }
+        next(error);
+    }
 });
 
 export default router;

@@ -75,6 +75,14 @@ var json_print_services_1 = require("../services/json.print.services");
 var axios_1 = __importDefault(require("axios"));
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
+// Función helper para calcular tiempo estimado con margen
+var calcularTiempoEstimado = function (tiempoAproxMinutos) {
+    var margenMenos = 5;
+    var margenMas = 10;
+    var tiempoMin = Math.max(15, tiempoAproxMinutos - margenMenos);
+    var tiempoMax = tiempoAproxMinutos + margenMas;
+    return "".concat(tiempoMin, "-").concat(tiempoMax, " min");
+};
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         res.status(200).json({ message: 'Chatbot V2 API - Endpoints disponibles' });
@@ -186,7 +194,7 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
     });
 }); });
 router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, direccion, session_id, sedeConfig, parametros, obtenerCoordenadas, costoBase, sede, distanciaMaxima, ciudades, resultadoDistancia, distanciaKm, kmBase, costoAdicional, costoFijo, costo, error_3;
+    var _a, idorg, idsede, direccion, session_id, sedeConfig, parametros, obtenerCoordenadas, costoBase, sede, distanciaMaxima, ciudades, resultadoDistancia, distanciaKm, kmBase, costoAdicional, costoFijo, costo, tiempoAproxEntrega, error_3;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -252,7 +260,6 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 if (sedeConfig.ciudades) {
                     ciudades = sedeConfig.ciudades
                         .split(',')
-                        .map(function (c) { return c.trim().split(' ')[0]; })
                         .filter(function (c) { return c.length > 0; });
                 }
                 console.log('Ciudades a buscar:', ciudades);
@@ -280,12 +287,13 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 console.log('kmBase', kmBase);
                 console.log('costoAdicional', costoAdicional);
                 console.log('costoFijo', costoFijo);
+                tiempoAproxEntrega = Number(parametros.tiempo_aprox_entrega || 30);
                 res.status(200).json({
                     success: true,
                     disponible: true,
                     costo: Number(costo.toFixed(2)),
                     distancia_km: distanciaKm,
-                    tiempo_estimado: "30-40 min"
+                    tiempo_estimado: calcularTiempoEstimado(tiempoAproxEntrega)
                 });
                 return [3 /*break*/, 5];
             case 4:
@@ -451,7 +459,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
                             km_base: Number(parametros.km_base || 0),
                             distancia_maxima_km: Number(parametros.km_limite || 5),
                             calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
-                            tiempo_estimado_base: "30-40 min",
+                            tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
                             descripcion: "Costo base S/".concat(Number(parametros.km_base_costo || 0), " hasta ").concat(Number(parametros.km_base || 0), " km, luego S/").concat(Number(parametros.km_adicional_costo || 0), " por km adicional")
                         },
                         metodos_pago: metodosPago.map(function (mp) { return ({
@@ -985,7 +993,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         km_base: Number(parametros.km_base || 0),
                         distancia_maxima_km: Number(parametros.km_limite || 5),
                         calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
-                        tiempo_estimado_base: "30-40 min",
+                        tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
                         descripcion: "Costo base S/".concat(Number(parametros.km_base_costo || 0), " hasta ").concat(Number(parametros.km_base || 0), " km, luego S/").concat(Number(parametros.km_adicional_costo || 0), " por km adicional")
                     },
                     metodos_pago: metodosPago.map(function (mp) { return ({

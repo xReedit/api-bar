@@ -9,6 +9,15 @@ import axios from "axios";
 const prisma = new PrismaClient();
 const router = express.Router();
 
+// Función helper para calcular tiempo estimado con margen
+const calcularTiempoEstimado = (tiempoAproxMinutos: number): string => {
+    const margenMenos = 5;
+    const margenMas = 10;
+    const tiempoMin = Math.max(15, tiempoAproxMinutos - margenMenos);
+    const tiempoMax = tiempoAproxMinutos + margenMas;
+    return `${tiempoMin}-${tiempoMax} min`;
+};
+
 router.get("/", async (req, res) => {
     res.status(200).json({ message: 'Chatbot V2 API - Endpoints disponibles' })
 });
@@ -189,8 +198,7 @@ router.post("/calcular-delivery", async (req, res) => {
         let ciudades: string[] = [];
         if (sedeConfig.ciudades) {
             ciudades = sedeConfig.ciudades
-                .split(',')
-                .map((c: string) => c.trim().split(' ')[0])
+                .split(',')                
                 .filter((c: string) => c.length > 0);
         }
 
@@ -231,12 +239,14 @@ router.post("/calcular-delivery", async (req, res) => {
         console.log('costoAdicional', costoAdicional);
         console.log('costoFijo', costoFijo);
 
+        const tiempoAproxEntrega = Number(parametros.tiempo_aprox_entrega || 30);
+
         res.status(200).json({
             success: true,
             disponible: true,
             costo: Number(costo.toFixed(2)),
             distancia_km: distanciaKm,
-            tiempo_estimado: "30-40 min"
+            tiempo_estimado: calcularTiempoEstimado(tiempoAproxEntrega)
         });
 
     } catch (error) {
@@ -407,7 +417,7 @@ router.get("/config/:idsede", async (req, res) => {
                     km_base: Number(parametros.km_base || 0),
                     distancia_maxima_km: Number(parametros.km_limite || 5),
                     calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
-                    tiempo_estimado_base: "30-40 min",
+                    tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
                     descripcion: `Costo base S/${Number(parametros.km_base_costo || 0)} hasta ${Number(parametros.km_base || 0)} km, luego S/${Number(parametros.km_adicional_costo || 0)} por km adicional`
                 },
                 metodos_pago: metodosPago.map((mp: any) => ({
@@ -1039,7 +1049,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                 km_base: Number(parametros.km_base || 0),
                 distancia_maxima_km: Number(parametros.km_limite || 5),
                 calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
-                tiempo_estimado_base: "30-40 min",
+                tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
                 descripcion: `Costo base S/${Number(parametros.km_base_costo || 0)} hasta ${Number(parametros.km_base || 0)} km, luego S/${Number(parametros.km_adicional_costo || 0)} por km adicional`
             },
             metodos_pago: metodosPago.map((mp: any) => ({
@@ -1129,5 +1139,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
         });
     }
 });
+
+
 
 export default router;

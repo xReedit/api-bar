@@ -39,7 +39,8 @@ router.get("/get-sede/:idsede", async (req, res) => {
             pwa_min_despacho: true,   
             id_api_comprobante: true,
             metodo_pago_aceptados_chatbot: true,
-            link_carta: true    
+            link_carta: true,
+            chatbot_run: true    
         }
     })
     res.status(200).send(rpt);
@@ -958,6 +959,26 @@ router.post("/set-horario-dias", async (req, res, next) => {
     } catch (error) {
         next(error);
     }
+});
+
+// end point donde se pone run o stop al chatbot
+router.get('/run/:idsede', async (req, res) => {
+    const { idsede } = req.params;
+    // actualizar sede.chatbot_run=1
+    await prisma.sede.update({
+        where: { idsede: Number(idsede) },
+        data: { chatbot_run: '1' }
+    });
+    res.status(200).json({ message: 'Chatbot iniciado' });
+});
+
+router.get('/stop/:idsede', async (req, res) => {
+    const { idsede } = req.params;
+    await prisma.sede.update({
+        where: { idsede: Number(idsede) },
+        data: { chatbot_run: '0' }
+    });
+    res.status(200).json({ message: 'Chatbot detenido' });
 });
 
 export default router;

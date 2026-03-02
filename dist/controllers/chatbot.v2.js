@@ -200,9 +200,6 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
             case 0:
                 _b.trys.push([0, 4, , 5]);
                 _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, session_id = _a.session_id;
-                console.log('idorg', idorg);
-                console.log('idsede', idsede);
-                console.log('direccion', direccion);
                 if (!direccion) {
                     return [2 /*return*/, res.status(400).json({
                             success: false,
@@ -217,7 +214,6 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     })];
             case 1:
                 sedeConfig = _b.sent();
-                console.log('sedeConfig', sedeConfig);
                 if (!sedeConfig) {
                     return [2 /*return*/, res.status(404).json({
                             success: false,
@@ -227,9 +223,6 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 parametros = sedeConfig.parametros || {};
                 obtenerCoordenadas = parametros.obtener_coordenadas_del_cliente === 'SI';
                 costoBase = Number(parametros.km_base_costo || 0);
-                console.log('parametros', parametros);
-                console.log('obtenerCoordenadas', obtenerCoordenadas);
-                console.log('costoBase', costoBase);
                 if (!obtenerCoordenadas) {
                     return [2 /*return*/, res.status(200).json({
                             success: true,
@@ -262,11 +255,9 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                         .split(',')
                         .filter(function (c) { return c.length > 0; });
                 }
-                console.log('Ciudades a buscar:', ciudades);
                 return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion, Number(sede.latitude), Number(sede.longitude), distanciaMaxima, ciudades)];
             case 3:
                 resultadoDistancia = _b.sent();
-                console.log('resultadoDistancia', resultadoDistancia);
                 if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
                     return [2 /*return*/, res.status(200).json({
                             success: true,
@@ -282,11 +273,6 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 if (costoFijo === 0 && distanciaKm > kmBase) {
                     costo += (distanciaKm - kmBase) * costoAdicional;
                 }
-                console.log('costo', costo);
-                console.log('distanciaKm', distanciaKm);
-                console.log('kmBase', kmBase);
-                console.log('costoAdicional', costoAdicional);
-                console.log('costoFijo', costoFijo);
                 tiempoAproxEntrega = Number(parametros.tiempo_aprox_entrega || 30);
                 res.status(200).json({
                     success: true,
@@ -491,12 +477,8 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
     return __generator(this, function (_d) {
         switch (_d.label) {
             case 0:
-                console.log('Generando resumen de pedido:');
-                _d.label = 1;
-            case 1:
-                _d.trys.push([1, 4, , 5]);
+                _d.trys.push([0, 3, , 4]);
                 _a = req.body, session_id = _a.session_id, idsede = _a.idsede, items = _a.items, tipo_entrega = _a.tipo_entrega, direccion = _a.direccion, costo_delivery = _a.costo_delivery;
-                console.log('Datos recibidos:', { session_id: session_id, idsede: idsede, items: items, tipo_entrega: tipo_entrega, direccion: direccion, costo_delivery: costo_delivery });
                 if (!items || items.length === 0) {
                     return [2 /*return*/, res.status(400).json({
                             success: false,
@@ -523,49 +505,33 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 tipoEntregaObj = {
                     descripcion: tipo_entrega
                 };
-                console.log('Generando resumen de pedido:', {
-                    items: itemsParaCocinar,
-                    tipo_entrega: tipoEntregaObj,
-                    datos_entrega: datosEntrega,
-                    idsede: idsede
-                });
                 return [4 /*yield*/, (0, cocinar_pedido_1.getEstructuraPedido)(itemsParaCocinar, tipoEntregaObj, datosEntrega, Number(idsede))];
-            case 2:
+            case 1:
                 estructuraPedidoCocinada = _d.sent();
                 tipoConsumo = (_c = (_b = estructuraPedidoCocinada.p_body) === null || _b === void 0 ? void 0 : _b.tipoconsumo) === null || _c === void 0 ? void 0 : _c[0];
                 secciones = (tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.secciones) || [];
                 subtotales = estructuraPedidoCocinada.p_subtotales || [];
-                console.log('Subtotales generados:', JSON.stringify(subtotales, null, 2));
                 pedidoService = new pedido_services_1["default"]();
                 ticketFormateado = pedidoService.getResumenPedidoShowCliente(secciones, tipoConsumo, subtotales);
                 previewId = session_id;
                 estructuraJson = JSON.stringify(estructuraPedidoCocinada);
-                console.log('Datos para INSERT:', {
-                    previewId: previewId,
-                    estructuraJsonLength: estructuraJson === null || estructuraJson === void 0 ? void 0 : estructuraJson.length,
-                    ticketFormateadoLength: ticketFormateado === null || ticketFormateado === void 0 ? void 0 : ticketFormateado.length,
-                    previewIdType: typeof previewId,
-                    estructuraJsonType: typeof estructuraJson,
-                    ticketFormateadoType: typeof ticketFormateado
-                });
                 return [4 /*yield*/, prisma.$queryRawUnsafe("INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado) \n             VALUES (?, ?, ?, ?) \n             ON DUPLICATE KEY UPDATE \n             estructura = VALUES(estructura), \n             ticket_formateado = VALUES(ticket_formateado), \n             estado = 'pending',\n             created_at = CURRENT_TIMESTAMP", previewId, estructuraJson, ticketFormateado, 'pending')];
-            case 3:
+            case 2:
                 _d.sent();
-                console.log('Preview guardado con ID:', previewId);
                 res.status(200).json({
                     success: true,
                     resumen: ticketFormateado
                 });
-                return [3 /*break*/, 5];
-            case 4:
+                return [3 /*break*/, 4];
+            case 3:
                 error_5 = _d.sent();
                 console.error('Error en resumen-pedido:', error_5);
                 res.status(500).json({
                     success: false,
                     error: 'Error al generar resumen del pedido'
                 });
-                return [3 /*break*/, 5];
-            case 5: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); });
@@ -584,7 +550,6 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                             error: 'idresumen es requerido'
                         })];
                 }
-                console.log('Confirmando pedido con idresumen:', idresumen);
                 return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT id, estructura, estado FROM pedido_preview WHERE id = ? AND estado = 'pending' LIMIT 1", idresumen)];
             case 1:
                 preview = _g.sent();
@@ -594,15 +559,12 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                             error: 'Resumen de pedido no encontrado o ya fue confirmado'
                         })];
                 }
-                console.log('Estructura recuperada del preview', preview);
                 estructuraPedidoCocinada_1 = preview[0].estructura;
-                console.log('EstructuraPedidoCocinada', estructuraPedidoCocinada_1);
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE c.telefono = ", " AND cs.idsede = ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE c.telefono = ", " AND cs.idsede = ", "\n            LIMIT 1"])), cliente_telefono, idsede)];
             case 2:
                 cliente = _g.sent();
                 idcliente = void 0;
                 if (!(!cliente || cliente.length === 0)) return [3 /*break*/, 5];
-                console.log('Cliente no encontrado, creando nuevo cliente');
                 return [4 /*yield*/, prisma.cliente.create({
                         data: {
                             idorg: Number(idorg),
@@ -628,11 +590,9 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                     })];
             case 4:
                 _g.sent();
-                console.log('Cliente creado con ID:', idcliente);
                 return [3 /*break*/, 6];
             case 5:
                 idcliente = cliente[0].idcliente;
-                console.log('Cliente encontrado con ID:', idcliente);
                 _g.label = 6;
             case 6:
                 idclientePwaDireccion = null;
@@ -642,15 +602,11 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 direccionExistente = _g.sent();
                 if (!(direccionExistente && direccionExistente.length > 0)) return [3 /*break*/, 8];
                 idclientePwaDireccion = direccionExistente[0].idcliente_pwa_direccion;
-                console.log('Dirección encontrada con ID:', idclientePwaDireccion);
                 return [3 /*break*/, 10];
-            case 8:
-                console.log('Creando nueva dirección para el cliente');
-                return [4 /*yield*/, prisma.$queryRawUnsafe("INSERT INTO cliente_pwa_direccion (idcliente, direccion, latitud, longitud, referencia) VALUES (?, ?, ?, ?, ?)", idcliente, direccion, '', '', '')];
+            case 8: return [4 /*yield*/, prisma.$queryRawUnsafe("INSERT INTO cliente_pwa_direccion (idcliente, direccion, latitud, longitud, referencia) VALUES (?, ?, ?, ?, ?)", idcliente, direccion, '', '', '')];
             case 9:
                 nuevaDireccion = _g.sent();
                 idclientePwaDireccion = nuevaDireccion.insertId;
-                console.log('Dirección creada con ID:', idclientePwaDireccion);
                 _g.label = 10;
             case 10:
                 infoCliente = {
@@ -681,11 +637,9 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
             case 14:
                 nuevoUsuario = _g.sent();
                 idusuarioBot = nuevoUsuario[0].idusuario;
-                console.log('Usuario bot creado con ID:', idusuarioBot);
                 return [3 /*break*/, 16];
             case 15:
                 idusuarioBot = usuarioBot[0].idusuario;
-                console.log('Usuario bot encontrado con ID:', idusuarioBot);
                 _g.label = 16;
             case 16:
                 sede = {
@@ -697,7 +651,6 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_12 || (templateObject_12 = __makeTemplateObject(["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"], ["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"])), idsede)];
             case 17:
                 listImpresoras = _g.sent();
-                console.log('Impresoras encontradas:', listImpresoras.length);
                 jsonPrintService = new json_print_services_1.JsonPrintService();
                 arrPrint = jsonPrintService.enviarMiPedido(true, sede, estructuraPedidoCocinada_1.p_body, listImpresoras);
                 dataPrint_1 = [];
@@ -746,10 +699,8 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                     query: dataSocketQuery,
                     dataSend: pedidoEnviar
                 };
-                console.log('Payload armado para enviar al backend');
                 URL_RESTOBAR = process.env.URL_RESTOBAR || 'http://localhost:3000';
                 urlBackend = "".concat(URL_RESTOBAR, "/bot/send-bot-pedido");
-                console.log('Enviando pedido al backend:', urlBackend);
                 return [4 /*yield*/, axios_1["default"].post(urlBackend, payload, {
                         headers: {
                             'Content-Type': 'application/json'
@@ -758,7 +709,6 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
             case 18:
                 response = _g.sent();
                 resultado = response.data;
-                console.log('Respuesta del backend:', resultado);
                 idpedido = resultado.idpedido || ((_f = resultado.data) === null || _f === void 0 ? void 0 : _f.idpedido);
                 if (!idpedido) {
                     throw new Error('Backend no retornó idpedido');
@@ -766,7 +716,6 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 return [4 /*yield*/, prisma.$queryRawUnsafe("UPDATE pedido_preview SET estado = 'confirmed', idpedido = ? WHERE id = ?", idpedido, idresumen)];
             case 19:
                 _g.sent();
-                console.log('Pedido guardado exitosamente con ID:', idpedido);
                 res.status(200).json({
                     success: true,
                     mensaje: 'Pedido confirmado y guardado exitosamente',

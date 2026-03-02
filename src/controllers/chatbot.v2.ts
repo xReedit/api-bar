@@ -132,10 +132,6 @@ router.post("/calcular-delivery", async (req, res) => {
     try {
         const { idorg, idsede, direccion, session_id } = req.body;
 
-        console.log('idorg', idorg);
-        console.log('idsede', idsede);
-        console.log('direccion', direccion);
-
         if (!direccion) {
             return res.status(400).json({
                 success: false,
@@ -150,7 +146,6 @@ router.post("/calcular-delivery", async (req, res) => {
             }
         });
 
-        console.log('sedeConfig', sedeConfig);
 
         if (!sedeConfig) {
             return res.status(404).json({
@@ -162,10 +157,6 @@ router.post("/calcular-delivery", async (req, res) => {
         const parametros = sedeConfig.parametros || {};
         const obtenerCoordenadas = parametros.obtener_coordenadas_del_cliente === 'SI';
         const costoBase = Number(parametros.km_base_costo || 0);
-
-        console.log('parametros', parametros);
-        console.log('obtenerCoordenadas', obtenerCoordenadas);
-        console.log('costoBase', costoBase);
 
         if (!obtenerCoordenadas) {
             return res.status(200).json({
@@ -202,8 +193,6 @@ router.post("/calcular-delivery", async (req, res) => {
                 .filter((c: string) => c.length > 0);
         }
 
-        console.log('Ciudades a buscar:', ciudades);
-
         const resultadoDistancia = await GeocodingService.calcularDistanciaPorRango(
             direccion,
             Number(sede.latitude),
@@ -211,8 +200,6 @@ router.post("/calcular-delivery", async (req, res) => {
             distanciaMaxima,
             ciudades
         );
-
-        console.log('resultadoDistancia', resultadoDistancia);
 
         if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
             return res.status(200).json({
@@ -232,12 +219,6 @@ router.post("/calcular-delivery", async (req, res) => {
         if (costoFijo === 0 && distanciaKm > kmBase) {
             costo += (distanciaKm - kmBase) * costoAdicional;
         }
-
-        console.log('costo', costo);
-        console.log('distanciaKm', distanciaKm);
-        console.log('kmBase', kmBase);
-        console.log('costoAdicional', costoAdicional);
-        console.log('costoFijo', costoFijo);
 
         const tiempoAproxEntrega = Number(parametros.tiempo_aprox_entrega || 30);
 
@@ -442,8 +423,6 @@ router.get("/config/:idsede", async (req, res) => {
 
 
 router.post("/resumen-pedido", async (req, res) => {
-
-    console.log('Generando resumen de pedido:');
     
     try {
         const { 
@@ -455,7 +434,6 @@ router.post("/resumen-pedido", async (req, res) => {
             costo_delivery
         } = req.body;
 
-        console.log('Datos recibidos:', { session_id, idsede, items, tipo_entrega, direccion, costo_delivery });
 
         if (!items || items.length === 0) {
             return res.status(400).json({
@@ -488,13 +466,6 @@ router.post("/resumen-pedido", async (req, res) => {
             descripcion: tipo_entrega
         };
 
-        console.log('Generando resumen de pedido:', {
-            items: itemsParaCocinar,
-            tipo_entrega: tipoEntregaObj,
-            datos_entrega: datosEntrega,
-            idsede
-        });
-
         const estructuraPedidoCocinada = await getEstructuraPedido(
             itemsParaCocinar,
             tipoEntregaObj,
@@ -505,8 +476,6 @@ router.post("/resumen-pedido", async (req, res) => {
         const tipoConsumo = estructuraPedidoCocinada.p_body?.tipoconsumo?.[0];
         const secciones = tipoConsumo?.secciones || [];
         const subtotales = estructuraPedidoCocinada.p_subtotales || [];
-
-        console.log('Subtotales generados:', JSON.stringify(subtotales, null, 2));
 
         const pedidoService = new PedidoServices();
 
@@ -519,14 +488,6 @@ router.post("/resumen-pedido", async (req, res) => {
         const previewId = session_id;
         const estructuraJson = JSON.stringify(estructuraPedidoCocinada);
 
-        console.log('Datos para INSERT:', {
-            previewId,
-            estructuraJsonLength: estructuraJson?.length,
-            ticketFormateadoLength: ticketFormateado?.length,
-            previewIdType: typeof previewId,
-            estructuraJsonType: typeof estructuraJson,
-            ticketFormateadoType: typeof ticketFormateado
-        });
 
         await prisma.$queryRawUnsafe(
             `INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado) 
@@ -541,8 +502,7 @@ router.post("/resumen-pedido", async (req, res) => {
             ticketFormateado,
             'pending'
         );
-
-        console.log('Preview guardado con ID:', previewId);
+        
 
         res.status(200).json({
             success: true,            
@@ -580,7 +540,6 @@ router.post("/pedido", async (req, res) => {
             });
         }
 
-        console.log('Confirmando pedido con idresumen:', idresumen);
 
         const preview: any = await prisma.$queryRawUnsafe(
             `SELECT id, estructura, estado FROM pedido_preview WHERE id = ? AND estado = 'pending' LIMIT 1`,
@@ -593,11 +552,8 @@ router.post("/pedido", async (req, res) => {
                 error: 'Resumen de pedido no encontrado o ya fue confirmado'
             });
         }
-
-        console.log('Estructura recuperada del preview', preview);
+        
         const estructuraPedidoCocinada = preview[0].estructura;
-
-        console.log('EstructuraPedidoCocinada', estructuraPedidoCocinada);
 
         let cliente: any = await prisma.$queryRaw`
             SELECT c.idcliente, c.nombres FROM cliente c
@@ -607,7 +563,6 @@ router.post("/pedido", async (req, res) => {
 
         let idcliente;
         if (!cliente || cliente.length === 0) {
-            console.log('Cliente no encontrado, creando nuevo cliente');
             const nuevoCliente = await prisma.cliente.create({
                 data: {
                     idorg: Number(idorg),
@@ -630,10 +585,8 @@ router.post("/pedido", async (req, res) => {
                     telefono: cliente_telefono
                 }
             });
-            console.log('Cliente creado con ID:', idcliente);
         } else {
             idcliente = cliente[0].idcliente;
-            console.log('Cliente encontrado con ID:', idcliente);
         }
 
         let idclientePwaDireccion = null;
@@ -645,9 +598,7 @@ router.post("/pedido", async (req, res) => {
 
             if (direccionExistente && direccionExistente.length > 0) {
                 idclientePwaDireccion = direccionExistente[0].idcliente_pwa_direccion;
-                console.log('Dirección encontrada con ID:', idclientePwaDireccion);
             } else {
-                console.log('Creando nueva dirección para el cliente');
                 const nuevaDireccion: any = await prisma.$queryRawUnsafe(
                     `INSERT INTO cliente_pwa_direccion (idcliente, direccion, latitud, longitud, referencia) VALUES (?, ?, ?, ?, ?)`,
                     idcliente,
@@ -657,7 +608,6 @@ router.post("/pedido", async (req, res) => {
                     ''
                 );
                 idclientePwaDireccion = nuevaDireccion.insertId;
-                console.log('Dirección creada con ID:', idclientePwaDireccion);
             }
         }
 
@@ -699,10 +649,8 @@ router.post("/pedido", async (req, res) => {
                 SELECT idusuario FROM usuario WHERE sede = ${idsede} AND isbot = '1' LIMIT 1`;
             
             idusuarioBot = nuevoUsuario[0].idusuario;
-            console.log('Usuario bot creado con ID:', idusuarioBot);
         } else {
             idusuarioBot = usuarioBot[0].idusuario;
-            console.log('Usuario bot encontrado con ID:', idusuarioBot);
         }
 
         const sede = {
@@ -718,8 +666,6 @@ router.post("/pedido", async (req, res) => {
         from conf_print cp 
             inner join impresora i using(idsede)
         where cp.idsede = ${idsede} and i.estado = 0`
-
-        console.log('Impresoras encontradas:', listImpresoras.length);
 
         const jsonPrintService = new JsonPrintService();
         const arrPrint = jsonPrintService.enviarMiPedido(
@@ -781,12 +727,8 @@ router.post("/pedido", async (req, res) => {
             dataSend: pedidoEnviar
         };
 
-        console.log('Payload armado para enviar al backend');
-
         const URL_RESTOBAR = process.env.URL_RESTOBAR || 'http://localhost:3000';
         const urlBackend = `${URL_RESTOBAR}/bot/send-bot-pedido`;
-
-        console.log('Enviando pedido al backend:', urlBackend);
 
         const response = await axios.post(urlBackend, payload, {
             headers: {
@@ -795,7 +737,6 @@ router.post("/pedido", async (req, res) => {
         });
 
         const resultado = response.data;
-        console.log('Respuesta del backend:', resultado);
 
         const idpedido = resultado.idpedido || resultado.data?.idpedido;
 
@@ -809,8 +750,6 @@ router.post("/pedido", async (req, res) => {
             idresumen
         );
 
-        console.log('Pedido guardado exitosamente con ID:', idpedido);
-      
         res.status(200).json({
             success: true,
             mensaje: 'Pedido confirmado y guardado exitosamente',

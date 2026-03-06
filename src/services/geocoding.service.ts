@@ -13,7 +13,14 @@ interface ResultadoGeocodificacion {
 
 interface ResultadoDistancia {
     success: boolean;
+    lat?: number;
+    lng?: number;
     distanciaKm?: number;
+    ciudad?: string;
+    provincia?: string;
+    departamento?: string;
+    pais?: string;
+    codigo?: string;
     error?: string;
 }
 
@@ -126,6 +133,33 @@ export class GeocodingService {
                 }
 
                 const location = response.data.results[0].geometry.location;
+                const addressComponents = response.data.results[0].address_components;
+                
+                // Extraer componentes de la dirección
+                let ciudadExtraida = '';
+                let provinciaExtraida = '';
+                let departamentoExtraido = '';
+                let paisExtraido = '';
+                let codigoExtraido = '';
+                
+                addressComponents.forEach((component: any) => {
+                    if (component.types.includes('locality')) {
+                        ciudadExtraida = component.long_name;
+                    }
+                    if (component.types.includes('administrative_area_level_2')) {
+                        provinciaExtraida = component.long_name;
+                    }
+                    if (component.types.includes('administrative_area_level_1')) {
+                        departamentoExtraido = component.long_name;
+                    }
+                    if (component.types.includes('country')) {
+                        paisExtraido = component.long_name;
+                    }
+                    if (component.types.includes('postal_code')) {
+                        codigoExtraido = component.long_name;
+                    }
+                });
+                
                 const distanciaKm = this.calcularDistanciaHaversine(
                     latComercio,
                     lngComercio,
@@ -144,7 +178,14 @@ export class GeocodingService {
 
                 return {
                     success: true,
-                    distanciaKm: Math.round(distanciaKm * 100) / 100
+                    lat: location.lat,
+                    lng: location.lng,
+                    distanciaKm: Math.round(distanciaKm * 100) / 100,
+                    ciudad: ciudadExtraida,
+                    provincia: provinciaExtraida,
+                    departamento: departamentoExtraido,
+                    pais: paisExtraido,
+                    codigo: codigoExtraido
                 };
             }
 

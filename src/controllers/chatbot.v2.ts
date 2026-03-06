@@ -5,6 +5,7 @@ import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
 import axios from "axios";
+import { log } from "console";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -25,14 +26,15 @@ router.get("/", async (req, res) => {
 router.get("/cliente/:idorg/:idsede/:telefono", async (req, res) => {
     try {
         const { idorg, idsede, telefono } = req.params;
-        const telefonoLimpio = telefono.replace(/\s/g, '');
+        // Extraer solo los dígitos del teléfono sin código de país
+        const telefonoSinCodigo = telefono.replace(/\D/g, '').replace(/^(51)?/, '');
 
         const cliente: any = await prisma.$queryRaw`
             SELECT c.idcliente, c.nombres, c.direccion, c.telefono 
             FROM cliente c 
             INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente
             WHERE cs.idsede = ${idsede} AND c.idorg = ${idorg} 
-            AND REPLACE(c.telefono, ' ', '') LIKE ${'%' + telefonoLimpio + '%'}
+            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ${'%' + telefonoSinCodigo + '%'}
             LIMIT 1`;
 
         if (!cliente || cliente.length === 0) {
@@ -56,6 +58,35 @@ router.get("/cliente/:idorg/:idsede/:telefono", async (req, res) => {
             AND idsede = ${idsede}
             ORDER BY idpedido DESC LIMIT 1`;
 
+        // direccion del cliente en cliente_pwa_direccion si es que tiene
+        const direccionPwa: any = await prisma.$queryRaw`
+            SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude, cpd.ciudad, cpd.provincia
+            FROM cliente_pwa_direccion cpd
+            WHERE cpd.idcliente = ${cliente[0].idcliente}
+            ORDER BY cpd.idcliente_pwa_direccion DESC
+            LIMIT 1`;
+
+    const direccionCliente = direccionPwa && direccionPwa.length > 0 
+        ? {
+            idcliente_pwa_direccion: direccionPwa[0].idcliente_pwa_direccion,
+            direccion: direccionPwa[0].direccion,
+            referencia: direccionPwa[0].referencia,
+            latitude: direccionPwa[0].latitude,
+            longitude: direccionPwa[0].longitude,
+            ciudad: direccionPwa[0].ciudad,
+            provincia: direccionPwa[0].provincia
+        }
+        : {
+            idcliente_pwa_direccion: null,
+            direccion: cliente[0].direccion || '',
+            referencia: '',
+            latitude: '',
+            longitude: '',
+            ciudad: '',
+            provincia: ''
+        };
+        
+
         res.status(200).json({
             success: true,
             encontrado: true,
@@ -63,14 +94,13 @@ router.get("/cliente/:idorg/:idsede/:telefono", async (req, res) => {
                 id: cliente[0].idcliente,
                 nombre: cliente[0].nombres,
                 telefono: cliente[0].telefono,
-                direccion: cliente[0].direccion,
+                direccion: direccionCliente,
                 total_pedidos: totalPedidos[0]?.total || 0,
                 ultimo_pedido: ultimoPedido[0]?.fecha || null
             }
         });
 
-    } catch (error) {
-        console.error('Error en buscar_cliente:', error);
+    } catch (error) {        
         res.status(500).json({
             success: false,
             error: 'Error al buscar cliente'
@@ -130,7 +160,7 @@ router.get("/menu/:idorg/:idsede", async (req, res) => {
 
 router.post("/calcular-delivery", async (req, res) => {
     try {
-        const { idorg, idsede, direccion, session_id } = req.body;
+        const { idorg, idsede, direccion, referencia, session_id } = req.body;
 
         if (!direccion) {
             return res.status(400).json({
@@ -164,7 +194,7 @@ router.post("/calcular-delivery", async (req, res) => {
                 disponible: true,
                 costo: costoBase,
                 distancia_km: 0,
-                tiempo_estimado: "30-40 min",
+                tiempo_estimado: calcularTiempoEstimado(10),
                 mensaje: "Costo fijo de delivery"
             });
         }
@@ -221,6 +251,45 @@ router.post("/calcular-delivery", async (req, res) => {
         }
 
         const tiempoAproxEntrega = Number(parametros.tiempo_aprox_entrega || 30);
+
+        // guardar los datos de direccion en pedido_preview en la columna direccion_cliente        
+        if (session_id) {
+            const existingPreview = await prisma.pedido_preview.findFirst({
+                where: { id: session_id }
+            });
+
+            const direccionData = {
+                direccion: direccion,
+                referencia: referencia || '',
+                latitude: resultadoDistancia.lat,
+                longitude: resultadoDistancia.lng,
+                ciudad: resultadoDistancia.ciudad || '',
+                provincia: resultadoDistancia.provincia || '',
+                departamento: resultadoDistancia.departamento || '',
+                pais: resultadoDistancia.pais || '',
+                codigo: resultadoDistancia.codigo || '',
+                distancia_km: distanciaKm,
+                costo_delivery: Number(costo.toFixed(2))
+            };
+
+            if (existingPreview) {
+                await prisma.pedido_preview.update({
+                    where: { id: session_id },
+                    data: { direccion_cliente: direccionData }
+                });
+            } else {
+                await prisma.pedido_preview.create({
+                    data: {
+                        id: session_id,
+                        estructura: JSON.stringify({}),
+                        ticket_formateado: '',
+                        estado: 'pending',
+                        direccion_cliente: direccionData
+                    }
+                });
+            }
+        }
+
 
         res.status(200).json({
             success: true,
@@ -433,6 +502,7 @@ router.post("/resumen-pedido", async (req, res) => {
             direccion, 
             costo_delivery
         } = req.body;
+        
 
 
         if (!items || items.length === 0) {
@@ -462,8 +532,14 @@ router.post("/resumen-pedido", async (req, res) => {
             costo_entrega: tipo_entrega?.toLowerCase() === 'delivery' ? (costo_delivery || 0) : 0
         };
         
+        // Mapear tipo_entrega a los canales de consumo disponibles
+        let tipoEntregaMapeado = tipo_entrega;
+        if (tipo_entrega?.toLowerCase() === 'recojo' || tipo_entrega?.toLowerCase() === 'recoger') {
+            tipoEntregaMapeado = 'PARA LLEVAR';
+        }
+        
         const tipoEntregaObj = {
-            descripcion: tipo_entrega
+            descripcion: tipoEntregaMapeado
         };
 
         const estructuraPedidoCocinada = await getEstructuraPedido(
@@ -527,9 +603,11 @@ router.post("/pedido", async (req, res) => {
             cliente_telefono,
             cliente_nombre,
             direccion,
+            tipo_entrega,
             metodo_pago,
             notas
         } = req.body;
+        
 
         const idresumen = session_id;
 
@@ -542,7 +620,7 @@ router.post("/pedido", async (req, res) => {
 
 
         const preview: any = await prisma.$queryRawUnsafe(
-            `SELECT id, estructura, estado FROM pedido_preview WHERE id = ? AND estado = 'pending' LIMIT 1`,
+            `SELECT id, estructura, estado, direccion_cliente FROM pedido_preview WHERE id = ? AND estado = 'pending' LIMIT 1`,
             idresumen
         );
 
@@ -554,6 +632,31 @@ router.post("/pedido", async (req, res) => {
         }
         
         const estructuraPedidoCocinada = preview[0].estructura;
+        
+        // Parsear datos de dirección guardados previamente
+        let datosDeliveryGuardados = null;
+        if (preview[0].direccion_cliente) {
+            try {
+                datosDeliveryGuardados = typeof preview[0].direccion_cliente === 'string' 
+                    ? JSON.parse(preview[0].direccion_cliente) 
+                    : preview[0].direccion_cliente;
+            } catch (error) {
+                console.error('Error al parsear direccion_cliente:', error);
+            }
+        }
+
+        // Obtener tipo de entrega de la estructura si no viene en el request
+        const tipoConsumoEstructura = estructuraPedidoCocinada.p_body?.tipoconsumo?.[0];
+        let tipoEntregaFinal = tipo_entrega;
+        
+        if (!tipoEntregaFinal && tipoConsumoEstructura) {
+            const descripcionTipoConsumo = tipoConsumoEstructura.descripcion?.toLowerCase();
+            if (descripcionTipoConsumo === 'delivery') {
+                tipoEntregaFinal = 'delivery';
+            } else if (descripcionTipoConsumo === 'para llevar') {
+                tipoEntregaFinal = 'recojo';
+            }
+        }
 
         let cliente: any = await prisma.$queryRaw`
             SELECT c.idcliente, c.nombres FROM cliente c
@@ -562,11 +665,13 @@ router.post("/pedido", async (req, res) => {
             LIMIT 1`;
 
         let idcliente;
+        let nombreCliente;
+        
         if (!cliente || cliente.length === 0) {
             const nuevoCliente = await prisma.cliente.create({
                 data: {
                     idorg: Number(idorg),
-                    nombres: cliente_nombre.toUpperCase(),
+                    nombres: (cliente_nombre || 'CLIENTE').toUpperCase(),
                     telefono: cliente_telefono,
                     direccion: direccion || '',
                     f_registro: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -577,6 +682,7 @@ router.post("/pedido", async (req, res) => {
                 }
             });
             idcliente = nuevoCliente.idcliente;
+            nombreCliente = nuevoCliente.nombres;
 
             await prisma.cliente_sede.create({
                 data: {
@@ -587,25 +693,39 @@ router.post("/pedido", async (req, res) => {
             });
         } else {
             idcliente = cliente[0].idcliente;
+            nombreCliente = cliente[0].nombres;
+            
+            // Si el nombre está vacío, actualizarlo
+            if (!nombreCliente || nombreCliente.trim() === '') {
+                nombreCliente = (cliente_nombre || 'CLIENTE').toUpperCase();
+                await prisma.$queryRawUnsafe(
+                    `UPDATE cliente SET nombres = ? WHERE idcliente = ?`,
+                    nombreCliente,
+                    idcliente
+                );
+            }
         }
 
+        // Guardar dirección en cliente_pwa_direccion usando datos de pedido_preview
         let idclientePwaDireccion = null;
-        if (direccion) {
+        const direccionFinal = datosDeliveryGuardados?.direccion || direccion || '';
+        
+        if (direccionFinal && datosDeliveryGuardados) {
             const direccionExistente: any = await prisma.$queryRaw`
                 SELECT idcliente_pwa_direccion FROM cliente_pwa_direccion
-                WHERE idcliente = ${idcliente} AND direccion = ${direccion}
+                WHERE idcliente = ${idcliente} AND direccion = ${direccionFinal}
                 LIMIT 1`;
 
             if (direccionExistente && direccionExistente.length > 0) {
                 idclientePwaDireccion = direccionExistente[0].idcliente_pwa_direccion;
             } else {
                 const nuevaDireccion: any = await prisma.$queryRawUnsafe(
-                    `INSERT INTO cliente_pwa_direccion (idcliente, direccion, latitud, longitud, referencia) VALUES (?, ?, ?, ?, ?)`,
+                    `INSERT INTO cliente_pwa_direccion (idcliente, direccion, latitude, longitude, referencia) VALUES (?, ?, ?, ?, ?)`,
                     idcliente,
-                    direccion,
-                    '',
-                    '',
-                    ''
+                    direccionFinal,
+                    datosDeliveryGuardados.latitude?.toString() || '',
+                    datosDeliveryGuardados.longitude?.toString() || '',
+                    datosDeliveryGuardados.referencia || ''
                 );
                 idclientePwaDireccion = nuevaDireccion.insertId;
             }
@@ -613,16 +733,16 @@ router.post("/pedido", async (req, res) => {
 
         const infoCliente = {
             idcliente: idcliente,
-            nombres: cliente_nombre,
+            nombres: nombreCliente,
             telefono: cliente_telefono,
-            direccion: direccion || '',
+            direccion: direccionFinal,
             idcliente_pwa_direccion: idclientePwaDireccion
         };
 
         const infoSede: any = await prisma.$queryRaw`
             SELECT s.idsede, s.idorg, s.nombre, s.direccion, s.telefono
             FROM sede s
-            WHERE s.idsede = ${idsede}
+            WHERE s.idsede = ${idsede} and estado=0
             LIMIT 1`;
 
         if (!infoSede || infoSede.length === 0) {
@@ -667,6 +787,136 @@ router.post("/pedido", async (req, res) => {
             inner join impresora i using(idsede)
         where cp.idsede = ${idsede} and i.estado = 0`
 
+        // Obtener tipo de consumo para determinar si es delivery
+        const tipoConsumo = estructuraPedidoCocinada.p_body?.tipoconsumo?.[0];
+        const isDelivery = tipoEntregaFinal?.toLowerCase() === 'delivery';
+        const isRecoger = tipoEntregaFinal?.toLowerCase() === 'recojo' || tipoEntregaFinal?.toLowerCase() === 'recoger';
+
+        // Construir arrDatosDelivery completo solo si es delivery usando datos guardados
+        let arrDatosDelivery = {};
+        
+        if (isDelivery) {
+            const direccionDelivery = datosDeliveryGuardados?.direccion || infoCliente.direccion || "";
+            const referenciaDelivery = datosDeliveryGuardados?.referencia || "";
+            const latitudeDelivery = datosDeliveryGuardados?.latitude || "";
+            const longitudeDelivery = datosDeliveryGuardados?.longitude || "";
+            const ciudadDelivery = datosDeliveryGuardados?.ciudad || "";
+            const provinciaDelivery = datosDeliveryGuardados?.provincia || "";
+            const departamentoDelivery = datosDeliveryGuardados?.departamento || "";
+            const paisDelivery = datosDeliveryGuardados?.pais || "";
+            const codigoDelivery = datosDeliveryGuardados?.codigo || "";
+            const costoDeliveryCalculado = datosDeliveryGuardados?.costo_delivery || 0;
+
+            arrDatosDelivery = {
+            idcliente: infoCliente.idcliente.toString(),
+            dni: "",
+            nombre: infoCliente.nombres.toUpperCase(),
+            f_nac: "",
+            direccion: direccionDelivery,
+            telefono: infoCliente.telefono || "",
+            paga_con: metodo_pago.nombre || notas || "",
+            dato_adicional: notas || "",
+            referencia: referenciaDelivery,
+            tipoComprobante: [],
+            importeTotal: estructuraPedidoCocinada.p_subtotales?.find((st: any) => st.descripcion?.toLowerCase().includes('total'))?.importe || 0,
+            metodoPago: {
+                idtipo_pago: metodo_pago.id,
+                descripcion: metodo_pago.nombre ? metodo_pago.nombre : "OTRO",
+                img: "_tp_01.png",
+                importe: "",
+                checked: true,
+                visible: true
+            },
+            propina: [],
+            direccionEnvioSelected: {
+                idcliente: infoCliente.idcliente.toString(),
+                num_doc: "",
+                nombre: infoCliente.nombres.toUpperCase(),
+                direccion: direccionDelivery,
+                referencia: referenciaDelivery,
+                telefono: infoCliente.telefono || "",
+                paga_con: metodo_pago.nombre || notas || "",
+                f_nac: "",
+                ciudad: ciudadDelivery,
+                provincia: provinciaDelivery,
+                departamento: departamentoDelivery,
+                pais: paisDelivery,
+                codigo: codigoDelivery,
+                latitude: latitudeDelivery.toString(),
+                longitude: longitudeDelivery.toString(),
+                titulo: "Casa",
+                solicitaCubiertos: "0",
+                direccion_delivery_no_map: [{
+                    direccion: direccionDelivery,
+                    referencia: referenciaDelivery
+                }],
+                nombres: infoCliente.nombres.toUpperCase()
+            },
+            establecimiento: {
+                idsede: infoSede[0].idsede.toString(),
+                idorg: infoSede[0].idorg.toString(),
+                nombre: infoSede[0].nombre,
+                ciudad: "",
+                direccion: infoSede[0].direccion,
+                telefono: infoSede[0].telefono,
+                // eslogan: "",
+                // mesas: "",
+                // maximo_pedidos_x_hora: "",
+                // authorization_api_comprobante: "",
+                // id_api_comprobante: "2",
+                // facturacion_e_activo: "1",
+                // logo64: "",
+                // codigo_postal: "",
+                latitude: latitudeDelivery,
+                longitude: longitudeDelivery
+            },
+            subTotales: [],
+            pasoRecoger: false,
+            buscarRepartidor: true,
+            isFromComercio: 1,
+            costoTotalDelivery: costoDeliveryCalculado,
+            tiempoEntregaProgamado: [],
+            delivery: 1,
+            solicitaCubiertos: "0",
+            nombres: infoCliente.nombres.toUpperCase()
+            };
+        } else if (isRecoger) {
+            arrDatosDelivery = {
+                idcliente: infoCliente.idcliente.toString(),
+                nombre: infoCliente.nombres.toUpperCase(),
+                telefono: infoCliente.telefono || "",
+                establecimiento: {
+                    idsede: infoSede[0].idsede.toString(),
+                    idorg: infoSede[0].idorg.toString(),
+                    nombre: infoSede[0].nombre,
+                    direccion: infoSede[0].direccion,
+                    telefono: infoSede[0].telefono
+                },
+                pasoRecoger: true,
+                buscarRepartidor: false,
+                isFromComercio: 1,
+                delivery: 0,
+                nombres: infoCliente.nombres.toUpperCase()
+            };
+        }
+
+        // Actualizar p_header con todos los campos necesarios
+        const p_header = {
+            ...estructuraPedidoCocinada.p_header,
+            idclie: infoCliente.idcliente.toString(),
+            referencia: infoCliente.nombres.toUpperCase(),
+            idcategoria: tipoConsumo?.idcategoria?.toString() || "1",
+            mesa: "",
+            tipo_consumo: tipoConsumo?.idtipo_consumo?.toString() || "4",
+            subtotales_tachados: "",
+            arrDatosDelivery: arrDatosDelivery,
+            isComercioAppDeliveryMapa: isDelivery ? "1" : "0",
+            delivery: isDelivery ? 1 : 0
+        };
+
+        // Actualizar la estructura con el p_header completo
+        estructuraPedidoCocinada.p_header = p_header;
+
         const jsonPrintService = new JsonPrintService();
         const arrPrint = jsonPrintService.enviarMiPedido(
             true,
@@ -676,7 +926,6 @@ router.post("/pedido", async (req, res) => {
         );
 
         const dataPrint: any = [];
-        const p_header = estructuraPedidoCocinada.p_header;
         arrPrint.map((x: any) => {
             dataPrint.push({
                 Array_enca: p_header,
@@ -695,10 +944,6 @@ router.post("/pedido", async (req, res) => {
             cargo: 'BOT',
             usuario: 'BOT'
         };
-
-        const tipoConsumo = estructuraPedidoCocinada.p_body?.tipoconsumo?.[0];
-        const isDelivery = tipoConsumo?.descripcion?.toLowerCase() === 'delivery';
-        const isRecoger = tipoConsumo?.descripcion?.toLowerCase() === 'recojo';
 
         const pedidoEnviar = {
             dataPedido: estructuraPedidoCocinada,
@@ -757,8 +1002,7 @@ router.post("/pedido", async (req, res) => {
             numero_pedido: idpedido
         });
 
-    } catch (error) {
-        console.error('Error en endpoint /pedido:', error);
+    } catch (error) {        
         res.status(500).json({
             success: false,
             error: 'Error al crear pedido'
@@ -827,8 +1071,7 @@ router.get('/info-pedido/:session_id', async (req, res) => {
             }
         });
 
-    } catch (error) {
-        console.error('Error en endpoint /pedido/:id:', error);
+    } catch (error) {        
         res.status(500).json({
             success: false,
             error: 'Error al consultar pedido'
@@ -1025,12 +1268,13 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                 ORDER BY idpedido DESC LIMIT 1`;
 
             cliente = {
-                id: clienteDB[0].idcliente,
+                id: Number(clienteDB[0].idcliente),
                 nombre: clienteDB[0].nombres,
                 telefono: clienteDB[0].telefono,
                 direccion: clienteDB[0].direccion,
-                total_pedidos: totalPedidos[0]?.total || 0,
-                ultimo_pedido: ultimoPedido[0]?.fecha || null
+                total_pedidos: Number(totalPedidos[0]?.total || 0),
+                ultimo_pedido: ultimoPedido[0]?.fecha || null,
+                encontrado: true
             };
         }
 
@@ -1054,8 +1298,8 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                     const stockNumerico = item.cantidad === 'ND' ? 1000 : Number(item.cantidad) || 0;
                     
                     productos.push({
-                        iditem: item.iditem,
-                        idseccion: seccion.idseccion,
+                        iditem: Number(item.iditem),
+                        idseccion: Number(seccion.idseccion),
                         descripcion: item.des,
                         precio: Number(item.precio),
                         stock: stockNumerico
@@ -1070,8 +1314,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
             menu: productos
         });
 
-    } catch (error) {
-        console.error('Error en endpoint /contexto:', error);
+    } catch (error) {        
         res.status(500).json({
             success: false,
             error: 'Error al obtener contexto'

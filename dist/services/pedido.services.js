@@ -219,7 +219,6 @@ var PedidoServices = /** @class */ (function () {
                     id: _idSubtotal,
                     quitar: true,
                     importe: _costoXcantidad.toFixed(2),
-                    tachado: false,
                     visible: true,
                     esImpuesto: 0,
                     descripcion: c.descripcion,
@@ -247,7 +246,6 @@ var PedidoServices = /** @class */ (function () {
                         id: _idSubtotal,
                         quitar: true,
                         importe: _costoXcantidad.toFixed(2),
-                        tachado: false,
                         visible: true,
                         esImpuesto: 0,
                         descripcion: c.descripcion,
@@ -263,13 +261,10 @@ var PedidoServices = /** @class */ (function () {
         // console.log('importeSubTotal', importeSubTotal);
         // total en productos
         var rowSubtotalProductos = {
-            id: 0,
-            quitar: false,
+            descripcion: "Sub Total",
             importe: importeSubTotal.toFixed(2),
-            tachado: false,
             visible: true,
-            esImpuesto: 0,
-            descripcion: "SUB TOTAL",
+            quitar: false,
             visible_cpe: true
         };
         // console.log('rowSubtotalProductos',rowSubtotalProductos);
@@ -297,7 +292,6 @@ var PedidoServices = /** @class */ (function () {
                 id: rowIGV.id,
                 quitar: false,
                 importe: _importeIGV.toFixed(2),
-                tachado: false,
                 visible: true,
                 esImpuesto: 1,
                 descripcion: rowIGV.descripcion,
@@ -311,13 +305,9 @@ var PedidoServices = /** @class */ (function () {
         // total despues de impuestos
         // totalSubtotales = arrSubtotales.map(x => x.importe).reduce((a, b) => parseFloat(a) + parseFloat(b), 0)
         arrSubtotales.push({
-            id: 0,
-            quitar: false,
+            descripcion: "Total",
             importe: totalSubtotales.toFixed(2),
-            tachado: false,
             visible: true,
-            esImpuesto: 0,
-            descripcion: "TOTAL",
             visible_cpe: true
         });
         return arrSubtotales;
@@ -400,14 +390,20 @@ var PedidoServices = /** @class */ (function () {
     PedidoServices.prototype.getSubtotalCostoEntrega = function (datosEntrega) {
         var deliveryCost = datosEntrega.delivery_cost || datosEntrega.costo_entrega || 0;
         var distance = datosEntrega.distance || datosEntrega.distancia || 0;
+        // Buscar el subtotal de delivery en las reglas de carta para obtener su ID
+        var subtotalDeliveryRegla = this.arrReglasCarta.subtotales.find(function (item) {
+            return item.descripcion.toLowerCase().includes('delivery') ||
+                item.descripcion.toLowerCase().includes('entrega') ||
+                item.descripcion.toLowerCase().includes('envio');
+        });
+        var idSubtotal = subtotalDeliveryRegla ? "".concat(subtotalDeliveryRegla.tipo).concat(subtotalDeliveryRegla.id) : 'a48';
         var subtotalCostoEntrega = {
-            id: 0,
+            id: idSubtotal,
             quitar: true,
             importe: parseFloat(deliveryCost).toFixed(2),
-            tachado: false,
             visible: true,
             esImpuesto: 0,
-            descripcion: "Costo de entrega",
+            descripcion: (subtotalDeliveryRegla === null || subtotalDeliveryRegla === void 0 ? void 0 : subtotalDeliveryRegla.descripcion) || "COSTO DELIVERY",
             visible_cpe: false,
             distancia_km: distance,
             success: true

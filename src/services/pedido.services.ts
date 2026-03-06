@@ -3,7 +3,6 @@ export interface Subtotal {
     "id": 0,
     "quitar": false,
     "importe": '',
-    "tachado": false,
     "visible": true,
     "esImpuesto": 0,
     "descripcion": "",
@@ -222,7 +221,6 @@ class PedidoServices {
                     id: _idSubtotal,
                     quitar: true,
                     importe: _costoXcantidad.toFixed(2),
-                    tachado: false,
                     visible: true,
                     esImpuesto: 0,
                     descripcion: c.descripcion,
@@ -253,7 +251,6 @@ class PedidoServices {
                         id: _idSubtotal,
                         quitar: true,
                         importe: _costoXcantidad.toFixed(2),
-                        tachado: false,
                         visible: true,
                         esImpuesto: 0,
                         descripcion: c.descripcion,
@@ -275,13 +272,10 @@ class PedidoServices {
 
         // total en productos
         let rowSubtotalProductos = {
-            id: 0,
-            quitar: false,
+            descripcion: "Sub Total",
             importe: importeSubTotal.toFixed(2),
-            tachado: false,
             visible: true,
-            esImpuesto: 0,
-            descripcion: "SUB TOTAL",
+            quitar: false,
             visible_cpe: true
         }
 
@@ -322,7 +316,6 @@ class PedidoServices {
                 id: rowIGV.id,
                 quitar: false,
                 importe: _importeIGV.toFixed(2),
-                tachado: false,
                 visible: true,
                 esImpuesto: 1,
                 descripcion: rowIGV.descripcion,
@@ -339,13 +332,9 @@ class PedidoServices {
         // totalSubtotales = arrSubtotales.map(x => x.importe).reduce((a, b) => parseFloat(a) + parseFloat(b), 0)
 
         arrSubtotales.push({
-            id: 0,
-            quitar: false,
+            descripcion: "Total",
             importe: totalSubtotales.toFixed(2),
-            tachado: false,
             visible: true,
-            esImpuesto: 0,
-            descripcion: "TOTAL",
             visible_cpe: true
         })
                 
@@ -452,14 +441,22 @@ class PedidoServices {
         let deliveryCost = datosEntrega.delivery_cost || datosEntrega.costo_entrega || 0;
         let distance = datosEntrega.distance || datosEntrega.distancia || 0;
 
+        // Buscar el subtotal de delivery en las reglas de carta para obtener su ID
+        const subtotalDeliveryRegla = this.arrReglasCarta.subtotales.find((item: any) => 
+            item.descripcion.toLowerCase().includes('delivery') || 
+            item.descripcion.toLowerCase().includes('entrega') ||
+            item.descripcion.toLowerCase().includes('envio')
+        );
+
+        const idSubtotal = subtotalDeliveryRegla ? `${subtotalDeliveryRegla.tipo}${subtotalDeliveryRegla.id}` : 'a48';
+
         let subtotalCostoEntrega = {
-            id: 0,
+            id: idSubtotal,
             quitar: true,
             importe: parseFloat(deliveryCost).toFixed(2),
-            tachado: false,
             visible: true,
             esImpuesto: 0,
-            descripcion: "Costo de entrega",
+            descripcion: subtotalDeliveryRegla?.descripcion || "COSTO DELIVERY",
             visible_cpe: false,
             distancia_km: distance,
             success: true

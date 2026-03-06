@@ -111,7 +111,7 @@ var GeocodingService = /** @class */ (function () {
     };
     GeocodingService.calcularDistanciaRuta = function (direccion, latComercio, lngComercio, kmLimite, ciudades) {
         return __awaiter(this, void 0, void 0, function () {
-            var apiKey, url, ciudadesABuscar, _i, ciudadesABuscar_1, ciudad, direccionCompleta, response, location, distanciaKm, error_2;
+            var apiKey, url, ciudadesABuscar, _loop_1, this_1, _i, ciudadesABuscar_1, ciudad, state_1, error_2;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -125,41 +125,86 @@ var GeocodingService = /** @class */ (function () {
                         }
                         url = "https://maps.googleapis.com/maps/api/geocode/json";
                         ciudadesABuscar = ciudades && ciudades.length > 0 ? ciudades : [''];
+                        _loop_1 = function (ciudad) {
+                            var direccionCompleta, response, location, addressComponents, ciudadExtraida, provinciaExtraida, departamentoExtraido, paisExtraido, codigoExtraido, distanciaKm;
+                            return __generator(this, function (_b) {
+                                switch (_b.label) {
+                                    case 0:
+                                        direccionCompleta = ciudad
+                                            ? "".concat(direccion, ", ").concat(ciudad, ", Peru")
+                                            : "".concat(direccion, ", Peru");
+                                        console.log('Geocodificando:', direccionCompleta);
+                                        return [4 /*yield*/, axios_1["default"].get(url, {
+                                                params: {
+                                                    address: direccionCompleta,
+                                                    key: apiKey,
+                                                    region: 'pe'
+                                                }
+                                            })];
+                                    case 1:
+                                        response = _b.sent();
+                                        if (response.data.status !== 'OK' || !response.data.results || response.data.results.length === 0) {
+                                            console.log("No se encontr\u00F3 direcci\u00F3n con ciudad \"".concat(ciudad, "\""));
+                                            return [2 /*return*/, "continue"];
+                                        }
+                                        location = response.data.results[0].geometry.location;
+                                        addressComponents = response.data.results[0].address_components;
+                                        ciudadExtraida = '';
+                                        provinciaExtraida = '';
+                                        departamentoExtraido = '';
+                                        paisExtraido = '';
+                                        codigoExtraido = '';
+                                        addressComponents.forEach(function (component) {
+                                            if (component.types.includes('locality')) {
+                                                ciudadExtraida = component.long_name;
+                                            }
+                                            if (component.types.includes('administrative_area_level_2')) {
+                                                provinciaExtraida = component.long_name;
+                                            }
+                                            if (component.types.includes('administrative_area_level_1')) {
+                                                departamentoExtraido = component.long_name;
+                                            }
+                                            if (component.types.includes('country')) {
+                                                paisExtraido = component.long_name;
+                                            }
+                                            if (component.types.includes('postal_code')) {
+                                                codigoExtraido = component.long_name;
+                                            }
+                                        });
+                                        distanciaKm = this_1.calcularDistanciaHaversine(latComercio, lngComercio, location.lat, location.lng);
+                                        console.log("Encontrado con ciudad \"".concat(ciudad, "\": ").concat(distanciaKm, " km (l\u00EDnea recta)"));
+                                        if (distanciaKm > kmLimite) {
+                                            return [2 /*return*/, { value: {
+                                                        success: false,
+                                                        error: "Direcci\u00F3n fuera del rango de cobertura (".concat(distanciaKm.toFixed(2), " km, m\u00E1ximo ").concat(kmLimite, " km)")
+                                                    } }];
+                                        }
+                                        return [2 /*return*/, { value: {
+                                                    success: true,
+                                                    lat: location.lat,
+                                                    lng: location.lng,
+                                                    distanciaKm: Math.round(distanciaKm * 100) / 100,
+                                                    ciudad: ciudadExtraida,
+                                                    provincia: provinciaExtraida,
+                                                    departamento: departamentoExtraido,
+                                                    pais: paisExtraido,
+                                                    codigo: codigoExtraido
+                                                } }];
+                                }
+                            });
+                        };
+                        this_1 = this;
                         _i = 0, ciudadesABuscar_1 = ciudadesABuscar;
                         _a.label = 1;
                     case 1:
                         if (!(_i < ciudadesABuscar_1.length)) return [3 /*break*/, 4];
                         ciudad = ciudadesABuscar_1[_i];
-                        direccionCompleta = ciudad
-                            ? "".concat(direccion, ", ").concat(ciudad, ", Peru")
-                            : "".concat(direccion, ", Peru");
-                        console.log('Geocodificando:', direccionCompleta);
-                        return [4 /*yield*/, axios_1["default"].get(url, {
-                                params: {
-                                    address: direccionCompleta,
-                                    key: apiKey,
-                                    region: 'pe'
-                                }
-                            })];
+                        return [5 /*yield**/, _loop_1(ciudad)];
                     case 2:
-                        response = _a.sent();
-                        if (response.data.status !== 'OK' || !response.data.results || response.data.results.length === 0) {
-                            console.log("No se encontr\u00F3 direcci\u00F3n con ciudad \"".concat(ciudad, "\""));
-                            return [3 /*break*/, 3];
-                        }
-                        location = response.data.results[0].geometry.location;
-                        distanciaKm = this.calcularDistanciaHaversine(latComercio, lngComercio, location.lat, location.lng);
-                        console.log("Encontrado con ciudad \"".concat(ciudad, "\": ").concat(distanciaKm, " km (l\u00EDnea recta)"));
-                        if (distanciaKm > kmLimite) {
-                            return [2 /*return*/, {
-                                    success: false,
-                                    error: "Direcci\u00F3n fuera del rango de cobertura (".concat(distanciaKm.toFixed(2), " km, m\u00E1ximo ").concat(kmLimite, " km)")
-                                }];
-                        }
-                        return [2 /*return*/, {
-                                success: true,
-                                distanciaKm: Math.round(distanciaKm * 100) / 100
-                            }];
+                        state_1 = _a.sent();
+                        if (typeof state_1 === "object")
+                            return [2 /*return*/, state_1.value];
+                        _a.label = 3;
                     case 3:
                         _i++;
                         return [3 /*break*/, 1];

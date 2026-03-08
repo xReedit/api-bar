@@ -565,6 +565,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 }
                 itemsParaCocinar = items.map(function (item) { return ({
                     iditem: item.iditem,
+                    descripcion: item.descripcion,
                     cantidad: item.cantidad,
                     precio: item.precio,
                     indicaciones: item.indicaciones || '',

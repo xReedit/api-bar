@@ -5,7 +5,6 @@ import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
 import axios from "axios";
-import { log } from "console";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -502,6 +501,7 @@ router.post("/resumen-pedido", async (req, res) => {
             direccion, 
             costo_delivery
         } = req.body;
+
         
 
 
@@ -521,6 +521,7 @@ router.post("/resumen-pedido", async (req, res) => {
 
         const itemsParaCocinar = items.map((item: any) => ({
             iditem: item.iditem,
+            descripcion: item.descripcion,
             cantidad: item.cantidad,
             precio: item.precio,
             indicaciones: item.indicaciones || '',

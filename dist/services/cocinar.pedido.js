@@ -59,8 +59,6 @@ var getEstructuraPedido = function (items, tipo_entrega, datos_entrega, idsede) 
             case 2:
                 items_secciones = _a.sent();
                 secciones = items_secciones.secciones;
-                console.log('Items recibidos para cocinar:', JSON.stringify(items, null, 2));
-                console.log('Secciones retornadas por get-seccion-items:', JSON.stringify(secciones, null, 2));
                 return [4 /*yield*/, getCanalesConsumo(idsede)];
             case 3:
                 canales_consumo = _a.sent();

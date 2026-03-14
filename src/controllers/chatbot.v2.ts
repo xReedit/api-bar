@@ -659,10 +659,14 @@ router.post("/pedido", async (req, res) => {
             }
         }
 
+        // Extraer solo los dígitos del teléfono sin código de país
+        const telefonoSinCodigo = cliente_telefono.replace(/\D/g, '').replace(/^(51)?/, '');
+
         let cliente: any = await prisma.$queryRaw`
-            SELECT c.idcliente, c.nombres FROM cliente c
+            SELECT c.idcliente, c.nombres, c.telefono FROM cliente c
             INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente
-            WHERE c.telefono = ${cliente_telefono} AND cs.idsede = ${idsede}
+            WHERE cs.idsede = ${idsede} AND c.idorg = ${idorg}
+            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ${'%' + telefonoSinCodigo + '%'}
             LIMIT 1`;
 
         let idcliente;
@@ -894,6 +898,7 @@ router.post("/pedido", async (req, res) => {
                     telefono: infoSede[0].telefono
                 },
                 pasoRecoger: true,
+                solo_llevar: true,
                 buscarRepartidor: false,
                 isFromComercio: 1,
                 delivery: 0,
@@ -901,11 +906,17 @@ router.post("/pedido", async (req, res) => {
             };
         }
 
+        // Construir referencia según tipo de entrega
+        const referenciaTexto = isRecoger 
+            ? `CLIENTE RECOGE - ${infoCliente.nombres.toUpperCase()} - ${infoCliente.telefono || cliente_telefono}`
+            : infoCliente.nombres.toUpperCase();
+
         // Actualizar p_header con todos los campos necesarios
         const p_header = {
             ...estructuraPedidoCocinada.p_header,
             idclie: infoCliente.idcliente.toString(),
-            referencia: infoCliente.nombres.toUpperCase(),
+            referencia: referenciaTexto,
+            r: referenciaTexto,
             idcategoria: tipoConsumo?.idcategoria?.toString() || "1",
             mesa: "",
             tipo_consumo: tipoConsumo?.idtipo_consumo?.toString() || "4",

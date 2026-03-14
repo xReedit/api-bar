@@ -15,8 +15,8 @@ export const getEstructuraPedido = async (items: any[], tipo_entrega: any, datos
     const items_secciones = await getSeccionItemsCartaSelected(idsede, items);
     let secciones = items_secciones.secciones;
     
-    console.log('Items recibidos para cocinar:', JSON.stringify(items, null, 2));
-    console.log('Secciones retornadas por get-seccion-items:', JSON.stringify(secciones, null, 2));
+    // console.log('Items recibidos para cocinar:', JSON.stringify(items, null, 2));
+    // console.log('Secciones retornadas por get-seccion-items:', JSON.stringify(secciones, null, 2));
 
     // obtenemos los canales de consumo
     const canales_consumo = await getCanalesConsumo(idsede);

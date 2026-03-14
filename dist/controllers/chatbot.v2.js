@@ -613,7 +613,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
     });
 }); });
 router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id, idorg, idsede, cliente_telefono, cliente_nombre, direccion, tipo_entrega, metodo_pago, notas, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_6;
+    var _a, session_id, idorg, idsede, cliente_telefono, cliente_nombre, direccion, tipo_entrega, metodo_pago, notas, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, referenciaTexto, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_6;
     var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     return __generator(this, function (_p) {
         switch (_p.label) {
@@ -659,7 +659,8 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                         tipoEntregaFinal = 'recojo';
                     }
                 }
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE c.telefono = ", " AND cs.idsede = ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE c.telefono = ", " AND cs.idsede = ", "\n            LIMIT 1"])), cliente_telefono, idsede)];
+                telefonoSinCodigo = cliente_telefono.replace(/\D/g, '').replace(/^(51)?/, '');
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.telefono FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", "\n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.telefono FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", "\n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoSinCodigo + '%')];
             case 2:
                 cliente = _p.sent();
                 idcliente = void 0;
@@ -863,13 +864,17 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                             telefono: infoSede[0].telefono
                         },
                         pasoRecoger: true,
+                        solo_llevar: true,
                         buscarRepartidor: false,
                         isFromComercio: 1,
                         delivery: 0,
                         nombres: infoCliente.nombres.toUpperCase()
                     };
                 }
-                p_header_1 = __assign(__assign({}, estructuraPedidoCocinada_1.p_header), { idclie: infoCliente.idcliente.toString(), referencia: infoCliente.nombres.toUpperCase(), idcategoria: ((_l = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idcategoria) === null || _l === void 0 ? void 0 : _l.toString()) || "1", mesa: "", tipo_consumo: ((_m = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idtipo_consumo) === null || _m === void 0 ? void 0 : _m.toString()) || "4", subtotales_tachados: "", arrDatosDelivery: arrDatosDelivery, isComercioAppDeliveryMapa: isDelivery ? "1" : "0", delivery: isDelivery ? 1 : 0 });
+                referenciaTexto = isRecoger
+                    ? "CLIENTE RECOGE - ".concat(infoCliente.nombres.toUpperCase(), " - ").concat(infoCliente.telefono || cliente_telefono)
+                    : infoCliente.nombres.toUpperCase();
+                p_header_1 = __assign(__assign({}, estructuraPedidoCocinada_1.p_header), { idclie: infoCliente.idcliente.toString(), referencia: referenciaTexto, r: referenciaTexto, idcategoria: ((_l = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idcategoria) === null || _l === void 0 ? void 0 : _l.toString()) || "1", mesa: "", tipo_consumo: ((_m = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idtipo_consumo) === null || _m === void 0 ? void 0 : _m.toString()) || "4", subtotales_tachados: "", arrDatosDelivery: arrDatosDelivery, isComercioAppDeliveryMapa: isDelivery ? "1" : "0", delivery: isDelivery ? 1 : 0 });
                 // Actualizar la estructura con el p_header completo
                 estructuraPedidoCocinada_1.p_header = p_header_1;
                 jsonPrintService = new json_print_services_1.JsonPrintService();

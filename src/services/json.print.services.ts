@@ -12,7 +12,13 @@ export class JsonPrintService {
 
 
         const _objMiPedido = this.elPedido
-        const _tpcPrinter: any = [];
+        // impresora por canal de consumo: cada canal (tipo_consumo) puede traer su
+        // idimpresora. Si la trae, se imprime todo ese canal en esa impresora y se
+        // obvia la impresora por seccion. (idimpresora 0 = sin asignar -> por seccion)
+        const _tpcPrinter: any = (_objMiPedido.tipoconsumo || []).map((tpc: any) => ({
+            idtipo_consumo: tpc.idtipo_consumo,
+            idimpresora: tpc.idimpresora || 0,
+        }));
         const xRptPrint: any = []; // respuesta para enviar al backend
         const listOnlyPrinters: any = []; // lista de solo impresoras
         let xImpresoraPrint: any = []; // array de impresoras
@@ -83,6 +89,7 @@ export class JsonPrintService {
 
                 // buscamos la impresora en xArrayImpresoras;
                 printerAsigando = this.impresoras.filter((pp: any) => pp.idimpresora === xIdPrint)[0];
+                if (!printerAsigando) { return; } // impresora del canal no existe en la lista
 
                 xImpresoraPrint = [];
                 const childPrinter: any = {};

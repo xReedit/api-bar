@@ -544,7 +544,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
     });
 }); });
 router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, estructuraJson, error_5;
+    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, estructuraJson, error_5, msg;
     var _b, _c;
     return __generator(this, function (_d) {
         switch (_d.label) {
@@ -603,6 +603,13 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
             case 3:
                 error_5 = _d.sent();
                 console.error('Error en resumen-pedido:', error_5);
+                msg = ((error_5 === null || error_5 === void 0 ? void 0 : error_5.message) || '').toLowerCase();
+                if (msg.includes('canal de consumo no encontrado')) {
+                    return [2 /*return*/, res.status(200).json({
+                            success: false,
+                            error: 'Esta sede no tiene disponible ese tipo de entrega por este medio. ¿Deseas recogerlo en el local?'
+                        })];
+                }
                 res.status(500).json({
                     success: false,
                     error: 'Error al generar resumen del pedido'

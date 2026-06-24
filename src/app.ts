@@ -4,6 +4,7 @@ import cors from "cors";
 import routes from "./routes";
 import { env } from 'process';
 import { errorHandler } from './middleware/error';
+import { startPushWatcher } from './services/push.watcher';
 
 const app = express()
 
@@ -26,4 +27,7 @@ app.get('/', function (req, res) {
 
 
 
-app.listen(portConect, () => {})
+app.listen(portConect, () => {
+    // Arranca el watcher de push notifications (opt-in vía PUSH_WATCHER_ENABLED=true)
+    startPushWatcher();
+})

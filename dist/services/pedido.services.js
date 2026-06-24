@@ -56,15 +56,24 @@ var PedidoServices = /** @class */ (function () {
         return seccionMasItems;
     };
     PedidoServices.prototype.setCanalConsumo = function (canalFromBot, listCanalConsumo, seccionMasItems) {
-        var canalSeleted = listCanalConsumo.find(function (canal) { return canal.idtipo_consumo === canalFromBot.idtipo_consumo; });
+        // normaliza: minusculas, sin acentos, trim. Tolera nombres distintos por sede.
+        var norm = function (s) { return (s || '').toString().toLowerCase()
+            .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
+            .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u').trim(); };
+        var pedido = norm(canalFromBot.descripcion);
+        var wantsDelivery = pedido.includes('delivery');
+        var wantsLlevar = pedido.includes('llevar') || pedido.includes('recoj') || pedido.includes('recog');
+        // 1) por id si viniera; 2) por keyword tolerante; 3) por nombre exacto normalizado
+        var canalSeleted = listCanalConsumo.find(function (c) { return c.idtipo_consumo === canalFromBot.idtipo_consumo; });
         if (!canalSeleted) {
-            // Mapear nombres alternativos
-            var nombreBusqueda_1 = canalFromBot.descripcion.toLowerCase();
-            if (nombreBusqueda_1 === 'recoger en local') {
-                nombreBusqueda_1 = 'para llevar';
-            }
-            // buscamos por el nombre
-            canalSeleted = listCanalConsumo.find(function (canal) { return canal.descripcion.toLowerCase() === nombreBusqueda_1; });
+            canalSeleted = listCanalConsumo.find(function (c) {
+                var d = norm(c.descripcion);
+                if (wantsDelivery)
+                    return d.includes('delivery');
+                if (wantsLlevar)
+                    return d.includes('llevar') || d.includes('recoj');
+                return d === pedido;
+            });
         }
         if (!canalSeleted) {
             throw new Error("Canal de consumo no encontrado: ".concat(canalFromBot.descripcion, ". Canales disponibles: ").concat(listCanalConsumo.map(function (c) { return c.descripcion; }).join(', ')));
@@ -317,7 +326,7 @@ var PedidoServices = /** @class */ (function () {
         // el formato a utiliza es cantidad, descripcion (indicaciones), precio y los totales                
         var _this = this;
         var stringFormatted = '';
-        var totalItemsPedido = arrSubtotales[arrSubtotales.length - 1].importe;
+        var totalItemsPedido = arrSubtotales.length ? arrSubtotales[arrSubtotales.length - 1].importe : '0.00';
         // console.log('totalItemsPedido', totalItemsPedido);
         // let importeSubTotal = totalItemsPedido;
         // canal de consumo

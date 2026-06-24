@@ -8,6 +8,7 @@ var cors_1 = __importDefault(require("cors"));
 var routes_1 = __importDefault(require("./routes"));
 var process_1 = require("process");
 var error_1 = require("./middleware/error");
+var push_watcher_1 = require("./services/push.watcher");
 var app = (0, express_1["default"])();
 app.use((0, cors_1["default"])());
 app.use(express_1["default"].json());
@@ -20,4 +21,7 @@ var portConect = process_1.env.PORT || 20223;
 app.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a nuestra API RESTOBAR port: ' + portConect });
 });
-app.listen(portConect, function () { });
+app.listen(portConect, function () {
+    // Arranca el watcher de push notifications (opt-in vía PUSH_WATCHER_ENABLED=true)
+    (0, push_watcher_1.startPushWatcher)();
+});

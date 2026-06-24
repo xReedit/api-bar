@@ -586,8 +586,18 @@ router.post("/resumen-pedido", async (req, res) => {
             resumen: ticketFormateado            
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error en resumen-pedido:', error);
+        // Canal no disponible para esta sede (ej. delivery donde solo hay recojo):
+        // respondemos 200 con success:false para que el bot lo relate al cliente
+        // en vez de un "se cayo el sistema".
+        const msg = (error?.message || '').toLowerCase();
+        if (msg.includes('canal de consumo no encontrado')) {
+            return res.status(200).json({
+                success: false,
+                error: 'Esta sede no tiene disponible ese tipo de entrega por este medio. ¿Deseas recogerlo en el local?'
+            });
+        }
         res.status(500).json({
             success: false,
             error: 'Error al generar resumen del pedido'

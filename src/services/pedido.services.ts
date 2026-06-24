@@ -27,24 +27,30 @@ class PedidoServices {
         return seccionMasItems
     }
 
-    setCanalConsumo(canalFromBot: any, listCanalConsumo: any[], seccionMasItems: any) {                
-        let canalSeleted = listCanalConsumo.find((canal: any) => canal.idtipo_consumo === canalFromBot.idtipo_consumo)    
-        
-        if ( !canalSeleted ) {
-            // Mapear nombres alternativos
-            let nombreBusqueda = canalFromBot.descripcion.toLowerCase();
-            if (nombreBusqueda === 'recoger en local') {
-                nombreBusqueda = 'para llevar';
-            }
-            
-            // buscamos por el nombre
-            canalSeleted = listCanalConsumo.find((canal: any) => canal.descripcion.toLowerCase() === nombreBusqueda)
+    setCanalConsumo(canalFromBot: any, listCanalConsumo: any[], seccionMasItems: any) {
+        // normaliza: minusculas, sin acentos, trim. Tolera nombres distintos por sede.
+        const norm = (s: any) => (s || '').toString().toLowerCase()
+            .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
+            .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u').trim();
+        const pedido = norm(canalFromBot.descripcion);
+        const wantsDelivery = pedido.includes('delivery');
+        const wantsLlevar = pedido.includes('llevar') || pedido.includes('recoj') || pedido.includes('recog');
+
+        // 1) por id si viniera; 2) por keyword tolerante; 3) por nombre exacto normalizado
+        let canalSeleted = listCanalConsumo.find((c: any) => c.idtipo_consumo === canalFromBot.idtipo_consumo);
+        if (!canalSeleted) {
+            canalSeleted = listCanalConsumo.find((c: any) => {
+                const d = norm(c.descripcion);
+                if (wantsDelivery) return d.includes('delivery');
+                if (wantsLlevar) return d.includes('llevar') || d.includes('recoj');
+                return d === pedido;
+            });
         }
-        
+
         if (!canalSeleted) {
             throw new Error(`Canal de consumo no encontrado: ${canalFromBot.descripcion}. Canales disponibles: ${listCanalConsumo.map((c: any) => c.descripcion).join(', ')}`);
         }
-        
+
         canalSeleted.secciones = seccionMasItems;
         return canalSeleted;
     }
@@ -346,7 +352,7 @@ class PedidoServices {
         // el formato a utiliza es cantidad, descripcion (indicaciones), precio y los totales                
         
         let stringFormatted = '';
-        let totalItemsPedido = arrSubtotales[arrSubtotales.length - 1].importe;
+        let totalItemsPedido = arrSubtotales.length ? arrSubtotales[arrSubtotales.length - 1].importe : '0.00';
         // console.log('totalItemsPedido', totalItemsPedido);
         // let importeSubTotal = totalItemsPedido;
         

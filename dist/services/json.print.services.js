@@ -9,7 +9,13 @@ var JsonPrintService = /** @class */ (function () {
         var _this = this;
         if (iscliente === void 0) { iscliente = false; }
         var _objMiPedido = this.elPedido;
-        var _tpcPrinter = [];
+        // impresora por canal de consumo: cada canal (tipo_consumo) puede traer su
+        // idimpresora. Si la trae, se imprime todo ese canal en esa impresora y se
+        // obvia la impresora por seccion. (idimpresora 0 = sin asignar -> por seccion)
+        var _tpcPrinter = (_objMiPedido.tipoconsumo || []).map(function (tpc) { return ({
+            idtipo_consumo: tpc.idtipo_consumo,
+            idimpresora: tpc.idimpresora || 0
+        }); });
         var xRptPrint = []; // respuesta para enviar al backend
         var listOnlyPrinters = []; // lista de solo impresoras
         var xImpresoraPrint = []; // array de impresoras
@@ -70,6 +76,9 @@ var JsonPrintService = /** @class */ (function () {
                 }
                 // buscamos la impresora en xArrayImpresoras;
                 printerAsigando = _this.impresoras.filter(function (pp) { return pp.idimpresora === xIdPrint; })[0];
+                if (!printerAsigando) {
+                    return;
+                } // impresora del canal no existe en la lista
                 xImpresoraPrint = [];
                 var childPrinter = {};
                 childPrinter.ip_print = printerAsigando.ip;

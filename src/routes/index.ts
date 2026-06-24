@@ -21,6 +21,7 @@ import dashboard_usuarios from "../controllers/dashboard/usuarios";
 import dashboard_compras from "../controllers/dashboard/compras";
 import dashboard_punto_equilibrio from "../controllers/dashboard/punto-equilibrio";
 import dashboard_promociones_cupones from "../controllers/dashboard/promociones-cupones";
+import push from "../controllers/push";
 
 const router = express.Router();
 
@@ -56,6 +57,9 @@ router.use('/dash-usuarios', auth, dashboard_usuarios);
 router.use('/dash-compras', auth, dashboard_compras);
 router.use('/dash-punto-equilibrio', auth, dashboard_punto_equilibrio);
 router.use('/dash-promociones-cupones', auth, dashboard_promociones_cupones);
+
+// push notifications (Web Push VAPID)
+router.use('/push', auth, push);
 
 
 // router.use('/usuario', auth, usuario);

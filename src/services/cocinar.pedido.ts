@@ -8,12 +8,20 @@ export const getEstructuraPedido = async (items: any[], tipo_entrega: any, datos
     const pedidoServices = new PedidoServices();
     const classEstructuraPedido = new ClassEstructuraPedido();
     // obtener reglas de carta
-    const rules = await getReglasCarta(idsede);     
-    pedidoServices.setRules(rules);      
+    const rules = await getReglasCarta(idsede);
+    if (!rules || !rules.reglas) {
+        // antes esto reventaba luego con "Cannot read properties of null (reading 'reglas')"
+        throw new Error(`get-reglas-carta no devolvió reglas para idsede ${idsede}`);
+    }
+    pedidoServices.setRules(rules);
 
     // obtenemos los items mas secciones
     const items_secciones = await getSeccionItemsCartaSelected(idsede, items);
-    let secciones = items_secciones.secciones;
+    let secciones = items_secciones?.secciones;
+    if (!Array.isArray(secciones) || secciones.length === 0) {
+        // get-seccion-items falló o no mapeó ningún item del menú
+        throw new Error(`get-seccion-items no devolvió secciones para idsede ${idsede} (items: ${JSON.stringify(items?.map((i: any) => i.iditem))})`);
+    }
     
     // console.log('Items recibidos para cocinar:', JSON.stringify(items, null, 2));
     // console.log('Secciones retornadas por get-seccion-items:', JSON.stringify(secciones, null, 2));

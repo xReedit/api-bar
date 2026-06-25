@@ -54,11 +54,19 @@ var getEstructuraPedido = function (items, tipo_entrega, datos_entrega, idsede) 
                 return [4 /*yield*/, getReglasCarta(idsede)];
             case 1:
                 rules = _a.sent();
+                if (!rules || !rules.reglas) {
+                    // antes esto reventaba luego con "Cannot read properties of null (reading 'reglas')"
+                    throw new Error("get-reglas-carta no devolvi\u00F3 reglas para idsede ".concat(idsede));
+                }
                 pedidoServices.setRules(rules);
                 return [4 /*yield*/, getSeccionItemsCartaSelected(idsede, items)];
             case 2:
                 items_secciones = _a.sent();
-                secciones = items_secciones.secciones;
+                secciones = items_secciones === null || items_secciones === void 0 ? void 0 : items_secciones.secciones;
+                if (!Array.isArray(secciones) || secciones.length === 0) {
+                    // get-seccion-items falló o no mapeó ningún item del menú
+                    throw new Error("get-seccion-items no devolvi\u00F3 secciones para idsede ".concat(idsede, " (items: ").concat(JSON.stringify(items === null || items === void 0 ? void 0 : items.map(function (i) { return i.iditem; })), ")"));
+                }
                 return [4 /*yield*/, getCanalesConsumo(idsede)];
             case 3:
                 canales_consumo = _a.sent();

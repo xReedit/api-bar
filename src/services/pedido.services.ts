@@ -17,7 +17,14 @@ class PedidoServices {
     }
 
     setRules(arrReglasCarta: any) {
-        this.arrReglasCarta = arrReglasCarta
+        // 'reglas' y/o 'subtotales' pueden venir null (sede sin reglas de carta
+        // o sin config de impresión). Normalizamos a [] para no romper el pipeline.
+        const r = arrReglasCarta && typeof arrReglasCarta === 'object' ? arrReglasCarta : {};
+        this.arrReglasCarta = {
+            ...r,
+            reglas: Array.isArray(r.reglas) ? r.reglas : [],
+            subtotales: Array.isArray(r.subtotales) ? r.subtotales : [],
+        };
     }
 
     cocinarPedido(seccionMasItems: any, itemsFromBot: any) {        
@@ -79,8 +86,10 @@ class PedidoServices {
     }
 
     // rules = this.arrReglasCarta.reglas
-    private validarReglasCarta(rules: any[], seccionMasItems: any): any {        
-        if (rules === null) return;
+    private validarReglasCarta(rules: any[], seccionMasItems: any): any {
+        // sin reglas: devolvemos las secciones tal cual (antes devolvía undefined
+        // y se perdía el pedido → crash posterior).
+        if (!Array.isArray(rules) || rules.length === 0) return seccionMasItems;
         // let diferencia = 0;
 
         this.arrSeccionesPedido = seccionMasItems;

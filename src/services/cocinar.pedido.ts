@@ -7,11 +7,12 @@ import ClassEstructuraPedido from "../class/estructura.pedido";
 export const getEstructuraPedido = async (items: any[], tipo_entrega: any, datos_entrega: any, idsede: number) => {
     const pedidoServices = new PedidoServices();
     const classEstructuraPedido = new ClassEstructuraPedido();
-    // obtener reglas de carta
+    // obtener reglas de carta. Ojo: 'reglas' puede venir null y es VÁLIDO
+    // (la sede no tiene reglas de carta especiales); solo es error si el
+    // endpoint falló del todo (rules null). setRules normaliza los nulls.
     const rules = await getReglasCarta(idsede);
-    if (!rules || !rules.reglas) {
-        // antes esto reventaba luego con "Cannot read properties of null (reading 'reglas')"
-        throw new Error(`get-reglas-carta no devolvió reglas para idsede ${idsede}`);
+    if (!rules) {
+        throw new Error(`get-reglas-carta no respondió para idsede ${idsede}`);
     }
     pedidoServices.setRules(rules);
 

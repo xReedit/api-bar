@@ -54,9 +54,8 @@ var getEstructuraPedido = function (items, tipo_entrega, datos_entrega, idsede) 
                 return [4 /*yield*/, getReglasCarta(idsede)];
             case 1:
                 rules = _a.sent();
-                if (!rules || !rules.reglas) {
-                    // antes esto reventaba luego con "Cannot read properties of null (reading 'reglas')"
-                    throw new Error("get-reglas-carta no devolvi\u00F3 reglas para idsede ".concat(idsede));
+                if (!rules) {
+                    throw new Error("get-reglas-carta no respondi\u00F3 para idsede ".concat(idsede));
                 }
                 pedidoServices.setRules(rules);
                 return [4 /*yield*/, getSeccionItemsCartaSelected(idsede, items)];

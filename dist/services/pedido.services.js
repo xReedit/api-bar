@@ -3,6 +3,17 @@ var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cook
     if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
     return cooked;
 };
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -47,7 +58,10 @@ var PedidoServices = /** @class */ (function () {
         this.arrSeccionesPedido = [];
     }
     PedidoServices.prototype.setRules = function (arrReglasCarta) {
-        this.arrReglasCarta = arrReglasCarta;
+        // 'reglas' y/o 'subtotales' pueden venir null (sede sin reglas de carta
+        // o sin config de impresión). Normalizamos a [] para no romper el pipeline.
+        var r = arrReglasCarta && typeof arrReglasCarta === 'object' ? arrReglasCarta : {};
+        this.arrReglasCarta = __assign(__assign({}, r), { reglas: Array.isArray(r.reglas) ? r.reglas : [], subtotales: Array.isArray(r.subtotales) ? r.subtotales : [] });
     };
     PedidoServices.prototype.cocinarPedido = function (seccionMasItems, itemsFromBot) {
         seccionMasItems = this.setDescripcionCantidadItems(seccionMasItems, itemsFromBot);
@@ -104,8 +118,10 @@ var PedidoServices = /** @class */ (function () {
     // rules = this.arrReglasCarta.reglas
     PedidoServices.prototype.validarReglasCarta = function (rules, seccionMasItems) {
         var _this = this;
-        if (rules === null)
-            return;
+        // sin reglas: devolvemos las secciones tal cual (antes devolvía undefined
+        // y se perdía el pedido → crash posterior).
+        if (!Array.isArray(rules) || rules.length === 0)
+            return seccionMasItems;
         // let diferencia = 0;
         this.arrSeccionesPedido = seccionMasItems;
         var xSecc_bus = 0;

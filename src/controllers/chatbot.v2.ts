@@ -567,12 +567,14 @@ router.post("/resumen-pedido", async (req, res) => {
 
 
         await prisma.$queryRawUnsafe(
-            `INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado) 
-             VALUES (?, ?, ?, ?) 
-             ON DUPLICATE KEY UPDATE 
-             estructura = VALUES(estructura), 
-             ticket_formateado = VALUES(ticket_formateado), 
+            `INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+             estructura = VALUES(estructura),
+             ticket_formateado = VALUES(ticket_formateado),
              estado = 'pending',
+             recordatorios = 0,
+             last_recordatorio_at = NULL,
              created_at = CURRENT_TIMESTAMP`,
             previewId,
             estructuraJson,
@@ -1044,9 +1046,12 @@ router.get('/info-pedido/:session_id', async (req, res) => {
             LIMIT 1`;
 
         if (!pedidoPreview || pedidoPreview.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Pedido no encontrado'
+            // No es un error de sistema: el cliente simplemente no tiene un pedido
+            // en esta sesión. Respondemos 200 para que el bot lo relate al cliente
+            // (mismo patrón que "canal no disponible") y no se loguee como fallo.
+            return res.status(200).json({
+                success: true,
+                data: { preview: null, pedido_info: null, mensaje: 'El cliente aún no tiene un pedido registrado en esta sesión.' }
             });
         }
 

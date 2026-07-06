@@ -74,6 +74,45 @@ export class GeocodingService {
         }
     }
 
+    // Reverse geocoding: coordenadas GPS -> dirección legible. Usado cuando el
+    // cliente comparte su ubicación por WhatsApp (antes quedaba "GPS" como dirección).
+    static async obtenerDireccion(lat: number, lng: number): Promise<{ success: boolean; direccion?: string; ciudad?: string; provincia?: string; departamento?: string; pais?: string; codigo?: string; error?: string }> {
+        try {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                return { success: false, error: 'API Key de Google Maps no configurada' };
+            }
+
+            const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+                params: { latlng: `${lat},${lng}`, key: apiKey, language: 'es' }
+            });
+
+            if (response.data.status !== 'OK' || !response.data.results?.length) {
+                return { success: false, error: 'No se pudo obtener la dirección' };
+            }
+
+            const result = response.data.results[0];
+            let ciudad = '', provincia = '', departamento = '', pais = '', codigo = '';
+            result.address_components.forEach((component: any) => {
+                if (component.types.includes('locality')) ciudad = component.long_name;
+                if (component.types.includes('administrative_area_level_2')) provincia = component.long_name;
+                if (component.types.includes('administrative_area_level_1')) departamento = component.long_name;
+                if (component.types.includes('country')) pais = component.long_name;
+                if (component.types.includes('postal_code')) codigo = component.long_name;
+            });
+
+            return {
+                success: true,
+                direccion: result.formatted_address,
+                ciudad, provincia, departamento, pais, codigo
+            };
+
+        } catch (error: any) {
+            console.error('Error en reverse geocoding:', error);
+            return { success: false, error: error.message || 'Error al obtener dirección' };
+        }
+    }
+
     static calcularDistanciaHaversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
         const R = 6371;
         const dLat = this.toRad(lat2 - lat1);

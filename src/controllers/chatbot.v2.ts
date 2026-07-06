@@ -18,6 +18,21 @@ const calcularTiempoEstimado = (tiempoAproxMinutos: number): string => {
     return `${tiempoMin}-${tiempoMax} min`;
 };
 
+// Normaliza una hora dicha por el cliente ("1pm", "13:00", "7.30 pm") a "HH:MM".
+// Devuelve null si no se reconoce.
+const normalizarHora = (hora: any): string | null => {
+    if (!hora) return null;
+    const s = String(hora).trim().toLowerCase().replace(/\./g, ':').replace(/\s+/g, '');
+    const m = s.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
+    if (!m) return null;
+    let h = Number(m[1]);
+    const min = Number(m[2] || 0);
+    if (m[3] === 'pm' && h < 12) h += 12;
+    if (m[3] === 'am' && h === 12) h = 0;
+    if (h > 23 || min > 59) return null;
+    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+};
+
 router.get("/", async (req, res) => {
     res.status(200).json({ message: 'Chatbot V2 API - Endpoints disponibles' })
 });
@@ -159,9 +174,15 @@ router.get("/menu/:idorg/:idsede", async (req, res) => {
 
 router.post("/calcular-delivery", async (req, res) => {
     try {
-        const { idorg, idsede, direccion, referencia, session_id } = req.body;
+        const { idorg, idsede, direccion, referencia, session_id, lat, lon } = req.body;
 
-        if (!direccion) {
+        // Coordenadas GPS del cliente (si compartió su ubicación por WhatsApp).
+        const latCliente = Number(lat);
+        const lonCliente = Number(lon);
+        const tieneGPS = Number.isFinite(latCliente) && Number.isFinite(lonCliente)
+            && latCliente !== 0 && lonCliente !== 0;
+
+        if (!direccion && !tieneGPS) {
             return res.status(400).json({
                 success: false,
                 error: 'Direccion es requerida'
@@ -222,13 +243,52 @@ router.post("/calcular-delivery", async (req, res) => {
                 .filter((c: string) => c.length > 0);
         }
 
-        const resultadoDistancia = await GeocodingService.calcularDistanciaPorRango(
-            direccion,
-            Number(sede.latitude),
-            Number(sede.longitude),
-            distanciaMaxima,
-            ciudades
-        );
+        // Con GPS del cliente: distancia directa (haversine) + reverse geocoding
+        // para obtener una dirección legible (antes quedaba "GPS" como dirección).
+        // Sin GPS: geocodificar el texto de la dirección como siempre.
+        let resultadoDistancia: any;
+        let direccionLegible = direccion;
+
+        if (tieneGPS) {
+            const distancia = GeocodingService.calcularDistanciaHaversine(
+                Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente
+            );
+
+            if (distancia > distanciaMaxima) {
+                return res.status(200).json({
+                    success: true,
+                    disponible: false,
+                    mensaje: `Dirección fuera del rango de cobertura (${distancia.toFixed(2)} km, máximo ${distanciaMaxima} km)`
+                });
+            }
+
+            const rev = await GeocodingService.obtenerDireccion(latCliente, lonCliente);
+            if (rev.success && rev.direccion) {
+                direccionLegible = rev.direccion;
+            } else if (!direccion || direccion.toUpperCase() === 'GPS') {
+                direccionLegible = `Ubicación GPS (${latCliente.toFixed(5)}, ${lonCliente.toFixed(5)})`;
+            }
+
+            resultadoDistancia = {
+                success: true,
+                lat: latCliente,
+                lng: lonCliente,
+                distanciaKm: distancia,
+                ciudad: rev.ciudad || '',
+                provincia: rev.provincia || '',
+                departamento: rev.departamento || '',
+                pais: rev.pais || '',
+                codigo: rev.codigo || ''
+            };
+        } else {
+            resultadoDistancia = await GeocodingService.calcularDistanciaPorRango(
+                direccion,
+                Number(sede.latitude),
+                Number(sede.longitude),
+                distanciaMaxima,
+                ciudades
+            );
+        }
 
         if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
             return res.status(200).json({
@@ -258,7 +318,7 @@ router.post("/calcular-delivery", async (req, res) => {
             });
 
             const direccionData = {
-                direccion: direccion,
+                direccion: direccionLegible,
                 referencia: referencia || '',
                 latitude: resultadoDistancia.lat,
                 longitude: resultadoDistancia.lng,
@@ -295,7 +355,10 @@ router.post("/calcular-delivery", async (req, res) => {
             disponible: true,
             costo: Number(costo.toFixed(2)),
             distancia_km: distanciaKm,
-            tiempo_estimado: calcularTiempoEstimado(tiempoAproxEntrega)
+            tiempo_estimado: calcularTiempoEstimado(tiempoAproxEntrega),
+            // Dirección legible (reverse geocoding si vino GPS): el bot DEBE usarla
+            // como la dirección del pedido en vez de "GPS".
+            direccion: direccionLegible
         });
 
     } catch (error) {
@@ -322,6 +385,7 @@ router.get("/config/:idsede", async (req, res) => {
                 latitude: true,
                 longitude: true,
                 metodo_pago_aceptados_chatbot: true,
+                numero_billetera_chatbot: true,
                 link_carta: true
             }
         });
@@ -353,7 +417,7 @@ router.get("/config/:idsede", async (req, res) => {
         });
 
 
-        const metodosPago = await prisma.tipo_pago.findMany({
+        let metodosPago = await prisma.tipo_pago.findMany({
             where: {
                 estado: 0,
                 habilitado_chatbot: '1'
@@ -363,6 +427,14 @@ router.get("/config/:idsede", async (req, res) => {
                 descripcion: true
             }
         });
+
+        // Respetar los métodos marcados por la sede (ej. "5,1,7"). Si la sede no
+        // configuró nada, se mantienen todos los habilitados globalmente.
+        const idsAceptados = String(sede.metodo_pago_aceptados_chatbot || '')
+            .split(',').map(s => s.trim()).filter(Boolean);
+        if (idsAceptados.length > 0) {
+            metodosPago = metodosPago.filter((mp: any) => idsAceptados.includes(String(mp.idtipo_pago)));
+        }
 
         const horariosDB: any = await prisma.$queryRaw`
             SELECT de as hora_inicio, a as hora_fin, numdia, desdia 
@@ -535,8 +607,12 @@ router.post("/resumen-pedido", async (req, res) => {
         
         // Mapear tipo_entrega a los canales de consumo disponibles
         let tipoEntregaMapeado = tipo_entrega;
-        if (tipo_entrega?.toLowerCase() === 'recojo' || tipo_entrega?.toLowerCase() === 'recoger') {
+        const tipoLower = tipo_entrega?.toLowerCase();
+        if (tipoLower === 'recojo' || tipoLower === 'recoger') {
             tipoEntregaMapeado = 'PARA LLEVAR';
+        } else if (tipoLower === 'local' || tipoLower === 'reserva' || tipoLower === 'mesa') {
+            // Pedido para consumir en el local = reserva
+            tipoEntregaMapeado = 'CONSUMIR EN EL LOCAL';
         }
         
         const tipoEntregaObj = {
@@ -612,13 +688,18 @@ router.post("/pedido", async (req, res) => {
         const {
             session_id,
             idorg,
-            idsede,            
+            idsede,
             cliente_telefono,
             cliente_nombre,
             direccion,
             tipo_entrega,
             metodo_pago,
-            notas
+            notas,
+            // Reserva (consumo en el local): hora de llegada y cantidad de personas.
+            reserva_hora,
+            reserva_personas,
+            // Pedido programado (recojo/delivery a una hora): "13:00"
+            hora_programada
         } = req.body;
         
 
@@ -668,6 +749,8 @@ router.post("/pedido", async (req, res) => {
                 tipoEntregaFinal = 'delivery';
             } else if (descripcionTipoConsumo === 'para llevar') {
                 tipoEntregaFinal = 'recojo';
+            } else if (descripcionTipoConsumo?.includes('local') || descripcionTipoConsumo?.includes('mesa')) {
+                tipoEntregaFinal = 'local';
             }
         }
 
@@ -808,6 +891,18 @@ router.post("/pedido", async (req, res) => {
         const tipoConsumo = estructuraPedidoCocinada.p_body?.tipoconsumo?.[0];
         const isDelivery = tipoEntregaFinal?.toLowerCase() === 'delivery';
         const isRecoger = tipoEntregaFinal?.toLowerCase() === 'recojo' || tipoEntregaFinal?.toLowerCase() === 'recoger';
+        const isReserva = ['local', 'reserva', 'mesa'].includes(tipoEntregaFinal?.toLowerCase() || '');
+
+        // Hora programada (reserva o pedido para más tarde) → el procedure setea
+        // fecha_hora del pedido y flag_pedido_programado=1 vía tiempoEntregaProgamado.
+        const horaEvento = normalizarHora(reserva_hora || hora_programada);
+        let tiempoEntregaProgamado: any = [];
+        if (horaEvento) {
+            const hoyLima = new Date().toLocaleDateString('es-PE', {
+                timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric'
+            });
+            tiempoEntregaProgamado = { modificado: 'true', date: `${hoyLima} ${horaEvento}:00` };
+        }
 
         // Construir arrDatosDelivery completo solo si es delivery usando datos guardados
         let arrDatosDelivery = {};
@@ -892,7 +987,7 @@ router.post("/pedido", async (req, res) => {
             buscarRepartidor: true,
             isFromComercio: 1,
             costoTotalDelivery: costoDeliveryCalculado,
-            tiempoEntregaProgamado: [],
+            tiempoEntregaProgamado: tiempoEntregaProgamado,
             delivery: 1,
             solicitaCubiertos: "0",
             nombres: infoCliente.nombres.toUpperCase()
@@ -914,14 +1009,40 @@ router.post("/pedido", async (req, res) => {
                 buscarRepartidor: false,
                 isFromComercio: 1,
                 delivery: 0,
+                tiempoEntregaProgamado: tiempoEntregaProgamado,
+                nombres: infoCliente.nombres.toUpperCase()
+            };
+        } else if (isReserva) {
+            // Reserva para consumir en el local: el procedure lee
+            // arrDatosDelivery.tiempoEntregaProgamado para fechar el pedido.
+            arrDatosDelivery = {
+                idcliente: infoCliente.idcliente.toString(),
+                nombre: infoCliente.nombres.toUpperCase(),
+                telefono: infoCliente.telefono || "",
+                pasoRecoger: false,
+                buscarRepartidor: false,
+                isFromComercio: 1,
+                delivery: 0,
+                tiempoEntregaProgamado: tiempoEntregaProgamado,
                 nombres: infoCliente.nombres.toUpperCase()
             };
         }
 
         // Construir referencia según tipo de entrega
-        const referenciaTexto = isRecoger 
-            ? `CLIENTE RECOGE - ${infoCliente.nombres.toUpperCase()} - ${infoCliente.telefono || cliente_telefono}`
-            : infoCliente.nombres.toUpperCase();
+        const nombreTel = `${infoCliente.nombres.toUpperCase()} - ${infoCliente.telefono || cliente_telefono}`;
+        let referenciaTexto = infoCliente.nombres.toUpperCase();
+        if (isReserva) {
+            const partes = ['RESERVA'];
+            if (horaEvento) partes.push(horaEvento);
+            if (reserva_personas) partes.push(`${reserva_personas} PERSONAS`);
+            referenciaTexto = `${partes.join(' ')} - ${nombreTel}`;
+        } else if (isRecoger) {
+            referenciaTexto = horaEvento
+                ? `CLIENTE RECOGE ${horaEvento} - ${nombreTel}`
+                : `CLIENTE RECOGE - ${nombreTel}`;
+        } else if (isDelivery && horaEvento) {
+            referenciaTexto = `ENTREGAR ${horaEvento} - ${infoCliente.nombres.toUpperCase()}`;
+        }
 
         // Actualizar p_header con todos los campos necesarios
         const p_header = {
@@ -935,7 +1056,9 @@ router.post("/pedido", async (req, res) => {
             subtotales_tachados: "",
             arrDatosDelivery: arrDatosDelivery,
             isComercioAppDeliveryMapa: isDelivery ? "1" : "0",
-            delivery: isDelivery ? 1 : 0
+            delivery: isDelivery ? 1 : 0,
+            // Consumo en el local = reserva (el procedure guarda pedido.reserva)
+            reservar: isReserva ? 1 : 0
         };
 
         // Actualizar la estructura con el p_header completo
@@ -1120,7 +1243,8 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                 direccion: true,
                 latitude: true,
                 longitude: true,
-                metodo_pago_aceptados_chatbot: true
+                metodo_pago_aceptados_chatbot: true,
+                numero_billetera_chatbot: true
             }
         });
 
@@ -1161,7 +1285,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
             }
         });
 
-        const metodosPago = await prisma.tipo_pago.findMany({
+        let metodosPago = await prisma.tipo_pago.findMany({
             where: {
                 estado: 0,
                 habilitado_chatbot: '1'
@@ -1171,6 +1295,14 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                 descripcion: true
             }
         });
+
+        // Respetar los métodos marcados por la sede (ej. "5,1,7"). Si la sede no
+        // configuró nada, se mantienen todos los habilitados globalmente.
+        const idsAceptados = String(sede.metodo_pago_aceptados_chatbot || '')
+            .split(',').map(s => s.trim()).filter(Boolean);
+        if (idsAceptados.length > 0) {
+            metodosPago = metodosPago.filter((mp: any) => idsAceptados.includes(String(mp.idtipo_pago)));
+        }
 
         const horariosDB: any = await prisma.$queryRaw`
             SELECT de as hora_inicio, a as hora_fin, numdia, desdia 
@@ -1266,9 +1398,12 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                 nombre: mp.descripcion,
                 activo: true
             })),
+            // Número de Yape/Plin de la sede: el bot lo da cuando el cliente
+            // pregunta a dónde yapear/plinear.
+            numero_billetera: sede.numero_billetera_chatbot || null,
             mensaje_bienvenida: "Bienvenido! En que puedo ayudarte?",
             activo: true,
-            link_carta: categoria?.url_carta ? `https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/${categoria?.url_carta}` : null        
+            link_carta: categoria?.url_carta ? `https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/${categoria?.url_carta}` : null
         };
 
         const telefonoLimpio = telefono.replace(/\s/g, '');
@@ -1282,25 +1417,55 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
 
         let cliente = null;
         if (clienteDB && clienteDB.length > 0) {
+            const idclienteDB = clienteDB[0].idcliente;
+
             const totalPedidos: any = await prisma.$queryRaw`
-                SELECT COUNT(*) as total FROM pedido 
-                WHERE idcliente = ${clienteDB[0].idcliente} 
+                SELECT COUNT(*) as total FROM pedido
+                WHERE idcliente = ${idclienteDB}
                 AND idsede = ${idsede}
                 AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)`;
 
-            const ultimoPedido: any = await prisma.$queryRaw`
-                SELECT fecha, hora FROM pedido 
-                WHERE idcliente = ${clienteDB[0].idcliente} 
-                AND idsede = ${idsede}
-                ORDER BY idpedido DESC LIMIT 1`;
+            // Última dirección guardada con referencia (para ofrecerla en delivery).
+            const direccionPwa: any = await prisma.$queryRaw`
+                SELECT direccion, referencia FROM cliente_pwa_direccion
+                WHERE idcliente = ${idclienteDB}
+                ORDER BY idcliente_pwa_direccion DESC LIMIT 1`;
+
+            // Historial reciente en la sede: qué pidió, por qué canal y cómo pagó.
+            // El bot lo usa para saludar de forma personal y sugerir "lo de siempre".
+            const historialDB: any = await prisma.$queryRaw`
+                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,
+                       tc.descripcion AS canal,
+                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')
+                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,
+                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')
+                        FROM registro_pago_detalle rpd
+                        INNER JOIN tipo_pago tp USING(idtipo_pago)
+                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago
+                FROM pedido p
+                INNER JOIN tipo_consumo tc USING(idtipo_consumo)
+                WHERE p.idcliente = ${idclienteDB} AND p.idsede = ${idsede}
+                ORDER BY p.idpedido DESC LIMIT 5`;
+
+            const historial = (historialDB || [])
+                .filter((h: any) => h.items)
+                .map((h: any) => ({
+                    fecha: h.fecha,
+                    canal: h.canal,
+                    items: h.items,
+                    pago: h.pago || null
+                }));
 
             cliente = {
-                id: Number(clienteDB[0].idcliente),
+                id: Number(idclienteDB),
+                idcliente: Number(idclienteDB),
                 nombre: clienteDB[0].nombres,
                 telefono: clienteDB[0].telefono,
-                direccion: clienteDB[0].direccion,
+                direccion: direccionPwa[0]?.direccion || clienteDB[0].direccion,
+                referencia: direccionPwa[0]?.referencia || null,
                 total_pedidos: Number(totalPedidos[0]?.total || 0),
-                ultimo_pedido: ultimoPedido[0]?.fecha || null,
+                ultimo_pedido: historial[0]?.fecha || null,
+                historial: historial,
                 encontrado: true
             };
         }

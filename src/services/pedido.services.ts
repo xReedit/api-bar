@@ -42,6 +42,7 @@ class PedidoServices {
         const pedido = norm(canalFromBot.descripcion);
         const wantsDelivery = pedido.includes('delivery');
         const wantsLlevar = pedido.includes('llevar') || pedido.includes('recoj') || pedido.includes('recog');
+        const wantsLocal = pedido.includes('local') || pedido.includes('mesa') || pedido.includes('salon');
 
         // 1) por id si viniera; 2) por keyword tolerante; 3) por nombre exacto normalizado
         let canalSeleted = listCanalConsumo.find((c: any) => c.idtipo_consumo === canalFromBot.idtipo_consumo);
@@ -50,6 +51,7 @@ class PedidoServices {
                 const d = norm(c.descripcion);
                 if (wantsDelivery) return d.includes('delivery');
                 if (wantsLlevar) return d.includes('llevar') || d.includes('recoj');
+                if (wantsLocal) return d.includes('local') || d.includes('mesa') || d.includes('salon');
                 return d === pedido;
             });
         }

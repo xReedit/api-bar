@@ -319,11 +319,15 @@ router.get("/get-impresora-tipo-consumo/:idsede/:idimpresora", async (req, res) 
 // seccion que mas piden
 router.get("/get-seccion-mas-piden/:idsede", async (req, res) => {
     const { idsede } = req.params;
+    // fecha_hora (datetime + índice idx_idsede_fecha_hora) en vez de
+    // STR_TO_DATE(fecha) sobre varchar: eso forzaba full-scan de pedido y
+    // colgaba el panel del chatbot en sedes con muchos pedidos.
+    // order by COUNT(...): el alias casteado a char ordenaba alfabético ("9">"10").
     const rpt = await prisma.$queryRaw`select cast(pd.idseccion as char(10)) idseccion, cast(COUNT(p.idpedido) as char(10)) cantidad_seccion  from pedido p
 inner join pedido_detalle pd using (idpedido)
-where STR_TO_DATE(fecha, '%d/%m/%Y') >=date_add(curdate(), INTERVAL -3 DAY) and p.idsede = ${idsede} 
-group by pd.idseccion 
-order by cantidad_seccion desc limit 2`
+where p.fecha_hora >= date_add(curdate(), INTERVAL -3 DAY) and p.idsede = ${Number(idsede)}
+group by pd.idseccion
+order by COUNT(p.idpedido) desc limit 2`
 
     res.status(200).send(rpt);
 })

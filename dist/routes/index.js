@@ -64,7 +64,7 @@ router.use('/sede', auth_1.auth, sede_1["default"]);
 router.use('/colaborador', auth_1.auth, colaborador_1["default"]);
 router.use('/colaborador-contrato', auth_1.auth, colaborador_contrato_1["default"]);
 router.use('/chat-bot', chat_bot_1["default"]);
-router.use('/chatbot', chatbot_v2_1["default"]);
+router.use('/chatbot', auth_1.apiKeyAuth, chatbot_v2_1["default"]);
 router.use('/permiso-remoto', permiso_remoto_1["default"]);
 router.use('/reimpresion', reimpresion_1["default"]);
 router.use('/app-repartidor', app_repartidor_1["default"]);

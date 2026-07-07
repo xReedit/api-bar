@@ -59,7 +59,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.authVerify = exports.auth = exports.SECRET_KEY = void 0;
+exports.authVerify = exports.apiKeyAuth = exports.auth = exports.SECRET_KEY = void 0;
 var jwt = __importStar(require("jsonwebtoken"));
 exports.SECRET_KEY = 'DalePlay182182';
 var auth = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
@@ -82,6 +82,26 @@ var auth = function (req, res, next) { return __awaiter(void 0, void 0, void 0, 
     });
 }); };
 exports.auth = auth;
+// API key compartida para las rutas server-to-server del chatbot (/chatbot/*).
+// El bot Go envía el header x-api-key; nadie más debe poder leer contexto de
+// clientes ni crear pedidos. Si CHATBOT_API_KEY no está configurada, deja
+// pasar con warning (rollout seguro: primero deployar código, luego exigir).
+var warnedNoApiKey = false;
+var apiKeyAuth = function (req, res, next) {
+    var expected = process.env.CHATBOT_API_KEY;
+    if (!expected) {
+        if (!warnedNoApiKey) {
+            console.warn('CHATBOT_API_KEY no configurada: /chatbot/* queda SIN protección');
+            warnedNoApiKey = true;
+        }
+        return next();
+    }
+    if (req.header('x-api-key') === expected) {
+        return next();
+    }
+    res.status(401).json({ success: false, error: 'No autorizado' });
+};
+exports.apiKeyAuth = apiKeyAuth;
 var authVerify = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
     var token, decoded;
     return __generator(this, function (_a) {

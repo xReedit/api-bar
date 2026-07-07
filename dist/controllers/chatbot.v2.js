@@ -1385,6 +1385,9 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 return [3 /*break*/, 14];
             case 13:
                 error_8 = _g.sent();
+                // Log del error real: antes era mudo y un fallo aquí dejaba al bot
+                // sin carta/menú sin pista alguna en los logs.
+                console.error('Error en /chatbot/contexto:', error_8);
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener contexto'

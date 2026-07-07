@@ -1,6 +1,6 @@
 import * as express from "express";
 import { login } from "../controllers/usuario";
-import { auth, authVerify } from '../middleware/auth';
+import { auth, authVerify, apiKeyAuth } from '../middleware/auth';
 import rol from "../controllers/rol";
 import sede from "../controllers/sede";
 import colaborador from "../controllers/colaborador";
@@ -39,7 +39,7 @@ router.use('/sede', auth, sede);
 router.use('/colaborador', auth, colaborador);
 router.use('/colaborador-contrato', auth, colaborador_contrato);
 router.use('/chat-bot', chat_bot);
-router.use('/chatbot', chatbot_v2);
+router.use('/chatbot', apiKeyAuth, chatbot_v2);
 router.use('/permiso-remoto', permiso_remoto);
 router.use('/reimpresion', reinpresion);
 router.use('/app-repartidor', app_repartidor);

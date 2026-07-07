@@ -1,4 +1,6 @@
 node_modules
-prisma
+# prisma/ va al repo: el schema es código. Sin esto, el server nunca recibía
+# los cambios de schema.prisma y el cliente generado quedaba desfasado
+# (rompió /chatbot/contexto en producción el 07/07/2026).
 # Keep environment variables out of version control
 .env

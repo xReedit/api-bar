@@ -94,6 +94,25 @@ var calcularTiempoEstimado = function (tiempoAproxMinutos) {
     var tiempoMax = tiempoAproxMinutos + margenMas;
     return "".concat(tiempoMin, "-").concat(tiempoMax, " min");
 };
+// Normaliza una hora dicha por el cliente ("1pm", "13:00", "7.30 pm") a "HH:MM".
+// Devuelve null si no se reconoce.
+var normalizarHora = function (hora) {
+    if (!hora)
+        return null;
+    var s = String(hora).trim().toLowerCase().replace(/\./g, ':').replace(/\s+/g, '');
+    var m = s.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
+    if (!m)
+        return null;
+    var h = Number(m[1]);
+    var min = Number(m[2] || 0);
+    if (m[3] === 'pm' && h < 12)
+        h += 12;
+    if (m[3] === 'am' && h === 12)
+        h = 0;
+    if (h > 23 || min > 59)
+        return null;
+    return "".concat(String(h).padStart(2, '0'), ":").concat(String(min).padStart(2, '0'));
+};
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         res.status(200).json({ message: 'Chatbot V2 API - Endpoints disponibles' });
@@ -226,13 +245,17 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
     });
 }); });
 router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, direccion, referencia, session_id, sedeConfig, parametros, obtenerCoordenadas, costoBase, sede, distanciaMaxima, ciudades, resultadoDistancia, distanciaKm, kmBase, costoAdicional, costoFijo, costo, tiempoAproxEntrega, existingPreview, direccionData, error_3;
+    var _a, idorg, idsede, direccion, referencia, session_id, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, obtenerCoordenadas, costoBase, sede, distanciaMaxima, ciudades, resultadoDistancia, direccionLegible, distancia, rev, distanciaKm, kmBase, costoAdicional, costoFijo, costo, tiempoAproxEntrega, existingPreview, direccionData, error_3;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                _b.trys.push([0, 9, , 10]);
-                _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, referencia = _a.referencia, session_id = _a.session_id;
-                if (!direccion) {
+                _b.trys.push([0, 12, , 13]);
+                _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, referencia = _a.referencia, session_id = _a.session_id, lat = _a.lat, lon = _a.lon;
+                latCliente = Number(lat);
+                lonCliente = Number(lon);
+                tieneGPS = Number.isFinite(latCliente) && Number.isFinite(lonCliente)
+                    && latCliente !== 0 && lonCliente !== 0;
+                if (!direccion && !tieneGPS) {
                     return [2 /*return*/, res.status(400).json({
                             success: false,
                             error: 'Direccion es requerida'
@@ -287,9 +310,43 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                         .split(',')
                         .filter(function (c) { return c.length > 0; });
                 }
-                return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion, Number(sede.latitude), Number(sede.longitude), distanciaMaxima, ciudades)];
+                resultadoDistancia = void 0;
+                direccionLegible = direccion;
+                if (!tieneGPS) return [3 /*break*/, 4];
+                distancia = geocoding_service_1.GeocodingService.calcularDistanciaHaversine(Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente);
+                if (distancia > distanciaMaxima) {
+                    return [2 /*return*/, res.status(200).json({
+                            success: true,
+                            disponible: false,
+                            mensaje: "Direcci\u00F3n fuera del rango de cobertura (".concat(distancia.toFixed(2), " km, m\u00E1ximo ").concat(distanciaMaxima, " km)")
+                        })];
+                }
+                return [4 /*yield*/, geocoding_service_1.GeocodingService.obtenerDireccion(latCliente, lonCliente)];
             case 3:
+                rev = _b.sent();
+                if (rev.success && rev.direccion) {
+                    direccionLegible = rev.direccion;
+                }
+                else if (!direccion || direccion.toUpperCase() === 'GPS') {
+                    direccionLegible = "Ubicaci\u00F3n GPS (".concat(latCliente.toFixed(5), ", ").concat(lonCliente.toFixed(5), ")");
+                }
+                resultadoDistancia = {
+                    success: true,
+                    lat: latCliente,
+                    lng: lonCliente,
+                    distanciaKm: distancia,
+                    ciudad: rev.ciudad || '',
+                    provincia: rev.provincia || '',
+                    departamento: rev.departamento || '',
+                    pais: rev.pais || '',
+                    codigo: rev.codigo || ''
+                };
+                return [3 /*break*/, 6];
+            case 4: return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion, Number(sede.latitude), Number(sede.longitude), distanciaMaxima, ciudades)];
+            case 5:
                 resultadoDistancia = _b.sent();
+                _b.label = 6;
+            case 6:
                 if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
                     return [2 /*return*/, res.status(200).json({
                             success: true,
@@ -306,14 +363,14 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     costo += (distanciaKm - kmBase) * costoAdicional;
                 }
                 tiempoAproxEntrega = Number(parametros.tiempo_aprox_entrega || 30);
-                if (!session_id) return [3 /*break*/, 8];
+                if (!session_id) return [3 /*break*/, 11];
                 return [4 /*yield*/, prisma.pedido_preview.findFirst({
                         where: { id: session_id }
                     })];
-            case 4:
+            case 7:
                 existingPreview = _b.sent();
                 direccionData = {
-                    direccion: direccion,
+                    direccion: direccionLegible,
                     referencia: referencia || '',
                     latitude: resultadoDistancia.lat,
                     longitude: resultadoDistancia.lng,
@@ -325,15 +382,15 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     distancia_km: distanciaKm,
                     costo_delivery: Number(costo.toFixed(2))
                 };
-                if (!existingPreview) return [3 /*break*/, 6];
+                if (!existingPreview) return [3 /*break*/, 9];
                 return [4 /*yield*/, prisma.pedido_preview.update({
                         where: { id: session_id },
                         data: { direccion_cliente: direccionData }
                     })];
-            case 5:
+            case 8:
                 _b.sent();
-                return [3 /*break*/, 8];
-            case 6: return [4 /*yield*/, prisma.pedido_preview.create({
+                return [3 /*break*/, 11];
+            case 9: return [4 /*yield*/, prisma.pedido_preview.create({
                     data: {
                         id: session_id,
                         estructura: JSON.stringify({}),
@@ -342,32 +399,35 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                         direccion_cliente: direccionData
                     }
                 })];
-            case 7:
+            case 10:
                 _b.sent();
-                _b.label = 8;
-            case 8:
+                _b.label = 11;
+            case 11:
                 res.status(200).json({
                     success: true,
                     disponible: true,
                     costo: Number(costo.toFixed(2)),
                     distancia_km: distanciaKm,
-                    tiempo_estimado: calcularTiempoEstimado(tiempoAproxEntrega)
+                    tiempo_estimado: calcularTiempoEstimado(tiempoAproxEntrega),
+                    // Dirección legible (reverse geocoding si vino GPS): el bot DEBE usarla
+                    // como la dirección del pedido en vez de "GPS".
+                    direccion: direccionLegible
                 });
-                return [3 /*break*/, 10];
-            case 9:
+                return [3 /*break*/, 13];
+            case 12:
                 error_3 = _b.sent();
                 console.error('Error en calcular_delivery:', error_3);
                 res.status(500).json({
                     success: false,
                     error: 'Error al calcular delivery'
                 });
-                return [3 /*break*/, 10];
-            case 10: return [2 /*return*/];
+                return [3 /*break*/, 13];
+            case 13: return [2 /*return*/];
         }
     });
 }); });
 router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, sede, sedeConfig, tiposEntrega, metodosPago, horariosDB, horaActual, diaActual, mapaDias_1, horarioAtencion_1, horarioPrincipal_1, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, error_4;
+    var idsede, sede, sedeConfig, tiposEntrega, metodosPago, idsAceptados_1, horariosDB, horaActual, diaActual, mapaDias_1, horarioAtencion_1, horarioPrincipal_1, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -384,6 +444,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
                             latitude: true,
                             longitude: true,
                             metodo_pago_aceptados_chatbot: true,
+                            numero_billetera_chatbot: true,
                             link_carta: true
                         }
                     })];
@@ -428,6 +489,11 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
                     })];
             case 4:
                 metodosPago = _a.sent();
+                idsAceptados_1 = String(sede.metodo_pago_aceptados_chatbot || '')
+                    .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+                if (idsAceptados_1.length > 0) {
+                    metodosPago = metodosPago.filter(function (mp) { return idsAceptados_1.includes(String(mp.idtipo_pago)); });
+                }
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"], ["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"])), idsede)];
             case 5:
                 horariosDB = _a.sent();
@@ -544,7 +610,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
     });
 }); });
 router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, estructuraJson, error_5, msg;
+    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, estructuraJson, error_5, msg;
     var _b, _c;
     return __generator(this, function (_d) {
         switch (_d.label) {
@@ -576,8 +642,13 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                     costo_entrega: (tipo_entrega === null || tipo_entrega === void 0 ? void 0 : tipo_entrega.toLowerCase()) === 'delivery' ? (costo_delivery || 0) : 0
                 };
                 tipoEntregaMapeado = tipo_entrega;
-                if ((tipo_entrega === null || tipo_entrega === void 0 ? void 0 : tipo_entrega.toLowerCase()) === 'recojo' || (tipo_entrega === null || tipo_entrega === void 0 ? void 0 : tipo_entrega.toLowerCase()) === 'recoger') {
+                tipoLower = tipo_entrega === null || tipo_entrega === void 0 ? void 0 : tipo_entrega.toLowerCase();
+                if (tipoLower === 'recojo' || tipoLower === 'recoger') {
                     tipoEntregaMapeado = 'PARA LLEVAR';
+                }
+                else if (tipoLower === 'local' || tipoLower === 'reserva' || tipoLower === 'mesa') {
+                    // Pedido para consumir en el local = reserva
+                    tipoEntregaMapeado = 'CONSUMIR EN EL LOCAL';
                 }
                 tipoEntregaObj = {
                     descripcion: tipoEntregaMapeado
@@ -592,7 +663,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 ticketFormateado = pedidoService.getResumenPedidoShowCliente(secciones, tipoConsumo, subtotales);
                 previewId = session_id;
                 estructuraJson = JSON.stringify(estructuraPedidoCocinada);
-                return [4 /*yield*/, prisma.$queryRawUnsafe("INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado) \n             VALUES (?, ?, ?, ?) \n             ON DUPLICATE KEY UPDATE \n             estructura = VALUES(estructura), \n             ticket_formateado = VALUES(ticket_formateado), \n             estado = 'pending',\n             created_at = CURRENT_TIMESTAMP", previewId, estructuraJson, ticketFormateado, 'pending')];
+                return [4 /*yield*/, prisma.$queryRawUnsafe("INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado)\n             VALUES (?, ?, ?, ?)\n             ON DUPLICATE KEY UPDATE\n             estructura = VALUES(estructura),\n             ticket_formateado = VALUES(ticket_formateado),\n             estado = 'pending',\n             recordatorios = 0,\n             last_recordatorio_at = NULL,\n             created_at = CURRENT_TIMESTAMP", previewId, estructuraJson, ticketFormateado, 'pending')];
             case 2:
                 _d.sent();
                 res.status(200).json({
@@ -620,13 +691,17 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
     });
 }); });
 router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id, idorg, idsede, cliente_telefono, cliente_nombre, direccion, tipo_entrega, metodo_pago, notas, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, referenciaTexto, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_6;
+    var _a, session_id, idorg, idsede, cliente_telefono, cliente_nombre, direccion, tipo_entrega, metodo_pago, notas, 
+    // Reserva (consumo en el local): hora de llegada y cantidad de personas.
+    reserva_hora, reserva_personas, 
+    // Pedido programado (recojo/delivery a una hora): "13:00"
+    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_6;
     var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     return __generator(this, function (_p) {
         switch (_p.label) {
             case 0:
                 _p.trys.push([0, 21, , 22]);
-                _a = req.body, session_id = _a.session_id, idorg = _a.idorg, idsede = _a.idsede, cliente_telefono = _a.cliente_telefono, cliente_nombre = _a.cliente_nombre, direccion = _a.direccion, tipo_entrega = _a.tipo_entrega, metodo_pago = _a.metodo_pago, notas = _a.notas;
+                _a = req.body, session_id = _a.session_id, idorg = _a.idorg, idsede = _a.idsede, cliente_telefono = _a.cliente_telefono, cliente_nombre = _a.cliente_nombre, direccion = _a.direccion, tipo_entrega = _a.tipo_entrega, metodo_pago = _a.metodo_pago, notas = _a.notas, reserva_hora = _a.reserva_hora, reserva_personas = _a.reserva_personas, hora_programada = _a.hora_programada;
                 idresumen = session_id;
                 if (!idresumen) {
                     return [2 /*return*/, res.status(400).json({
@@ -664,6 +739,9 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                     }
                     else if (descripcionTipoConsumo === 'para llevar') {
                         tipoEntregaFinal = 'recojo';
+                    }
+                    else if ((descripcionTipoConsumo === null || descripcionTipoConsumo === void 0 ? void 0 : descripcionTipoConsumo.includes('local')) || (descripcionTipoConsumo === null || descripcionTipoConsumo === void 0 ? void 0 : descripcionTipoConsumo.includes('mesa'))) {
+                        tipoEntregaFinal = 'local';
                     }
                 }
                 telefonoSinCodigo = cliente_telefono.replace(/\D/g, '').replace(/^(51)?/, '');
@@ -772,6 +850,15 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 tipoConsumo = (_h = (_g = estructuraPedidoCocinada_1.p_body) === null || _g === void 0 ? void 0 : _g.tipoconsumo) === null || _h === void 0 ? void 0 : _h[0];
                 isDelivery = (tipoEntregaFinal === null || tipoEntregaFinal === void 0 ? void 0 : tipoEntregaFinal.toLowerCase()) === 'delivery';
                 isRecoger = (tipoEntregaFinal === null || tipoEntregaFinal === void 0 ? void 0 : tipoEntregaFinal.toLowerCase()) === 'recojo' || (tipoEntregaFinal === null || tipoEntregaFinal === void 0 ? void 0 : tipoEntregaFinal.toLowerCase()) === 'recoger';
+                isReserva = ['local', 'reserva', 'mesa'].includes((tipoEntregaFinal === null || tipoEntregaFinal === void 0 ? void 0 : tipoEntregaFinal.toLowerCase()) || '');
+                horaEvento = normalizarHora(reserva_hora || hora_programada);
+                tiempoEntregaProgamado = [];
+                if (horaEvento) {
+                    hoyLima = new Date().toLocaleDateString('es-PE', {
+                        timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric'
+                    });
+                    tiempoEntregaProgamado = { modificado: 'true', date: "".concat(hoyLima, " ").concat(horaEvento, ":00") };
+                }
                 arrDatosDelivery = {};
                 if (isDelivery) {
                     direccionDelivery = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.direccion) || infoCliente.direccion || "";
@@ -852,7 +939,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                         buscarRepartidor: true,
                         isFromComercio: 1,
                         costoTotalDelivery: costoDeliveryCalculado,
-                        tiempoEntregaProgamado: [],
+                        tiempoEntregaProgamado: tiempoEntregaProgamado,
                         delivery: 1,
                         solicitaCubiertos: "0",
                         nombres: infoCliente.nombres.toUpperCase()
@@ -875,13 +962,46 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                         buscarRepartidor: false,
                         isFromComercio: 1,
                         delivery: 0,
+                        tiempoEntregaProgamado: tiempoEntregaProgamado,
                         nombres: infoCliente.nombres.toUpperCase()
                     };
                 }
-                referenciaTexto = isRecoger
-                    ? "CLIENTE RECOGE - ".concat(infoCliente.nombres.toUpperCase(), " - ").concat(infoCliente.telefono || cliente_telefono)
-                    : infoCliente.nombres.toUpperCase();
-                p_header_1 = __assign(__assign({}, estructuraPedidoCocinada_1.p_header), { idclie: infoCliente.idcliente.toString(), referencia: referenciaTexto, r: referenciaTexto, idcategoria: ((_l = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idcategoria) === null || _l === void 0 ? void 0 : _l.toString()) || "1", mesa: "", tipo_consumo: ((_m = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idtipo_consumo) === null || _m === void 0 ? void 0 : _m.toString()) || "4", subtotales_tachados: "", arrDatosDelivery: arrDatosDelivery, isComercioAppDeliveryMapa: isDelivery ? "1" : "0", delivery: isDelivery ? 1 : 0 });
+                else if (isReserva) {
+                    // Reserva para consumir en el local: el procedure lee
+                    // arrDatosDelivery.tiempoEntregaProgamado para fechar el pedido.
+                    arrDatosDelivery = {
+                        idcliente: infoCliente.idcliente.toString(),
+                        nombre: infoCliente.nombres.toUpperCase(),
+                        telefono: infoCliente.telefono || "",
+                        pasoRecoger: false,
+                        buscarRepartidor: false,
+                        isFromComercio: 1,
+                        delivery: 0,
+                        tiempoEntregaProgamado: tiempoEntregaProgamado,
+                        nombres: infoCliente.nombres.toUpperCase()
+                    };
+                }
+                nombreTel = "".concat(infoCliente.nombres.toUpperCase(), " - ").concat(infoCliente.telefono || cliente_telefono);
+                referenciaTexto = infoCliente.nombres.toUpperCase();
+                if (isReserva) {
+                    partes = ['RESERVA'];
+                    if (horaEvento)
+                        partes.push(horaEvento);
+                    if (reserva_personas)
+                        partes.push("".concat(reserva_personas, " PERSONAS"));
+                    referenciaTexto = "".concat(partes.join(' '), " - ").concat(nombreTel);
+                }
+                else if (isRecoger) {
+                    referenciaTexto = horaEvento
+                        ? "CLIENTE RECOGE ".concat(horaEvento, " - ").concat(nombreTel)
+                        : "CLIENTE RECOGE - ".concat(nombreTel);
+                }
+                else if (isDelivery && horaEvento) {
+                    referenciaTexto = "ENTREGAR ".concat(horaEvento, " - ").concat(infoCliente.nombres.toUpperCase());
+                }
+                p_header_1 = __assign(__assign({}, estructuraPedidoCocinada_1.p_header), { idclie: infoCliente.idcliente.toString(), referencia: referenciaTexto, r: referenciaTexto, idcategoria: ((_l = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idcategoria) === null || _l === void 0 ? void 0 : _l.toString()) || "1", mesa: "", tipo_consumo: ((_m = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idtipo_consumo) === null || _m === void 0 ? void 0 : _m.toString()) || "4", subtotales_tachados: "", arrDatosDelivery: arrDatosDelivery, isComercioAppDeliveryMapa: isDelivery ? "1" : "0", delivery: isDelivery ? 1 : 0, 
+                    // Consumo en el local = reserva (el procedure guarda pedido.reserva)
+                    reservar: isReserva ? 1 : 0 });
                 // Actualizar la estructura con el p_header completo
                 estructuraPedidoCocinada_1.p_header = p_header_1;
                 jsonPrintService = new json_print_services_1.JsonPrintService();
@@ -975,9 +1095,12 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
             case 1:
                 pedidoPreview = _a.sent();
                 if (!pedidoPreview || pedidoPreview.length === 0) {
-                    return [2 /*return*/, res.status(404).json({
-                            success: false,
-                            error: 'Pedido no encontrado'
+                    // No es un error de sistema: el cliente simplemente no tiene un pedido
+                    // en esta sesión. Respondemos 200 para que el bot lo relate al cliente
+                    // (mismo patrón que "canal no disponible") y no se loguee como fallo.
+                    return [2 /*return*/, res.status(200).json({
+                            success: true,
+                            data: { preview: null, pedido_info: null, mensaje: 'El cliente aún no tiene un pedido registrado en esta sesión.' }
                         })];
                 }
                 pedido = pedidoPreview[0];
@@ -1021,12 +1144,12 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
     });
 }); });
 router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, totalPedidos, ultimoPedido, rpt, carta, productos_2, itemsVistos_2, error_8;
-    var _b, _c, _d;
-    return __generator(this, function (_e) {
-        switch (_e.label) {
+    var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, idsAceptados_2, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, idclienteDB, totalPedidos, direccionPwa, historialDB, historial, rpt, carta, productos_2, itemsVistos_2, error_8;
+    var _b, _c, _d, _e, _f;
+    return __generator(this, function (_g) {
+        switch (_g.label) {
             case 0:
-                _e.trys.push([0, 12, , 13]);
+                _g.trys.push([0, 13, , 14]);
                 _a = req.params, idorg = _a.idorg, idsede = _a.idsede, telefono = _a.telefono;
                 return [4 /*yield*/, prisma.sede.findFirst({
                         where: {
@@ -1038,11 +1161,12 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                             direccion: true,
                             latitude: true,
                             longitude: true,
-                            metodo_pago_aceptados_chatbot: true
+                            metodo_pago_aceptados_chatbot: true,
+                            numero_billetera_chatbot: true
                         }
                     })];
             case 1:
-                sede = _e.sent();
+                sede = _g.sent();
                 if (!sede) {
                     return [2 /*return*/, res.status(404).json({
                             success: false,
@@ -1060,7 +1184,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 2:
-                categoria = _e.sent();
+                categoria = _g.sent();
                 return [4 /*yield*/, prisma.sede_costo_delivery.findFirst({
                         where: {
                             idsede: Number(idsede),
@@ -1068,7 +1192,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 3:
-                sedeConfig = _e.sent();
+                sedeConfig = _g.sent();
                 return [4 /*yield*/, prisma.tipo_consumo.findMany({
                         where: {
                             idsede: Number(idsede),
@@ -1081,7 +1205,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 4:
-                tiposEntrega = _e.sent();
+                tiposEntrega = _g.sent();
                 return [4 /*yield*/, prisma.tipo_pago.findMany({
                         where: {
                             estado: 0,
@@ -1093,10 +1217,15 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 5:
-                metodosPago = _e.sent();
+                metodosPago = _g.sent();
+                idsAceptados_2 = String(sede.metodo_pago_aceptados_chatbot || '')
+                    .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+                if (idsAceptados_2.length > 0) {
+                    metodosPago = metodosPago.filter(function (mp) { return idsAceptados_2.includes(String(mp.idtipo_pago)); });
+                }
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_16 || (templateObject_16 = __makeTemplateObject(["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"], ["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"])), idsede)];
             case 6:
-                horariosDB = _e.sent();
+                horariosDB = _g.sent();
                 horaActual = new Date();
                 diaActual = horaActual.getDay();
                 mapaDias_2 = {
@@ -1177,6 +1306,9 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         nombre: mp.descripcion,
                         activo: true
                     }); }),
+                    // Número de Yape/Plin de la sede: el bot lo da cuando el cliente
+                    // pregunta a dónde yapear/plinear.
+                    numero_billetera: sede.numero_billetera_chatbot || null,
                     mensaje_bienvenida: "Bienvenido! En que puedo ayudarte?",
                     activo: true,
                     link_carta: (categoria === null || categoria === void 0 ? void 0 : categoria.url_carta) ? "https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/".concat(categoria === null || categoria === void 0 ? void 0 : categoria.url_carta) : null
@@ -1184,29 +1316,44 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 telefonoLimpio = telefono.replace(/\s/g, '');
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_17 || (templateObject_17 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoLimpio + '%')];
             case 7:
-                clienteDB = _e.sent();
+                clienteDB = _g.sent();
                 cliente = null;
-                if (!(clienteDB && clienteDB.length > 0)) return [3 /*break*/, 10];
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_18 || (templateObject_18 = __makeTemplateObject(["\n                SELECT COUNT(*) as total FROM pedido \n                WHERE idcliente = ", " \n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"], ["\n                SELECT COUNT(*) as total FROM pedido \n                WHERE idcliente = ", " \n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"])), clienteDB[0].idcliente, idsede)];
+                if (!(clienteDB && clienteDB.length > 0)) return [3 /*break*/, 11];
+                idclienteDB = clienteDB[0].idcliente;
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_18 || (templateObject_18 = __makeTemplateObject(["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"], ["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"])), idclienteDB, idsede)];
             case 8:
-                totalPedidos = _e.sent();
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_19 || (templateObject_19 = __makeTemplateObject(["\n                SELECT fecha, hora FROM pedido \n                WHERE idcliente = ", " \n                AND idsede = ", "\n                ORDER BY idpedido DESC LIMIT 1"], ["\n                SELECT fecha, hora FROM pedido \n                WHERE idcliente = ", " \n                AND idsede = ", "\n                ORDER BY idpedido DESC LIMIT 1"])), clienteDB[0].idcliente, idsede)];
+                totalPedidos = _g.sent();
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_19 || (templateObject_19 = __makeTemplateObject(["\n                SELECT direccion, referencia FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"], ["\n                SELECT direccion, referencia FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"])), idclienteDB)];
             case 9:
-                ultimoPedido = _e.sent();
+                direccionPwa = _g.sent();
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_20 || (templateObject_20 = __makeTemplateObject(["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"], ["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"])), idclienteDB, idsede)];
+            case 10:
+                historialDB = _g.sent();
+                historial = (historialDB || [])
+                    .filter(function (h) { return h.items; })
+                    .map(function (h) { return ({
+                    fecha: h.fecha,
+                    canal: h.canal,
+                    items: h.items,
+                    pago: h.pago || null
+                }); });
                 cliente = {
-                    id: Number(clienteDB[0].idcliente),
+                    id: Number(idclienteDB),
+                    idcliente: Number(idclienteDB),
                     nombre: clienteDB[0].nombres,
                     telefono: clienteDB[0].telefono,
-                    direccion: clienteDB[0].direccion,
-                    total_pedidos: Number(((_b = totalPedidos[0]) === null || _b === void 0 ? void 0 : _b.total) || 0),
-                    ultimo_pedido: ((_c = ultimoPedido[0]) === null || _c === void 0 ? void 0 : _c.fecha) || null,
+                    direccion: ((_b = direccionPwa[0]) === null || _b === void 0 ? void 0 : _b.direccion) || clienteDB[0].direccion,
+                    referencia: ((_c = direccionPwa[0]) === null || _c === void 0 ? void 0 : _c.referencia) || null,
+                    total_pedidos: Number(((_d = totalPedidos[0]) === null || _d === void 0 ? void 0 : _d.total) || 0),
+                    ultimo_pedido: ((_e = historial[0]) === null || _e === void 0 ? void 0 : _e.fecha) || null,
+                    historial: historial,
                     encontrado: true
                 };
-                _e.label = 10;
-            case 10: return [4 /*yield*/, prisma.$queryRaw(templateObject_20 || (templateObject_20 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(", ",", ",1)"], ["call porcedure_pwa_pedido_carta(", ",", ",1)"])), idorg, idsede)];
-            case 11:
-                rpt = _e.sent();
-                carta = ((_d = rpt[0]) === null || _d === void 0 ? void 0 : _d.f0) || [];
+                _g.label = 11;
+            case 11: return [4 /*yield*/, prisma.$queryRaw(templateObject_21 || (templateObject_21 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(", ",", ",1)"], ["call porcedure_pwa_pedido_carta(", ",", ",1)"])), idorg, idsede)];
+            case 12:
+                rpt = _g.sent();
+                carta = ((_f = rpt[0]) === null || _f === void 0 ? void 0 : _f.f0) || [];
                 productos_2 = [];
                 itemsVistos_2 = new Set();
                 carta.forEach(function (categoria) {
@@ -1235,17 +1382,17 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                     cliente: cliente,
                     menu: productos_2
                 });
-                return [3 /*break*/, 13];
-            case 12:
-                error_8 = _e.sent();
+                return [3 /*break*/, 14];
+            case 13:
+                error_8 = _g.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener contexto'
                 });
-                return [3 /*break*/, 13];
-            case 13: return [2 /*return*/];
+                return [3 /*break*/, 14];
+            case 14: return [2 /*return*/];
         }
     });
 }); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18, templateObject_19, templateObject_20;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18, templateObject_19, templateObject_20, templateObject_21;

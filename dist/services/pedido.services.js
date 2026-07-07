@@ -77,6 +77,7 @@ var PedidoServices = /** @class */ (function () {
         var pedido = norm(canalFromBot.descripcion);
         var wantsDelivery = pedido.includes('delivery');
         var wantsLlevar = pedido.includes('llevar') || pedido.includes('recoj') || pedido.includes('recog');
+        var wantsLocal = pedido.includes('local') || pedido.includes('mesa') || pedido.includes('salon');
         // 1) por id si viniera; 2) por keyword tolerante; 3) por nombre exacto normalizado
         var canalSeleted = listCanalConsumo.find(function (c) { return c.idtipo_consumo === canalFromBot.idtipo_consumo; });
         if (!canalSeleted) {
@@ -86,6 +87,8 @@ var PedidoServices = /** @class */ (function () {
                     return d.includes('delivery');
                 if (wantsLlevar)
                     return d.includes('llevar') || d.includes('recoj');
+                if (wantsLocal)
+                    return d.includes('local') || d.includes('mesa') || d.includes('salon');
                 return d === pedido;
             });
         }

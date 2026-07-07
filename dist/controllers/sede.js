@@ -98,6 +98,51 @@ router.post('/create', function (req, res) { return __awaiter(void 0, void 0, vo
         }
     });
 }); });
+// Config del chatbot por sede (número de billetera Yape/Plin, métodos marcados)
+router.get('/chatbot-config/:idsede', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, rpt;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                idsede = req.params.idsede;
+                return [4 /*yield*/, prisma.sede.findUnique({
+                        where: { idsede: Number(idsede) },
+                        select: {
+                            numero_billetera_chatbot: true,
+                            metodo_pago_aceptados_chatbot: true
+                        }
+                    })];
+            case 1:
+                rpt = _a.sent();
+                res.status(200).send(rpt || {});
+                return [2 /*return*/];
+        }
+    });
+}); });
+router.post('/chatbot-config', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, numero_billetera_chatbot, numero;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idsede = _a.idsede, numero_billetera_chatbot = _a.numero_billetera_chatbot;
+                if (!idsede) {
+                    return [2 /*return*/, res.status(400).send({ success: false, error: 'idsede es requerido' })];
+                }
+                numero = String(numero_billetera_chatbot || '').trim().slice(0, 30);
+                if (numero && !/^[\d\s+-]+$/.test(numero)) {
+                    return [2 /*return*/, res.status(400).send({ success: false, error: 'Número de billetera inválido' })];
+                }
+                return [4 /*yield*/, prisma.sede.update({
+                        where: { idsede: Number(idsede) },
+                        data: { numero_billetera_chatbot: numero || null }
+                    })];
+            case 1:
+                _b.sent();
+                res.status(200).send({ success: true });
+                return [2 /*return*/];
+        }
+    });
+}); });
 //by idOrg
 router.get('/byIdorg/:id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var id, rpt;

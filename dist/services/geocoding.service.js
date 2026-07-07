@@ -95,6 +95,60 @@ var GeocodingService = /** @class */ (function () {
             });
         });
     };
+    // Reverse geocoding: coordenadas GPS -> dirección legible. Usado cuando el
+    // cliente comparte su ubicación por WhatsApp (antes quedaba "GPS" como dirección).
+    GeocodingService.obtenerDireccion = function (lat, lng) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var apiKey, response, result, ciudad_1, provincia_1, departamento_1, pais_1, codigo_1, error_2;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _b.trys.push([0, 2, , 3]);
+                        apiKey = getApiKey();
+                        if (!apiKey) {
+                            return [2 /*return*/, { success: false, error: 'API Key de Google Maps no configurada' }];
+                        }
+                        return [4 /*yield*/, axios_1["default"].get('https://maps.googleapis.com/maps/api/geocode/json', {
+                                params: { latlng: "".concat(lat, ",").concat(lng), key: apiKey, language: 'es' }
+                            })];
+                    case 1:
+                        response = _b.sent();
+                        if (response.data.status !== 'OK' || !((_a = response.data.results) === null || _a === void 0 ? void 0 : _a.length)) {
+                            return [2 /*return*/, { success: false, error: 'No se pudo obtener la dirección' }];
+                        }
+                        result = response.data.results[0];
+                        ciudad_1 = '', provincia_1 = '', departamento_1 = '', pais_1 = '', codigo_1 = '';
+                        result.address_components.forEach(function (component) {
+                            if (component.types.includes('locality'))
+                                ciudad_1 = component.long_name;
+                            if (component.types.includes('administrative_area_level_2'))
+                                provincia_1 = component.long_name;
+                            if (component.types.includes('administrative_area_level_1'))
+                                departamento_1 = component.long_name;
+                            if (component.types.includes('country'))
+                                pais_1 = component.long_name;
+                            if (component.types.includes('postal_code'))
+                                codigo_1 = component.long_name;
+                        });
+                        return [2 /*return*/, {
+                                success: true,
+                                direccion: result.formatted_address,
+                                ciudad: ciudad_1,
+                                provincia: provincia_1,
+                                departamento: departamento_1,
+                                pais: pais_1,
+                                codigo: codigo_1
+                            }];
+                    case 2:
+                        error_2 = _b.sent();
+                        console.error('Error en reverse geocoding:', error_2);
+                        return [2 /*return*/, { success: false, error: error_2.message || 'Error al obtener dirección' }];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
     GeocodingService.calcularDistanciaHaversine = function (lat1, lon1, lat2, lon2) {
         var R = 6371;
         var dLat = this.toRad(lat2 - lat1);
@@ -111,7 +165,7 @@ var GeocodingService = /** @class */ (function () {
     };
     GeocodingService.calcularDistanciaRuta = function (direccion, latComercio, lngComercio, kmLimite, ciudades) {
         return __awaiter(this, void 0, void 0, function () {
-            var apiKey, url, ciudadesABuscar, _loop_1, this_1, _i, ciudadesABuscar_1, ciudad, state_1, error_2;
+            var apiKey, url, ciudadesABuscar, _loop_1, this_1, _i, ciudadesABuscar_1, ciudad, state_1, error_3;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -213,11 +267,11 @@ var GeocodingService = /** @class */ (function () {
                             error: 'No se pudo encontrar la dirección en ninguna de las ciudades de cobertura'
                         }];
                     case 5:
-                        error_2 = _a.sent();
-                        console.error('Error al geocodificar:', error_2);
+                        error_3 = _a.sent();
+                        console.error('Error al geocodificar:', error_3);
                         return [2 /*return*/, {
                                 success: false,
-                                error: error_2.message || 'Error al calcular distancia'
+                                error: error_3.message || 'Error al calcular distancia'
                             }];
                     case 6: return [2 /*return*/];
                 }
@@ -226,7 +280,7 @@ var GeocodingService = /** @class */ (function () {
     };
     GeocodingService.calcularDistancia = function (direccionCliente, ciudadComercio, latComercio, lngComercio) {
         return __awaiter(this, void 0, void 0, function () {
-            var resultadoGeo, distanciaKm, error_3;
+            var resultadoGeo, distanciaKm, error_4;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -246,11 +300,11 @@ var GeocodingService = /** @class */ (function () {
                                 distanciaKm: distanciaKm
                             }];
                     case 2:
-                        error_3 = _a.sent();
-                        console.error('Error al calcular distancia:', error_3);
+                        error_4 = _a.sent();
+                        console.error('Error al calcular distancia:', error_4);
                         return [2 /*return*/, {
                                 success: false,
-                                error: error_3.message || 'Error al calcular distancia'
+                                error: error_4.message || 'Error al calcular distancia'
                             }];
                     case 3: return [2 /*return*/];
                 }

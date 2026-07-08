@@ -39,8 +39,9 @@ router.get("/get-sede/:idsede", async (req, res) => {
             pwa_min_despacho: true,   
             id_api_comprobante: true,
             metodo_pago_aceptados_chatbot: true,
+            numero_billetera_chatbot: true,
             link_carta: true,
-            chatbot_run: true    
+            chatbot_run: true
         }
     })
     res.status(200).send(rpt);

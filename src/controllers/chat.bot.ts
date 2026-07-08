@@ -2,12 +2,52 @@ import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { fechaGuionASlash } from "../utils/utils";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get("/", async (req, res) => {
     res.status(200).json({ message: 'Estás conectado al api chat-bot' })
+});
+
+// URL prefirmada para subir imágenes de la carta a S3. Reemplaza las
+// credenciales AWS que vivían en el navegador (panel Piter): ahora las keys
+// están solo en el env del server y la URL solo permite PUT de un jpeg al
+// prefijo files-bot/ por 60 segundos.
+router.post('/presign-upload', async (req, res) => {
+    try {
+        const safeName = String(req.body?.fileName || '').replace(/[^a-zA-Z0-9._-]/g, '');
+        if (!safeName) {
+            return res.status(400).json({ success: false, error: 'fileName inválido' });
+        }
+        if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+            console.error('presign-upload: faltan AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY en el env');
+            return res.status(500).json({ success: false, error: 'S3 no configurado en el servidor' });
+        }
+
+        const bucket = process.env.AWS_BUCKET_NAME || 'papaya-comercio-files';
+        const region = process.env.AWS_REGION || 'us-east-2';
+        // El SDK toma las credenciales de AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
+        const s3 = new S3Client({ region });
+        const key = `files-bot/${safeName}`;
+
+        const uploadUrl = await getSignedUrl(
+            s3,
+            new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: 'image/jpeg' }),
+            { expiresIn: 60 }
+        );
+
+        res.status(200).json({
+            success: true,
+            uploadUrl,
+            publicUrl: `https://${bucket}.s3.${region}.amazonaws.com/${key}`
+        });
+    } catch (error) {
+        console.error('Error en presign-upload:', error);
+        res.status(500).json({ success: false, error: 'No se pudo generar la URL de subida' });
+    }
 });
 
 // obtner la informacion de la sede

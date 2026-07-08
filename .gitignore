@@ -1,6 +1,10 @@
 node_modules
-# prisma/ va al repo: el schema es código. Sin esto, el server nunca recibía
-# los cambios de schema.prisma y el cliente generado quedaba desfasado
-# (rompió /chatbot/contexto en producción el 07/07/2026).
+# prisma NO se versiona: las BD de desarrollo y producción tienen columnas
+# distintas, así que el schema se regenera EN CADA ENTORNO con `prisma db pull`
+# (+ `prisma generate`). Versionar el schema de dev rompió producción el
+# 07-08/07/2026 (columnas nick_carta/zona_delivery no existen en prod).
+# Al agregar campos nuevos que use el código: primero ALTER TABLE en prod,
+# luego en el server: prisma db pull && prisma generate && restart.
+prisma
 # Keep environment variables out of version control
 .env

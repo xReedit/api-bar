@@ -78,12 +78,55 @@ var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var utils_1 = require("../utils/utils");
 var cocinar_pedido_1 = require("../services/cocinar.pedido");
+var client_s3_1 = require("@aws-sdk/client-s3");
+var s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         res.status(200).json({ message: 'Estás conectado al api chat-bot' });
         return [2 /*return*/];
+    });
+}); });
+// URL prefirmada para subir imágenes de la carta a S3. Reemplaza las
+// credenciales AWS que vivían en el navegador (panel Piter): ahora las keys
+// están solo en el env del server y la URL solo permite PUT de un jpeg al
+// prefijo files-bot/ por 60 segundos.
+router.post('/presign-upload', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var safeName, bucket, region, s3, key, uploadUrl, error_1;
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                safeName = String(((_a = req.body) === null || _a === void 0 ? void 0 : _a.fileName) || '').replace(/[^a-zA-Z0-9._-]/g, '');
+                if (!safeName) {
+                    return [2 /*return*/, res.status(400).json({ success: false, error: 'fileName inválido' })];
+                }
+                if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+                    console.error('presign-upload: faltan AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY en el env');
+                    return [2 /*return*/, res.status(500).json({ success: false, error: 'S3 no configurado en el servidor' })];
+                }
+                bucket = process.env.AWS_BUCKET_NAME || 'papaya-comercio-files';
+                region = process.env.AWS_REGION || 'us-east-2';
+                s3 = new client_s3_1.S3Client({ region: region });
+                key = "files-bot/".concat(safeName);
+                return [4 /*yield*/, (0, s3_request_presigner_1.getSignedUrl)(s3, new client_s3_1.PutObjectCommand({ Bucket: bucket, Key: key, ContentType: 'image/jpeg' }), { expiresIn: 60 })];
+            case 1:
+                uploadUrl = _b.sent();
+                res.status(200).json({
+                    success: true,
+                    uploadUrl: uploadUrl,
+                    publicUrl: "https://".concat(bucket, ".s3.").concat(region, ".amazonaws.com/").concat(key)
+                });
+                return [3 /*break*/, 3];
+            case 2:
+                error_1 = _b.sent();
+                console.error('Error en presign-upload:', error_1);
+                res.status(500).json({ success: false, error: 'No se pudo generar la URL de subida' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
     });
 }); });
 // obtner la informacion de la sede
@@ -119,6 +162,7 @@ router.get("/get-sede/:idsede", function (req, res) { return __awaiter(void 0, v
                             pwa_min_despacho: true,
                             id_api_comprobante: true,
                             metodo_pago_aceptados_chatbot: true,
+                            numero_billetera_chatbot: true,
                             link_carta: true,
                             chatbot_run: true
                         }
@@ -281,7 +325,7 @@ router.get("/tipos-pago", function (req, res) { return __awaiter(void 0, void 0,
 }); });
 // obtener listado de la secciones
 router.get("/get-secciones-carta/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, rpt, error_1;
+    var idsede, rpt, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -295,8 +339,8 @@ router.get("/get-secciones-carta/:idsede", function (req, res) { return __awaite
                 res.status(200).send(rpt);
                 return [3 /*break*/, 4];
             case 3:
-                error_1 = _a.sent();
-                res.status(500).send(error_1);
+                error_2 = _a.sent();
+                res.status(500).send(error_2);
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }
@@ -548,7 +592,7 @@ router.put('/update-tipo-pago-sede/:id', function (req, res, next) { return __aw
 }); });
 // guardar datos del delivery update-config-delivery
 router.put('/update-config-delivery/:id', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var id, dataBody, rpt, error_2;
+    var id, dataBody, rpt, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -568,7 +612,7 @@ router.put('/update-config-delivery/:id', function (req, res, next) { return __a
                 res.status(200).send(rpt);
                 return [3 /*break*/, 5];
             case 3:
-                error_2 = _a.sent();
+                error_3 = _a.sent();
                 res.status(500).send({ error: 'error al actualizar update-config-delivery.' });
                 return [3 /*break*/, 5];
             case 4:
@@ -932,7 +976,7 @@ router.get("/count-pedidos-bot/:idsede", function (req, res, next) { return __aw
 }); });
 // lista de productos disponibles para el bot
 router.get("/get-list-productos-disponibles/:idsede", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, rpt, listProductos_1, error_3;
+    var idsede, rpt, listProductos_1, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -955,8 +999,8 @@ router.get("/get-list-productos-disponibles/:idsede", function (req, res, next) 
                 res.status(200).send(listProductos_1);
                 return [3 /*break*/, 5];
             case 3:
-                error_3 = _a.sent();
-                next(error_3);
+                error_4 = _a.sent();
+                next(error_4);
                 return [3 /*break*/, 5];
             case 4:
                 prisma.$disconnect();
@@ -1142,7 +1186,7 @@ router.get("/get-telefono-bloqueado/:telefono/:idsede", function (req, res) { re
 // horarios por dia y hora
 // obtener horarios de trabajo por dia
 router.get("/get-horario-dias/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, rpt, error_4;
+    var idsede, rpt, error_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -1156,8 +1200,8 @@ router.get("/get-horario-dias/:idsede", function (req, res) { return __awaiter(v
                 res.status(200).send(rpt);
                 return [3 /*break*/, 4];
             case 3:
-                error_4 = _a.sent();
-                res.status(500).send(error_4);
+                error_5 = _a.sent();
+                res.status(500).send(error_5);
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }
@@ -1165,7 +1209,7 @@ router.get("/get-horario-dias/:idsede", function (req, res) { return __awaiter(v
 }); });
 // guardar o modificar horario de trabajo
 router.post("/set-horario-dias", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, horarios, insertados, _i, horarios_1, horario, de, a, estado, numdia, error_5;
+    var _a, idsede, horarios, insertados, _i, horarios_1, horario, de, a, estado, numdia, error_6;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -1203,8 +1247,8 @@ router.post("/set-horario-dias", function (req, res, next) { return __awaiter(vo
                 });
                 return [3 /*break*/, 8];
             case 7:
-                error_5 = _b.sent();
-                next(error_5);
+                error_6 = _b.sent();
+                next(error_6);
                 return [3 /*break*/, 8];
             case 8: return [2 /*return*/];
         }
@@ -1212,7 +1256,7 @@ router.post("/set-horario-dias", function (req, res, next) { return __awaiter(vo
 }); });
 // end point donde se pone run o stop al chatbot
 router.get('/run/:idsede', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, idSedeNum, sede, error_6;
+    var idsede, idSedeNum, sede, error_7;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -1231,18 +1275,18 @@ router.get('/run/:idsede', function (req, res, next) { return __awaiter(void 0, 
                 res.status(200).json({ message: 'Chatbot iniciado', sede: sede });
                 return [3 /*break*/, 3];
             case 2:
-                error_6 = _a.sent();
-                if (error_6.code === 'P2025') {
+                error_7 = _a.sent();
+                if (error_7.code === 'P2025') {
                     return [2 /*return*/, res.status(404).json({ error: 'Sede no encontrada' })];
                 }
-                next(error_6);
+                next(error_7);
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
     });
 }); });
 router.get('/stop/:idsede', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, idSedeNum, sede, error_7;
+    var idsede, idSedeNum, sede, error_8;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -1261,11 +1305,11 @@ router.get('/stop/:idsede', function (req, res, next) { return __awaiter(void 0,
                 res.status(200).json({ message: 'Chatbot detenido', sede: sede });
                 return [3 /*break*/, 3];
             case 2:
-                error_7 = _a.sent();
-                if (error_7.code === 'P2025') {
+                error_8 = _a.sent();
+                if (error_8.code === 'P2025') {
                     return [2 /*return*/, res.status(404).json({ error: 'Sede no encontrada' })];
                 }
-                next(error_7);
+                next(error_8);
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

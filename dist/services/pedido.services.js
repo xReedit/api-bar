@@ -299,6 +299,14 @@ var PedidoServices = /** @class */ (function () {
         arrSubtotales.unshift(rowSubtotalProductos);
         // array delivery calculado segun la distancia
         if (arrSubtotalCostoEntega) {
+            // Evitar delivery duplicado: el costo calculado es la unica fuente.
+            // Quitamos cualquier subtotal de delivery/entrega/envio ya agregado por
+            // las reglas de la carta. Mismo norm (sin acentos) que setCanalConsumo.
+            var norm_1 = function (s) { return (s || '').toString().toLowerCase()
+                .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
+                .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u').trim(); };
+            var esDelivery_1 = function (d) { return ['delivery', 'entrega', 'envio'].some(function (k) { return norm_1(d).includes(k); }); };
+            arrSubtotales = arrSubtotales.filter(function (s) { return !esDelivery_1(s.descripcion); });
             arrSubtotales.splice(1, 0, arrSubtotalCostoEntega);
         }
         // totoal arrSubtotales antes de impuestos

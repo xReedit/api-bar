@@ -301,7 +301,15 @@ class PedidoServices {
         arrSubtotales.unshift(rowSubtotalProductos)
 
         // array delivery calculado segun la distancia
-        if (arrSubtotalCostoEntega) {            
+        if (arrSubtotalCostoEntega) {
+            // Evitar delivery duplicado: el costo calculado es la unica fuente.
+            // Quitamos cualquier subtotal de delivery/entrega/envio ya agregado por
+            // las reglas de la carta. Mismo norm (sin acentos) que setCanalConsumo.
+            const norm = (s: any) => (s || '').toString().toLowerCase()
+                .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
+                .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u').trim();
+            const esDelivery = (d: any) => ['delivery', 'entrega', 'envio'].some(k => norm(d).includes(k));
+            arrSubtotales = arrSubtotales.filter((s: any) => !esDelivery(s.descripcion));
             arrSubtotales.splice(1, 0, arrSubtotalCostoEntega)
         }
 

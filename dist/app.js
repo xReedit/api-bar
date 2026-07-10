@@ -3,6 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 exports.__esModule = true;
+// ponytail: polyfill Web Crypto para Node < 19 (el AWS SDK v3 necesita globalThis.crypto.getRandomValues). Quitar cuando el server corra Node 20+.
+var crypto_1 = require("crypto");
+if (!globalThis.crypto)
+    globalThis.crypto = crypto_1.webcrypto;
 var express_1 = __importDefault(require("express"));
 var cors_1 = __importDefault(require("cors"));
 var routes_1 = __importDefault(require("./routes"));

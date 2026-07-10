@@ -1,3 +1,7 @@
+// ponytail: polyfill Web Crypto para Node < 19 (el AWS SDK v3 necesita globalThis.crypto.getRandomValues). Quitar cuando el server corra Node 20+.
+import { webcrypto } from 'crypto'
+if (!globalThis.crypto) (globalThis as any).crypto = webcrypto as Crypto
+
 import express from 'express'
 import cors from "cors";
 

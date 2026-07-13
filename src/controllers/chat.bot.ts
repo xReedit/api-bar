@@ -944,7 +944,38 @@ router.get("/get-telefono-bloqueado/:telefono/:idsede", async (req, res) => {
     })
 
     // retornar verdadero si el telefono esta bloqueado
-    res.status(200).send(rpt.length > 0);    
+    res.status(200).send(rpt.length > 0);
+})
+
+// guardar / actualizar la referencia (nota manual) de un cliente para el chatbot.
+// El chatbot la lee en /contexto y la respeta como regla fija del cliente.
+router.post("/guardar-referencia-cliente", async (req, res, next) => {
+    const { idsede, telefono, referencia } = req.body;
+    const tel = String(telefono ?? '').trim();
+    if (!idsede || !tel) return res.status(400).send({ error: 'idsede y telefono son requeridos' });
+    const texto = String(referencia ?? '').trim();
+    // referencia vacía = borrar la nota (upsert con texto vacío no aporta).
+    if (texto === '') {
+        await prisma.chatbot_cliente_referencia.deleteMany({
+            where: { idsede: Number(idsede), telefono: tel }
+        }).catch(next);
+        return res.status(200).send({ referencia: '' });
+    }
+    const rpt = await prisma.chatbot_cliente_referencia.upsert({
+        where: { idsede_telefono: { idsede: Number(idsede), telefono: tel } },
+        update: { referencia: texto, updated_at: new Date() },
+        create: { idsede: Number(idsede), telefono: tel, referencia: texto }
+    }).catch(next);
+    res.status(200).send(rpt);
+})
+
+// consultar la referencia (nota manual) de un cliente
+router.get("/get-referencia-cliente/:telefono/:idsede", async (req, res) => {
+    const { telefono, idsede } = req.params;
+    const rpt = await prisma.chatbot_cliente_referencia.findUnique({
+        where: { idsede_telefono: { idsede: Number(idsede), telefono: telefono } }
+    });
+    res.status(200).send({ referencia: rpt?.referencia || '' });
 })
 
 // horarios por dia y hora

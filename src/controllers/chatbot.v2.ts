@@ -37,6 +37,77 @@ router.get("/", async (req, res) => {
     res.status(200).json({ message: 'Chatbot V2 API - Endpoints disponibles' })
 });
 
+// Extrae el importe total del comprobante desde el resultado del SP. El SP
+// devuelve un campo `datos` con el JSON del comprobante (formato SUNAT); se
+// prueban las claves de total más comunes, y por si acaso columnas sueltas.
+// Devuelve null si no encuentra un total confiable → verificación FAIL-CLOSED:
+// sin total no se entrega el comprobante (nunca se expone uno sin verificar).
+const extraerTotalComprobante = (row: any): number | null => {
+    let datos = row?.datos;
+    if (typeof datos === 'string') {
+        try { datos = JSON.parse(datos); } catch { datos = null; }
+    }
+    const candidatos = [
+        datos?.mtoImporteTotal, datos?.total, datos?.importe_total, datos?.mto_imp_venta,
+        row?.f2, row?.total, row?.importe,
+    ];
+    for (const c of candidatos) {
+        const n = Number(c);
+        if (Number.isFinite(n) && n > 0) return n;
+    }
+    return null;
+};
+
+// Consulta el comprobante electrónico (boleta/factura) de un consumo para el
+// chatbot. Va bajo /chatbot/* → protegido con x-api-key. Se busca por documento
+// (DNI/RUC) + fecha, y SOLO se entrega si el importe total coincide con el que
+// declara el cliente: el importe es un dato que solo el titular conoce, así se
+// evita que un tercero pida un comprobante ajeno.
+router.get('/comprobante/:idsede/:documento/:fecha/:importe', async (req: any, res) => {
+    try {
+        const { idsede, documento, fecha, importe } = req.params;
+        const importeDeclarado = Number(String(importe).replace(',', '.'));
+        if (!documento || !fecha || !Number.isFinite(importeDeclarado) || importeDeclarado <= 0) {
+            return res.status(400).json({ success: false, error: 'documento, fecha e importe son obligatorios' });
+        }
+
+        const _dataSend = {
+            idsede: Number(idsede),
+            dni: documento,
+            serie: '',
+            numero: '',
+            fecha: fecha.replace(/-/g, '/'),
+            isSearchByFecha: 1,
+        };
+
+        const rpt: any = await prisma.$queryRaw`call procedure_chatbot_getidexternal_comprobante(${JSON.stringify(_dataSend)})`;
+        if (!rpt || rpt.length === 0) {
+            return res.status(200).json({ success: false });
+        }
+
+        // Verificación de importe (fail-closed): entre los comprobantes de ese
+        // documento+fecha, entregamos solo el que cuadra con el importe declarado.
+        const match = rpt.find((row: any) => {
+            const total = extraerTotalComprobante(row);
+            return total != null && Math.abs(total - importeDeclarado) <= 0.05;
+        });
+        if (!match) {
+            return res.status(200).json({ success: false });
+        }
+
+        return res.status(200).json({
+            success: true,
+            numero_comprobante: match.f1,
+            external_id: match.f0,
+        });
+    } catch (error) {
+        console.error('Error en /comprobante:', error);
+        return res.status(500).json({ success: false, error: 'No se pudo consultar el comprobante' });
+    } finally {
+        prisma.$disconnect();
+    }
+});
+
 router.get("/cliente/:idorg/:idsede/:telefono", async (req, res) => {
     try {
         const { idorg, idsede, telefono } = req.params;
@@ -1500,10 +1571,20 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
             });
         });
 
+        // Nota manual del cliente (regla fija que el dueño define en el panel Piter).
+        // Match tolerante por teléfono, igual que el lookup de cliente de arriba.
+        const referenciaDB: any = await prisma.$queryRaw`
+            SELECT referencia FROM chatbot_cliente_referencia
+            WHERE idsede = ${idsede}
+              AND REPLACE(telefono, ' ', '') LIKE ${'%' + telefonoLimpio + '%'}
+            ORDER BY idchatbot_cliente_referencia DESC LIMIT 1`;
+        const referencia_chatbot = referenciaDB?.[0]?.referencia || '';
+
         res.status(200).json({
             negocio: negocio,
             cliente: cliente,
-            menu: productos
+            menu: productos,
+            referencia_chatbot: referencia_chatbot
         });
 
     } catch (error) {

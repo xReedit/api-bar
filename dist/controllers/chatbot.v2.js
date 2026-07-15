@@ -119,8 +119,93 @@ router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, f
         return [2 /*return*/];
     });
 }); });
+// Extrae el importe total del comprobante desde el resultado del SP. El SP
+// devuelve un campo `datos` con el JSON del comprobante (formato SUNAT); se
+// prueban las claves de total más comunes, y por si acaso columnas sueltas.
+// Devuelve null si no encuentra un total confiable → verificación FAIL-CLOSED:
+// sin total no se entrega el comprobante (nunca se expone uno sin verificar).
+var extraerTotalComprobante = function (row) {
+    var datos = row === null || row === void 0 ? void 0 : row.datos;
+    if (typeof datos === 'string') {
+        try {
+            datos = JSON.parse(datos);
+        }
+        catch (_a) {
+            datos = null;
+        }
+    }
+    var candidatos = [
+        datos === null || datos === void 0 ? void 0 : datos.mtoImporteTotal,
+        datos === null || datos === void 0 ? void 0 : datos.total,
+        datos === null || datos === void 0 ? void 0 : datos.importe_total,
+        datos === null || datos === void 0 ? void 0 : datos.mto_imp_venta,
+        row === null || row === void 0 ? void 0 : row.f2,
+        row === null || row === void 0 ? void 0 : row.total,
+        row === null || row === void 0 ? void 0 : row.importe,
+    ];
+    for (var _i = 0, candidatos_1 = candidatos; _i < candidatos_1.length; _i++) {
+        var c = candidatos_1[_i];
+        var n = Number(c);
+        if (Number.isFinite(n) && n > 0)
+            return n;
+    }
+    return null;
+};
+// Consulta el comprobante electrónico (boleta/factura) de un consumo para el
+// chatbot. Va bajo /chatbot/* → protegido con x-api-key. Se busca por documento
+// (DNI/RUC) + fecha, y SOLO se entrega si el importe total coincide con el que
+// declara el cliente: el importe es un dato que solo el titular conoce, así se
+// evita que un tercero pida un comprobante ajeno.
+router.get('/comprobante/:idsede/:documento/:fecha/:importe', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, documento, fecha, importe, importeDeclarado_1, _dataSend, rpt, match, error_1;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, 3, 4]);
+                _a = req.params, idsede = _a.idsede, documento = _a.documento, fecha = _a.fecha, importe = _a.importe;
+                importeDeclarado_1 = Number(String(importe).replace(',', '.'));
+                if (!documento || !fecha || !Number.isFinite(importeDeclarado_1) || importeDeclarado_1 <= 0) {
+                    return [2 /*return*/, res.status(400).json({ success: false, error: 'documento, fecha e importe son obligatorios' })];
+                }
+                _dataSend = {
+                    idsede: Number(idsede),
+                    dni: documento,
+                    serie: '',
+                    numero: '',
+                    fecha: fecha.replace(/-/g, '/'),
+                    isSearchByFecha: 1
+                };
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["call procedure_chatbot_getidexternal_comprobante(", ")"], ["call procedure_chatbot_getidexternal_comprobante(", ")"])), JSON.stringify(_dataSend))];
+            case 1:
+                rpt = _b.sent();
+                if (!rpt || rpt.length === 0) {
+                    return [2 /*return*/, res.status(200).json({ success: false })];
+                }
+                match = rpt.find(function (row) {
+                    var total = extraerTotalComprobante(row);
+                    return total != null && Math.abs(total - importeDeclarado_1) <= 0.05;
+                });
+                if (!match) {
+                    return [2 /*return*/, res.status(200).json({ success: false })];
+                }
+                return [2 /*return*/, res.status(200).json({
+                        success: true,
+                        numero_comprobante: match.f1,
+                        external_id: match.f0
+                    })];
+            case 2:
+                error_1 = _b.sent();
+                console.error('Error en /comprobante:', error_1);
+                return [2 /*return*/, res.status(500).json({ success: false, error: 'No se pudo consultar el comprobante' })];
+            case 3:
+                prisma.$disconnect();
+                return [7 /*endfinally*/];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });
 router.get("/cliente/:idorg/:idsede/:telefono", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, telefono, telefonoSinCodigo, cliente, totalPedidos, ultimoPedido, direccionPwa, direccionCliente, error_1;
+    var _a, idorg, idsede, telefono, telefonoSinCodigo, cliente, totalPedidos, ultimoPedido, direccionPwa, direccionCliente, error_2;
     var _b, _c;
     return __generator(this, function (_d) {
         switch (_d.label) {
@@ -128,7 +213,7 @@ router.get("/cliente/:idorg/:idsede/:telefono", function (req, res) { return __a
                 _d.trys.push([0, 5, , 6]);
                 _a = req.params, idorg = _a.idorg, idsede = _a.idsede, telefono = _a.telefono;
                 telefonoSinCodigo = telefono.replace(/\D/g, '').replace(/^(51)?/, '');
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoSinCodigo + '%')];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoSinCodigo + '%')];
             case 1:
                 cliente = _d.sent();
                 if (!cliente || cliente.length === 0) {
@@ -139,13 +224,13 @@ router.get("/cliente/:idorg/:idsede/:telefono", function (req, res) { return __a
                             descripcion: 'Cliente no encontrado en la base de datos'
                         })];
                 }
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n            SELECT COUNT(*) as total FROM pedido \n            WHERE idcliente = ", " \n            AND idsede = ", "\n            AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"], ["\n            SELECT COUNT(*) as total FROM pedido \n            WHERE idcliente = ", " \n            AND idsede = ", "\n            AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"])), cliente[0].idcliente, idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n            SELECT COUNT(*) as total FROM pedido \n            WHERE idcliente = ", " \n            AND idsede = ", "\n            AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"], ["\n            SELECT COUNT(*) as total FROM pedido \n            WHERE idcliente = ", " \n            AND idsede = ", "\n            AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"])), cliente[0].idcliente, idsede)];
             case 2:
                 totalPedidos = _d.sent();
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n            SELECT fecha, hora FROM pedido \n            WHERE idcliente = ", " \n            AND idsede = ", "\n            ORDER BY idpedido DESC LIMIT 1"], ["\n            SELECT fecha, hora FROM pedido \n            WHERE idcliente = ", " \n            AND idsede = ", "\n            ORDER BY idpedido DESC LIMIT 1"])), cliente[0].idcliente, idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n            SELECT fecha, hora FROM pedido \n            WHERE idcliente = ", " \n            AND idsede = ", "\n            ORDER BY idpedido DESC LIMIT 1"], ["\n            SELECT fecha, hora FROM pedido \n            WHERE idcliente = ", " \n            AND idsede = ", "\n            ORDER BY idpedido DESC LIMIT 1"])), cliente[0].idcliente, idsede)];
             case 3:
                 ultimoPedido = _d.sent();
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n            SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude, cpd.ciudad, cpd.provincia\n            FROM cliente_pwa_direccion cpd\n            WHERE cpd.idcliente = ", "\n            ORDER BY cpd.idcliente_pwa_direccion DESC\n            LIMIT 1"], ["\n            SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude, cpd.ciudad, cpd.provincia\n            FROM cliente_pwa_direccion cpd\n            WHERE cpd.idcliente = ", "\n            ORDER BY cpd.idcliente_pwa_direccion DESC\n            LIMIT 1"])), cliente[0].idcliente)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n            SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude, cpd.ciudad, cpd.provincia\n            FROM cliente_pwa_direccion cpd\n            WHERE cpd.idcliente = ", "\n            ORDER BY cpd.idcliente_pwa_direccion DESC\n            LIMIT 1"], ["\n            SELECT cpd.idcliente_pwa_direccion, cpd.direccion, cpd.referencia, cpd.latitude, cpd.longitude, cpd.ciudad, cpd.provincia\n            FROM cliente_pwa_direccion cpd\n            WHERE cpd.idcliente = ", "\n            ORDER BY cpd.idcliente_pwa_direccion DESC\n            LIMIT 1"])), cliente[0].idcliente)];
             case 4:
                 direccionPwa = _d.sent();
                 direccionCliente = direccionPwa && direccionPwa.length > 0
@@ -181,7 +266,7 @@ router.get("/cliente/:idorg/:idsede/:telefono", function (req, res) { return __a
                 });
                 return [3 /*break*/, 6];
             case 5:
-                error_1 = _d.sent();
+                error_2 = _d.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al buscar cliente'
@@ -192,14 +277,14 @@ router.get("/cliente/:idorg/:idsede/:telefono", function (req, res) { return __a
     });
 }); });
 router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, rpt, carta, menuPlano, productos_1, itemsVistos_1, error_2;
+    var _a, idorg, idsede, rpt, carta, menuPlano, productos_1, itemsVistos_1, error_3;
     var _b;
     return __generator(this, function (_c) {
         switch (_c.label) {
             case 0:
                 _c.trys.push([0, 2, , 3]);
                 _a = req.params, idorg = _a.idorg, idsede = _a.idsede;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(", ",", ",1)"], ["call porcedure_pwa_pedido_carta(", ",", ",1)"])), idorg, idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(", ",", ",1)"], ["call porcedure_pwa_pedido_carta(", ",", ",1)"])), idorg, idsede)];
             case 1:
                 rpt = _c.sent();
                 carta = ((_b = rpt[0]) === null || _b === void 0 ? void 0 : _b.f0) || [];
@@ -233,8 +318,8 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
                 });
                 return [3 /*break*/, 3];
             case 2:
-                error_2 = _c.sent();
-                console.error('Error en consultar_menu:', error_2);
+                error_3 = _c.sent();
+                console.error('Error en consultar_menu:', error_3);
                 res.status(500).json({
                     success: false,
                     error: 'Error al consultar menu'
@@ -245,7 +330,7 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
     });
 }); });
 router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, direccion, referencia, session_id, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, obtenerCoordenadas, costoBase, sede, distanciaMaxima, ciudades, resultadoDistancia, direccionLegible, distancia, rev, distanciaKm, kmBase, costoAdicional, costoFijo, costo, tiempoAproxEntrega, existingPreview, direccionData, error_3;
+    var _a, idorg, idsede, direccion, referencia, session_id, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, obtenerCoordenadas, costoBase, sede, distanciaMaxima, ciudades, resultadoDistancia, direccionLegible, distancia, rev, distanciaKm, kmBase, costoAdicional, costoFijo, costo, tiempoAproxEntrega, existingPreview, direccionData, error_4;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -415,8 +500,8 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 });
                 return [3 /*break*/, 13];
             case 12:
-                error_3 = _b.sent();
-                console.error('Error en calcular_delivery:', error_3);
+                error_4 = _b.sent();
+                console.error('Error en calcular_delivery:', error_4);
                 res.status(500).json({
                     success: false,
                     error: 'Error al calcular delivery'
@@ -427,7 +512,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
     });
 }); });
 router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, sede, sedeConfig, tiposEntrega, metodosPago, idsAceptados_1, horariosDB, horaActual, diaActual, mapaDias_1, horarioAtencion_1, horarioPrincipal_1, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, error_4;
+    var idsede, sede, sedeConfig, tiposEntrega, metodosPago, idsAceptados_1, horariosDB, horaActual, diaActual, mapaDias_1, horarioAtencion_1, horarioPrincipal_1, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, error_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -494,7 +579,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
                 if (idsAceptados_1.length > 0) {
                     metodosPago = metodosPago.filter(function (mp) { return idsAceptados_1.includes(String(mp.idtipo_pago)); });
                 }
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"], ["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"], ["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"])), idsede)];
             case 5:
                 horariosDB = _a.sent();
                 horaActual = new Date();
@@ -598,8 +683,8 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
                 });
                 return [3 /*break*/, 7];
             case 6:
-                error_4 = _a.sent();
-                console.error('Error en obtener_config_negocio:', error_4);
+                error_5 = _a.sent();
+                console.error('Error en obtener_config_negocio:', error_5);
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener configuracion'
@@ -610,7 +695,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
     });
 }); });
 router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, estructuraJson, error_5, msg;
+    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, estructuraJson, error_6, msg;
     var _b, _c;
     return __generator(this, function (_d) {
         switch (_d.label) {
@@ -672,9 +757,9 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 });
                 return [3 /*break*/, 4];
             case 3:
-                error_5 = _d.sent();
-                console.error('Error en resumen-pedido:', error_5);
-                msg = ((error_5 === null || error_5 === void 0 ? void 0 : error_5.message) || '').toLowerCase();
+                error_6 = _d.sent();
+                console.error('Error en resumen-pedido:', error_6);
+                msg = ((error_6 === null || error_6 === void 0 ? void 0 : error_6.message) || '').toLowerCase();
                 if (msg.includes('canal de consumo no encontrado')) {
                     return [2 /*return*/, res.status(200).json({
                             success: false,
@@ -695,7 +780,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
     // Reserva (consumo en el local): hora de llegada y cantidad de personas.
     reserva_hora, reserva_personas, 
     // Pedido programado (recojo/delivery a una hora): "13:00"
-    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_6;
+    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_7;
     var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     return __generator(this, function (_p) {
         switch (_p.label) {
@@ -745,7 +830,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                     }
                 }
                 telefonoSinCodigo = cliente_telefono.replace(/\D/g, '').replace(/^(51)?/, '');
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.telefono FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", "\n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.telefono FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", "\n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoSinCodigo + '%')];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_8 || (templateObject_8 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.telefono FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", "\n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.telefono FROM cliente c\n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", "\n            AND REPLACE(REPLACE(REPLACE(c.telefono, ' ', ''), '-', ''), '+51', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoSinCodigo + '%')];
             case 2:
                 cliente = _p.sent();
                 idcliente = void 0;
@@ -791,7 +876,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 idclientePwaDireccion = null;
                 direccionFinal = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.direccion) || direccion || '';
                 if (!(direccionFinal && datosDeliveryGuardados)) return [3 /*break*/, 11];
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_8 || (templateObject_8 = __makeTemplateObject(["\n                SELECT idcliente_pwa_direccion FROM cliente_pwa_direccion\n                WHERE idcliente = ", " AND direccion = ", "\n                LIMIT 1"], ["\n                SELECT idcliente_pwa_direccion FROM cliente_pwa_direccion\n                WHERE idcliente = ", " AND direccion = ", "\n                LIMIT 1"])), idcliente, direccionFinal)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["\n                SELECT idcliente_pwa_direccion FROM cliente_pwa_direccion\n                WHERE idcliente = ", " AND direccion = ", "\n                LIMIT 1"], ["\n                SELECT idcliente_pwa_direccion FROM cliente_pwa_direccion\n                WHERE idcliente = ", " AND direccion = ", "\n                LIMIT 1"])), idcliente, direccionFinal)];
             case 8:
                 direccionExistente = _p.sent();
                 if (!(direccionExistente && direccionExistente.length > 0)) return [3 /*break*/, 9];
@@ -810,7 +895,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                     direccion: direccionFinal,
                     idcliente_pwa_direccion: idclientePwaDireccion
                 };
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["\n            SELECT s.idsede, s.idorg, s.nombre, s.direccion, s.telefono\n            FROM sede s\n            WHERE s.idsede = ", " and estado=0\n            LIMIT 1"], ["\n            SELECT s.idsede, s.idorg, s.nombre, s.direccion, s.telefono\n            FROM sede s\n            WHERE s.idsede = ", " and estado=0\n            LIMIT 1"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["\n            SELECT s.idsede, s.idorg, s.nombre, s.direccion, s.telefono\n            FROM sede s\n            WHERE s.idsede = ", " and estado=0\n            LIMIT 1"], ["\n            SELECT s.idsede, s.idorg, s.nombre, s.direccion, s.telefono\n            FROM sede s\n            WHERE s.idsede = ", " and estado=0\n            LIMIT 1"])), idsede)];
             case 12:
                 infoSede = _p.sent();
                 if (!infoSede || infoSede.length === 0) {
@@ -819,15 +904,15 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                             error: 'Sede no encontrada'
                         })];
                 }
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["\n            SELECT idusuario FROM usuario WHERE usuario = 'bot' LIMIT 1"], ["\n            SELECT idusuario FROM usuario WHERE usuario = 'bot' LIMIT 1"])))];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_11 || (templateObject_11 = __makeTemplateObject(["\n            SELECT idusuario FROM usuario WHERE usuario = 'bot' LIMIT 1"], ["\n            SELECT idusuario FROM usuario WHERE usuario = 'bot' LIMIT 1"])))];
             case 13:
                 usuarioBot = _p.sent();
                 idusuarioBot = void 0;
                 if (!(!usuarioBot || usuarioBot.length === 0)) return [3 /*break*/, 16];
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_11 || (templateObject_11 = __makeTemplateObject(["\n                INSERT INTO usuario (usuario, clave, nombre, estado, isbot) \n                VALUES ('bot', 'bot-user', 'Bot WhatsApp', 0, 1)"], ["\n                INSERT INTO usuario (usuario, clave, nombre, estado, isbot) \n                VALUES ('bot', 'bot-user', 'Bot WhatsApp', 0, 1)"])))];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_12 || (templateObject_12 = __makeTemplateObject(["\n                INSERT INTO usuario (usuario, clave, nombre, estado, isbot) \n                VALUES ('bot', 'bot-user', 'Bot WhatsApp', 0, 1)"], ["\n                INSERT INTO usuario (usuario, clave, nombre, estado, isbot) \n                VALUES ('bot', 'bot-user', 'Bot WhatsApp', 0, 1)"])))];
             case 14:
                 resultInsert = _p.sent();
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_12 || (templateObject_12 = __makeTemplateObject(["\n                SELECT idusuario FROM usuario WHERE sede = ", " AND isbot = '1' LIMIT 1"], ["\n                SELECT idusuario FROM usuario WHERE sede = ", " AND isbot = '1' LIMIT 1"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_13 || (templateObject_13 = __makeTemplateObject(["\n                SELECT idusuario FROM usuario WHERE sede = ", " AND isbot = '1' LIMIT 1"], ["\n                SELECT idusuario FROM usuario WHERE sede = ", " AND isbot = '1' LIMIT 1"])), idsede)];
             case 15:
                 nuevoUsuario = _p.sent();
                 idusuarioBot = nuevoUsuario[0].idusuario;
@@ -842,7 +927,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                     idusuario: idusuarioBot,
                     sede: infoSede[0]
                 };
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_13 || (templateObject_13 = __makeTemplateObject(["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"], ["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_14 || (templateObject_14 = __makeTemplateObject(["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"], ["select i.idimpresora, i.ip, i.descripcion, i.num_copias, i.papel_size, i.copia_local, i.var_margen_iz, i.var_size_font\n            ,cp.isprint_all_short, cp.isprint_cpe_short, cp.isprint_copy_short, cp.isprint_all_delivery\n            ,cp.pie_pagina_precuenta, cp.pie_pagina, cp.pie_pagina_comprobante, cp.isprint_subtotales_comanda, cp.var_size_font_tall_comanda\t\t\n        from conf_print cp \n            inner join impresora i using(idsede)\n        where cp.idsede = ", " and i.estado = 0"
                         // Obtener tipo de consumo para determinar si es delivery
                     ])), idsede)];
             case 18:
@@ -1073,7 +1158,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 });
                 return [3 /*break*/, 22];
             case 21:
-                error_6 = _p.sent();
+                error_7 = _p.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al crear pedido'
@@ -1085,13 +1170,13 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
 }); });
 // consultar pedido por session_id
 router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var session_id, pedidoPreview, pedido, infoPedido, pedidoSerializable, resultado, error_7;
+    var session_id, pedidoPreview, pedido, infoPedido, pedidoSerializable, resultado, error_8;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 4, , 5]);
                 session_id = req.params.session_id;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_14 || (templateObject_14 = __makeTemplateObject(["\n            SELECT estado, idpedido\n            FROM pedido_preview\n            WHERE id = ", "\n            LIMIT 1"], ["\n            SELECT estado, idpedido\n            FROM pedido_preview\n            WHERE id = ", "\n            LIMIT 1"])), session_id)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_15 || (templateObject_15 = __makeTemplateObject(["\n            SELECT estado, idpedido\n            FROM pedido_preview\n            WHERE id = ", "\n            LIMIT 1"], ["\n            SELECT estado, idpedido\n            FROM pedido_preview\n            WHERE id = ", "\n            LIMIT 1"])), session_id)];
             case 1:
                 pedidoPreview = _a.sent();
                 if (!pedidoPreview || pedidoPreview.length === 0) {
@@ -1110,7 +1195,7 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
                     idpedido: pedido.idpedido ? Number(pedido.idpedido) : null
                 };
                 if (!(pedido.estado === 'confirmed' && pedido.idpedido)) return [3 /*break*/, 3];
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_15 || (templateObject_15 = __makeTemplateObject(["\n                SELECT \n                    p.idpedido,\n                    p.fecha_hora, \n                    tc.descripcion as canal_consumo, \n                    COALESCE(r.nombre, 'sin asignar') as repartidor,\n                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                LEFT JOIN repartidor r USING(idrepartidor)\n                WHERE p.idpedido = ", "\n                LIMIT 1"], ["\n                SELECT \n                    p.idpedido,\n                    p.fecha_hora, \n                    tc.descripcion as canal_consumo, \n                    COALESCE(r.nombre, 'sin asignar') as repartidor,\n                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                LEFT JOIN repartidor r USING(idrepartidor)\n                WHERE p.idpedido = ", "\n                LIMIT 1"])), pedido.idpedido)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_16 || (templateObject_16 = __makeTemplateObject(["\n                SELECT \n                    p.idpedido,\n                    p.fecha_hora, \n                    tc.descripcion as canal_consumo, \n                    COALESCE(r.nombre, 'sin asignar') as repartidor,\n                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                LEFT JOIN repartidor r USING(idrepartidor)\n                WHERE p.idpedido = ", "\n                LIMIT 1"], ["\n                SELECT \n                    p.idpedido,\n                    p.fecha_hora, \n                    tc.descripcion as canal_consumo, \n                    COALESCE(r.nombre, 'sin asignar') as repartidor,\n                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                LEFT JOIN repartidor r USING(idrepartidor)\n                WHERE p.idpedido = ", "\n                LIMIT 1"])), pedido.idpedido)];
             case 2:
                 resultado = _a.sent();
                 if (resultado && resultado.length > 0) {
@@ -1133,7 +1218,7 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
                 });
                 return [3 /*break*/, 5];
             case 4:
-                error_7 = _a.sent();
+                error_8 = _a.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al consultar pedido'
@@ -1144,12 +1229,12 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
     });
 }); });
 router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, idsAceptados_2, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, idclienteDB, totalPedidos, direccionPwa, historialDB, historial, rpt, carta, productos_2, itemsVistos_2, error_8;
-    var _b, _c, _d, _e, _f;
-    return __generator(this, function (_g) {
-        switch (_g.label) {
+    var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, idsAceptados_2, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, idclienteDB, totalPedidos, direccionPwa, historialDB, historial, rpt, carta, productos_2, itemsVistos_2, referenciaDB, referencia_chatbot, error_9;
+    var _b, _c, _d, _e, _f, _g;
+    return __generator(this, function (_h) {
+        switch (_h.label) {
             case 0:
-                _g.trys.push([0, 13, , 14]);
+                _h.trys.push([0, 14, , 15]);
                 _a = req.params, idorg = _a.idorg, idsede = _a.idsede, telefono = _a.telefono;
                 return [4 /*yield*/, prisma.sede.findFirst({
                         where: {
@@ -1166,7 +1251,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 1:
-                sede = _g.sent();
+                sede = _h.sent();
                 if (!sede) {
                     return [2 /*return*/, res.status(404).json({
                             success: false,
@@ -1184,7 +1269,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 2:
-                categoria = _g.sent();
+                categoria = _h.sent();
                 return [4 /*yield*/, prisma.sede_costo_delivery.findFirst({
                         where: {
                             idsede: Number(idsede),
@@ -1192,7 +1277,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 3:
-                sedeConfig = _g.sent();
+                sedeConfig = _h.sent();
                 return [4 /*yield*/, prisma.tipo_consumo.findMany({
                         where: {
                             idsede: Number(idsede),
@@ -1205,7 +1290,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 4:
-                tiposEntrega = _g.sent();
+                tiposEntrega = _h.sent();
                 return [4 /*yield*/, prisma.tipo_pago.findMany({
                         where: {
                             estado: 0,
@@ -1217,15 +1302,15 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 5:
-                metodosPago = _g.sent();
+                metodosPago = _h.sent();
                 idsAceptados_2 = String(sede.metodo_pago_aceptados_chatbot || '')
                     .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
                 if (idsAceptados_2.length > 0) {
                     metodosPago = metodosPago.filter(function (mp) { return idsAceptados_2.includes(String(mp.idtipo_pago)); });
                 }
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_16 || (templateObject_16 = __makeTemplateObject(["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"], ["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"])), idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_17 || (templateObject_17 = __makeTemplateObject(["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"], ["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"])), idsede)];
             case 6:
-                horariosDB = _g.sent();
+                horariosDB = _h.sent();
                 horaActual = new Date();
                 diaActual = horaActual.getDay();
                 mapaDias_2 = {
@@ -1314,21 +1399,21 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                     link_carta: (categoria === null || categoria === void 0 ? void 0 : categoria.url_carta) ? "https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/".concat(categoria === null || categoria === void 0 ? void 0 : categoria.url_carta) : null
                 };
                 telefonoLimpio = telefono.replace(/\s/g, '');
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_17 || (templateObject_17 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoLimpio + '%')];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_18 || (templateObject_18 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoLimpio + '%')];
             case 7:
-                clienteDB = _g.sent();
+                clienteDB = _h.sent();
                 cliente = null;
                 if (!(clienteDB && clienteDB.length > 0)) return [3 /*break*/, 11];
                 idclienteDB = clienteDB[0].idcliente;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_18 || (templateObject_18 = __makeTemplateObject(["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"], ["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"])), idclienteDB, idsede)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_19 || (templateObject_19 = __makeTemplateObject(["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"], ["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"])), idclienteDB, idsede)];
             case 8:
-                totalPedidos = _g.sent();
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_19 || (templateObject_19 = __makeTemplateObject(["\n                SELECT direccion, referencia FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"], ["\n                SELECT direccion, referencia FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"])), idclienteDB)];
+                totalPedidos = _h.sent();
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_20 || (templateObject_20 = __makeTemplateObject(["\n                SELECT direccion, referencia FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"], ["\n                SELECT direccion, referencia FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"])), idclienteDB)];
             case 9:
-                direccionPwa = _g.sent();
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_20 || (templateObject_20 = __makeTemplateObject(["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"], ["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"])), idclienteDB, idsede)];
+                direccionPwa = _h.sent();
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_21 || (templateObject_21 = __makeTemplateObject(["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"], ["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"])), idclienteDB, idsede)];
             case 10:
-                historialDB = _g.sent();
+                historialDB = _h.sent();
                 historial = (historialDB || [])
                     .filter(function (h) { return h.items; })
                     .map(function (h) { return ({
@@ -1349,10 +1434,10 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                     historial: historial,
                     encontrado: true
                 };
-                _g.label = 11;
-            case 11: return [4 /*yield*/, prisma.$queryRaw(templateObject_21 || (templateObject_21 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(", ",", ",1)"], ["call porcedure_pwa_pedido_carta(", ",", ",1)"])), idorg, idsede)];
+                _h.label = 11;
+            case 11: return [4 /*yield*/, prisma.$queryRaw(templateObject_22 || (templateObject_22 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(", ",", ",1)"], ["call porcedure_pwa_pedido_carta(", ",", ",1)"])), idorg, idsede)];
             case 12:
-                rpt = _g.sent();
+                rpt = _h.sent();
                 carta = ((_f = rpt[0]) === null || _f === void 0 ? void 0 : _f.f0) || [];
                 productos_2 = [];
                 itemsVistos_2 = new Set();
@@ -1377,25 +1462,30 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         });
                     });
                 });
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_23 || (templateObject_23 = __makeTemplateObject(["\n            SELECT referencia FROM chatbot_cliente_referencia\n            WHERE idsede = ", "\n              AND REPLACE(telefono, ' ', '') LIKE ", "\n            ORDER BY idchatbot_cliente_referencia DESC LIMIT 1"], ["\n            SELECT referencia FROM chatbot_cliente_referencia\n            WHERE idsede = ", "\n              AND REPLACE(telefono, ' ', '') LIKE ", "\n            ORDER BY idchatbot_cliente_referencia DESC LIMIT 1"])), idsede, '%' + telefonoLimpio + '%')];
+            case 13:
+                referenciaDB = _h.sent();
+                referencia_chatbot = ((_g = referenciaDB === null || referenciaDB === void 0 ? void 0 : referenciaDB[0]) === null || _g === void 0 ? void 0 : _g.referencia) || '';
                 res.status(200).json({
                     negocio: negocio,
                     cliente: cliente,
-                    menu: productos_2
+                    menu: productos_2,
+                    referencia_chatbot: referencia_chatbot
                 });
-                return [3 /*break*/, 14];
-            case 13:
-                error_8 = _g.sent();
+                return [3 /*break*/, 15];
+            case 14:
+                error_9 = _h.sent();
                 // Log del error real: antes era mudo y un fallo aquí dejaba al bot
                 // sin carta/menú sin pista alguna en los logs.
-                console.error('Error en /chatbot/contexto:', error_8);
+                console.error('Error en /chatbot/contexto:', error_9);
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener contexto'
                 });
-                return [3 /*break*/, 14];
-            case 14: return [2 /*return*/];
+                return [3 /*break*/, 15];
+            case 15: return [2 /*return*/];
         }
     });
 }); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18, templateObject_19, templateObject_20, templateObject_21;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18, templateObject_19, templateObject_20, templateObject_21, templateObject_22, templateObject_23;

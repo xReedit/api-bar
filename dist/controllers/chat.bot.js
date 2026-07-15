@@ -1183,6 +1183,54 @@ router.get("/get-telefono-bloqueado/:telefono/:idsede", function (req, res) { re
         }
     });
 }); });
+// guardar / actualizar la referencia (nota manual) de un cliente para el chatbot.
+// El chatbot la lee en /contexto y la respeta como regla fija del cliente.
+router.post("/guardar-referencia-cliente", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, idsede, telefono, referencia, tel, texto, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.body, idsede = _a.idsede, telefono = _a.telefono, referencia = _a.referencia;
+                tel = String(telefono !== null && telefono !== void 0 ? telefono : '').trim();
+                if (!idsede || !tel)
+                    return [2 /*return*/, res.status(400).send({ error: 'idsede y telefono son requeridos' })];
+                texto = String(referencia !== null && referencia !== void 0 ? referencia : '').trim();
+                if (!(texto === '')) return [3 /*break*/, 2];
+                return [4 /*yield*/, prisma.chatbot_cliente_referencia.deleteMany({
+                        where: { idsede: Number(idsede), telefono: tel }
+                    })["catch"](next)];
+            case 1:
+                _b.sent();
+                return [2 /*return*/, res.status(200).send({ referencia: '' })];
+            case 2: return [4 /*yield*/, prisma.chatbot_cliente_referencia.upsert({
+                    where: { idsede_telefono: { idsede: Number(idsede), telefono: tel } },
+                    update: { referencia: texto, updated_at: new Date() },
+                    create: { idsede: Number(idsede), telefono: tel, referencia: texto }
+                })["catch"](next)];
+            case 3:
+                rpt = _b.sent();
+                res.status(200).send(rpt);
+                return [2 /*return*/];
+        }
+    });
+}); });
+// consultar la referencia (nota manual) de un cliente
+router.get("/get-referencia-cliente/:telefono/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, telefono, idsede, rpt;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.params, telefono = _a.telefono, idsede = _a.idsede;
+                return [4 /*yield*/, prisma.chatbot_cliente_referencia.findUnique({
+                        where: { idsede_telefono: { idsede: Number(idsede), telefono: telefono } }
+                    })];
+            case 1:
+                rpt = _b.sent();
+                res.status(200).send({ referencia: (rpt === null || rpt === void 0 ? void 0 : rpt.referencia) || '' });
+                return [2 /*return*/];
+        }
+    });
+}); });
 // horarios por dia y hora
 // obtener horarios de trabajo por dia
 router.get("/get-horario-dias/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {

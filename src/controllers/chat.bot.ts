@@ -890,7 +890,13 @@ router.get("/get-estado-pedido/:idsede/:telefono", async (req, res) => {
 
 // bloquear numero de telefono
 router.post("/bloquear-telefono", async (req, res, next) => {
-    const { telefono, idsede, info } = req.body;    
+    const { telefono, idsede, info } = req.body;
+    // idempotente: borra cualquier fila previa del mismo número antes de crear,
+    // así nunca aparece 2 veces en la lista de pausados aunque las peticiones
+    // (pausar/activar disparadas sin await) lleguen desordenadas.
+    await prisma.chatbot_num_bloqueados.deleteMany({
+        where: { telefono: telefono, idsede: idsede }
+    }).catch(() => {});
     const rpt = await prisma.chatbot_num_bloqueados.create({
         data: {
             telefono: telefono,
@@ -926,9 +932,18 @@ router.get("/list-telefonos-bloqueados/:idsede", async (req, res) => {
         },
         where: {
             idsede: Number(idsede)
-        }
+        },
+        orderBy: { fecha_bloqueo: 'asc' }
     })
-    res.status(200).send(rpt);
+    // dedup por teléfono (limpia filas duplicadas de pausas anteriores; se queda con la más antigua)
+    const vistos = new Set<string>();
+    const unicos = rpt.filter((item: any) => {
+        const tel = item?.info?.telefono;
+        if (!tel || vistos.has(tel)) return false;
+        vistos.add(tel);
+        return true;
+    });
+    res.status(200).send(unicos);
 })
 
 // consultar numero bloqueado

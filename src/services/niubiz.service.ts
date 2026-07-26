@@ -76,7 +76,7 @@ export const authorize = async (
             status: resp.status,
             reconocido: resultado.reconocido,
             actionCode: resultado.actionCode,
-            data: JSON.stringify(resp.data).slice(0, 2000),
+            data: String(JSON.stringify(resp.data) ?? '').slice(0, 2000),
         });
     }
     return resultado;

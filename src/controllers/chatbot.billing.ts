@@ -4,7 +4,7 @@
 // por tx_id — reintentar confirmar nunca duplica saldo.
 import { PrismaClient } from '@prisma/client';
 import express, { Request, Response } from 'express';
-import { buildRecargaPayload, validarConfirmar, validarIniciar } from '../services/billing.helpers';
+import { AuthResult, buildRecargaPayload, validarConfirmar, validarIniciar } from '../services/billing.helpers';
 import * as chatbotgo from '../services/chatbotgo.service';
 import * as niubiz from '../services/niubiz.service';
 
@@ -137,7 +137,7 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
         // 'pendiente': si Niubiz no respondió, no hay veredicto y el reclamo se
         // libera para reintentar. Una vez que `auth` existe, SÍ hay veredicto de
         // Niubiz y ya no corresponde revertir (ver los bloques de abajo).
-        let auth;
+        let auth: AuthResult;
         try {
             const accessToken = await niubiz.getAccessToken();
             auth = await niubiz.authorize(accessToken, {

@@ -32,7 +32,12 @@ CREATE TABLE IF NOT EXISTS chatbot_pago (
 -- huérfanos quedan en estado='procesando'. Para encontrarlos:
 -- SELECT * FROM chatbot_pago WHERE estado='procesando' AND actualizado_en < NOW() - INTERVAL 15 MINUTE;
 
--- Si la tabla ya existía sin 'procesando' (versión anterior de este archivo):
+-- ═══ SOLO MIGRACIÓN (tabla creada con una versión anterior de este archivo) ═══
+-- En una instalación FRESCA estos ALTER fallan ("Duplicate column name" /
+-- redundantes) porque el CREATE de arriba ya lo trae todo: ignorar el error
+-- o no ejecutar esta sección.
+
+-- Si la tabla ya existía sin 'procesando':
 ALTER TABLE chatbot_pago MODIFY estado ENUM('pendiente','procesando','pagado','fallido') NOT NULL DEFAULT 'pendiente';
 
 -- Si la tabla ya existía sin actualizado_en:

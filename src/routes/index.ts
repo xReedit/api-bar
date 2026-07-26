@@ -6,6 +6,7 @@ import sede from "../controllers/sede";
 import colaborador from "../controllers/colaborador";
 import colaborador_contrato from "../controllers/colaborador.contrato";
 import chat_bot from "../controllers/chat.bot";
+import chatbot_billing from "../controllers/chatbot.billing";
 import chatbot_v2 from "../controllers/chatbot.v2";
 import loginRestobar from "../controllers/login.restobar";
 import permiso_remoto from "../controllers/permiso.remoto";
@@ -38,6 +39,9 @@ router.use('/rol', auth, rol);
 router.use('/sede', auth, sede);
 router.use('/colaborador', auth, colaborador);
 router.use('/colaborador-contrato', auth, colaborador_contrato);
+// Recargas del chatbot: requiere sesión del panel (JWT), a diferencia del
+// resto de /chat-bot/* que sigue sin auth por compatibilidad.
+router.use('/chat-bot/billing', auth, chatbot_billing);
 router.use('/chat-bot', chat_bot);
 router.use('/chatbot', apiKeyAuth, chatbot_v2);
 router.use('/permiso-remoto', permiso_remoto);

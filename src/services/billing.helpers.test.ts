@@ -36,20 +36,29 @@ describe('parseAuthorizationResponse', () => {
         const r = parseAuthorizationResponse({
             dataMap: { ACTION_CODE: '000', TRANSACTION_ID: '990000123', ACTION_DESCRIPTION: 'Aprobado' },
         });
-        expect(r).toEqual({ ok: true, actionCode: '000', transactionId: '990000123', descripcion: 'Aprobado' });
+        expect(r).toEqual({ ok: true, reconocido: true, actionCode: '000', transactionId: '990000123', descripcion: 'Aprobado' });
     });
-    it('rechazo trae ok=false con código y descripción', () => {
+    it('rechazo trae ok=false con código y descripción, reconocido=true', () => {
         const r = parseAuthorizationResponse({
             data: { ACTION_CODE: '180', ACTION_DESCRIPTION: 'Tarjeta inválida', TRANSACTION_ID: '990000124' },
         });
         expect(r.ok).toBe(false);
         expect(r.actionCode).toBe('180');
         expect(r.descripcion).toBe('Tarjeta inválida');
+        expect(r.reconocido).toBe(true);
     });
-    it('respuesta irreconocible = ok=false sin reventar', () => {
+    it('respuesta irreconocible = ok=false, reconocido=false, sin reventar', () => {
         const r = parseAuthorizationResponse('cualquier cosa');
         expect(r.ok).toBe(false);
         expect(r.actionCode).toBe('');
+        expect(r.reconocido).toBe(false);
+    });
+    it('decline 180 (real, con ACTION_CODE) = reconocido=true, ok=false', () => {
+        const r = parseAuthorizationResponse({
+            dataMap: { ACTION_CODE: '180', ACTION_DESCRIPTION: 'Rechazada', TRANSACTION_ID: '990000125' },
+        });
+        expect(r.ok).toBe(false);
+        expect(r.reconocido).toBe(true);
     });
 });
 

@@ -53,6 +53,11 @@ router.post('/pago/iniciar', async (req: Request, res: Response) => {
     if (!niubiz.niubizConfigurado()) {
         return res.status(503).json({ success: false, error: 'pasarela de pago no configurada' });
     }
+    // No cobrar lo que no se va a poder acreditar: sin esta key, chatbot-go
+    // rechazaría la acreditación y el pago quedaría cobrado sin saldo aplicado.
+    if (!process.env.CHATBOT_BILLING_KEY) {
+        return res.status(503).json({ success: false, error: 'acreditación no configurada' });
+    }
     try {
         const packs = await prisma.$queryRaw<{ id: number; conversaciones: number; precio_soles: number }[]>`
             SELECT id, conversaciones, precio_soles FROM chatbot_pack
@@ -128,25 +133,54 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
             return res.status(409).json({ success: false, error: 'pago en proceso, reintenta en unos segundos' });
         }
 
+        // Esta ventana (getAccessToken + authorize) es la ÚNICA que revierte a
+        // 'pendiente': si Niubiz no respondió, no hay veredicto y el reclamo se
+        // libera para reintentar. Una vez que `auth` existe, SÍ hay veredicto de
+        // Niubiz y ya no corresponde revertir (ver los bloques de abajo).
+        let auth;
         try {
             const accessToken = await niubiz.getAccessToken();
-            const auth = await niubiz.authorize(accessToken, {
+            auth = await niubiz.authorize(accessToken, {
                 tokenId: entrada.transactionToken,
                 purchaseNumber: pago.id,
                 amount: Number(pago.monto),
             });
+        } catch (authError) {
+            // Niubiz no respondió (red/timeout): liberar el reclamo para permitir reintentar.
+            await prisma.$executeRaw`
+                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ${pago.id} AND estado = 'procesando'`;
+            throw authError;
+        }
 
-            if (!auth.ok) {
-                await prisma.$executeRaw`
-                    UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ${pago.id} AND estado = 'procesando'`;
-                console.warn('billing: pago rechazado', { purchaseNumber: pago.id, actionCode: auth.actionCode });
-                return res.status(402).json({
-                    success: false,
-                    error: auth.descripcion || 'pago rechazado',
-                    actionCode: auth.actionCode,
-                });
-            }
+        if (!auth.ok && !auth.reconocido) {
+            // Respuesta irreconocible (5xx, HTML, token de acceso expirado, etc.):
+            // Niubiz no dio un veredicto real, no hay ACTION_CODE. Se trata igual
+            // que "no respondió": se libera el reclamo, es reintentable. Marcar
+            // 'fallido' aquí perdería el intento sin que hubiera un rechazo real.
+            await prisma.$executeRaw`
+                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ${pago.id} AND estado = 'procesando'`;
+            console.warn('billing: respuesta de Niubiz irreconocible, se libera el reclamo', { purchaseNumber: pago.id });
+            return res.status(502).json({ success: false, error: 'pasarela no disponible, reintenta', retryable: true });
+        }
 
+        if (!auth.ok) {
+            // Rechazo real: Niubiz contestó con un ACTION_CODE de rechazo. Terminal.
+            await prisma.$executeRaw`
+                UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ${pago.id} AND estado = 'procesando'`;
+            console.warn('billing: pago rechazado', { purchaseNumber: pago.id, actionCode: auth.actionCode });
+            return res.status(402).json({
+                success: false,
+                error: auth.descripcion || 'pago rechazado',
+                actionCode: auth.actionCode,
+            });
+        }
+
+        // auth.ok === true: Niubiz YA aprobó y cobró. De acá para abajo, si algo
+        // falla NO se revierte a 'pendiente' — el tokenId de Niubiz es de un solo
+        // uso, un reintento del cliente lo reenviaría y sería rechazado, y
+        // perderíamos el transactionId. Se deja en 'procesando' para revisión
+        // manual (el tx id al menos queda en el log de abajo).
+        try {
             await prisma.$executeRaw`
                 UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ${auth.transactionId}
                 WHERE id = ${pago.id} AND estado = 'procesando'`;
@@ -154,11 +188,18 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
 
             const resultado = await acreditar({ ...pago, niubiz_tx: auth.transactionId });
             return res.status(200).json({ success: true, ...resultado });
-        } catch (authError) {
-            // Niubiz no respondió (red/timeout): liberar el reclamo para permitir reintentar.
-            await prisma.$executeRaw`
-                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ${pago.id} AND estado = 'procesando'`;
-            throw authError;
+        } catch (dbError) {
+            console.error('billing: PAGO APROBADO POR NIUBIZ PERO NO REGISTRADO EN BD (revisar manualmente)', {
+                purchaseNumber: pago.id,
+                transactionId: auth.transactionId,
+                actionCode: auth.actionCode,
+                error: dbError,
+            });
+            return res.status(500).json({
+                success: false,
+                error: 'pago aprobado pero no registrado; NO reintentar: contactar soporte',
+                purchaseNumber: String(pago.id),
+            });
         }
     } catch (error) {
         console.error('billing confirmar:', error);

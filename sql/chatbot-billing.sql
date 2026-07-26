@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS chatbot_pago (
     estado         ENUM('pendiente','procesando','pagado','fallido') NOT NULL DEFAULT 'pendiente',
     niubiz_tx      VARCHAR(100) NULL,
     creado_en      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_chatbot_pago_niubiz_tx (niubiz_tx),
     KEY idx_chatbot_pago_idsede (idsede)
 );
@@ -26,5 +27,13 @@ CREATE TABLE IF NOT EXISTS chatbot_pago (
 -- Los packs los define el dueño del SaaS a mano, ejemplo:
 -- INSERT INTO chatbot_pack (conversaciones, precio_soles) VALUES (100, 59.00);
 
+-- Runbook: pagos "aprobados por Niubiz pero no registrados" (ver
+-- chatbot.billing.ts, catch de la actualización a 'pagado') o reclamos
+-- huérfanos quedan en estado='procesando'. Para encontrarlos:
+-- SELECT * FROM chatbot_pago WHERE estado='procesando' AND actualizado_en < NOW() - INTERVAL 15 MINUTE;
+
 -- Si la tabla ya existía sin 'procesando' (versión anterior de este archivo):
 ALTER TABLE chatbot_pago MODIFY estado ENUM('pendiente','procesando','pagado','fallido') NOT NULL DEFAULT 'pendiente';
+
+-- Si la tabla ya existía sin actualizado_en:
+ALTER TABLE chatbot_pago ADD COLUMN actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;

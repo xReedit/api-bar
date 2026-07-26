@@ -67,5 +67,17 @@ export const authorize = async (
             validateStatus: () => true, // un rechazo llega como 400: lo parseamos, no lo tiramos
         },
     );
-    return parseAuthorizationResponse(resp.data);
+    const resultado = parseAuthorizationResponse(resp.data);
+    if (!resultado.ok) {
+        // Rechazo real o respuesta irreconocible (5xx, HTML, token expirado): dejamos
+        // rastro forense — sin esto, un 5xx de Niubiz se pierde y no hay forma de
+        // diagnosticar por qué un pago quedó en 'procesando' o se marcó 'fallido'.
+        console.error('niubiz: authorize sin aprobación', {
+            status: resp.status,
+            reconocido: resultado.reconocido,
+            actionCode: resultado.actionCode,
+            data: JSON.stringify(resp.data).slice(0, 2000),
+        });
+    }
+    return resultado;
 };

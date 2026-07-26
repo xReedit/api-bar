@@ -22,9 +22,16 @@ export const validarConfirmar = (body: unknown): { purchaseNumber: number; trans
     return { purchaseNumber, transactionToken };
 };
 
-/** Resultado normalizado de la autorización de Niubiz. */
+/**
+ * Resultado normalizado de la autorización de Niubiz.
+ * `reconocido` distingue un rechazo REAL (Niubiz contestó con un ACTION_CODE,
+ * aprobado o no) de una respuesta irreconocible (5xx, HTML, token expirado,
+ * etc: no hay ACTION_CODE). Solo un rechazo `reconocido` es terminal
+ * ('fallido'); lo irreconocible debe tratarse como falla de red (reintentable).
+ */
 export interface AuthResult {
     ok: boolean;
+    reconocido: boolean;
     actionCode: string;
     transactionId: string;
     descripcion: string;
@@ -33,7 +40,8 @@ export interface AuthResult {
 /**
  * Normaliza la respuesta de POST api.authorization/v3. Niubiz devuelve los
  * campos en `dataMap` (200) o en `data` (400 con rechazo). Aprobado =
- * ACTION_CODE '000'. Tolerante: cualquier forma inesperada = no aprobado.
+ * ACTION_CODE '000'. Tolerante: cualquier forma inesperada = no aprobado
+ * y `reconocido=false` (no hubo ACTION_CODE, no es un veredicto real).
  */
 export const parseAuthorizationResponse = (data: unknown): AuthResult => {
     const d = data as Record<string, any> | null;
@@ -41,6 +49,7 @@ export const parseAuthorizationResponse = (data: unknown): AuthResult => {
     const actionCode = String(map.ACTION_CODE ?? '');
     return {
         ok: actionCode === '000',
+        reconocido: actionCode !== '',
         actionCode,
         transactionId: String(map.TRANSACTION_ID ?? ''),
         descripcion: String(map.ACTION_DESCRIPTION ?? d?.errorMessage ?? ''),

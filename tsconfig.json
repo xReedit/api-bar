@@ -99,5 +99,11 @@
     /* Completeness */
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
-  }
+  },
+  // Los tests de vitest no deben terminar compilados en dist/ (vitest es
+  // devDependency; en producción no está instalado). vitest.config.ts vive
+  // en la raíz del repo y sin excluirlo tsc reajusta el rootDir inferido a
+  // "." en vez de "src", rompiendo la ruta de salida (dist/app.js pasaría a
+  // dist/src/app.js) y por lo tanto "start": "node dist/app.js".
+  "exclude": ["src/**/*.test.ts", "vitest.config.ts"]
 }

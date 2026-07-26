@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS chatbot_pago (
     id_pack        INT NOT NULL,
     conversaciones INT NOT NULL,
     monto          DECIMAL(10,2) NOT NULL,
-    estado         ENUM('pendiente','pagado','fallido') NOT NULL DEFAULT 'pendiente',
+    estado         ENUM('pendiente','procesando','pagado','fallido') NOT NULL DEFAULT 'pendiente',
     niubiz_tx      VARCHAR(100) NULL,
     creado_en      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_chatbot_pago_niubiz_tx (niubiz_tx),
@@ -25,3 +25,6 @@ CREATE TABLE IF NOT EXISTS chatbot_pago (
 
 -- Los packs los define el dueño del SaaS a mano, ejemplo:
 -- INSERT INTO chatbot_pack (conversaciones, precio_soles) VALUES (100, 59.00);
+
+-- Si la tabla ya existía sin 'procesando' (versión anterior de este archivo):
+ALTER TABLE chatbot_pago MODIFY estado ENUM('pendiente','procesando','pagado','fallido') NOT NULL DEFAULT 'pendiente';

@@ -16,7 +16,7 @@ interface PagoRow {
     idsede: number;
     conversaciones: number;
     monto: number;
-    estado: 'pendiente' | 'pagado' | 'fallido';
+    estado: 'pendiente' | 'procesando' | 'pagado' | 'fallido';
     niubiz_tx: string | null;
 }
 
@@ -64,11 +64,16 @@ router.post('/pago/iniciar', async (req: Request, res: Response) => {
         const monto = Number(pack.precio_soles);
 
         // El pago nace pendiente; su id es el purchaseNumber de Niubiz.
-        await prisma.$executeRaw`
-            INSERT INTO chatbot_pago (idsede, id_pack, conversaciones, monto)
-            VALUES (${entrada.idsede}, ${pack.id}, ${pack.conversaciones}, ${monto})`;
-        const idRows = await prisma.$queryRaw<{ id: number }[]>`SELECT LAST_INSERT_ID() AS id`;
-        const purchaseNumber = Number(idRows[0].id);
+        // LAST_INSERT_ID es estado por conexión: la transacción interactiva fija
+        // ambas queries a la misma conexión del pool (sin ella, dos iniciar
+        // concurrentes podrían leerse el id el uno al otro).
+        const purchaseNumber = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`
+                INSERT INTO chatbot_pago (idsede, id_pack, conversaciones, monto)
+                VALUES (${entrada.idsede}, ${pack.id}, ${pack.conversaciones}, ${monto})`;
+            const idRows = await tx.$queryRaw<{ id: number }[]>`SELECT LAST_INSERT_ID() AS id`;
+            return Number(idRows[0].id);
+        });
 
         const accessToken = await niubiz.getAccessToken();
         const clientIp = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '');
@@ -115,31 +120,46 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
             return res.status(409).json({ success: false, error: `pago en estado ${pago.estado}` });
         }
 
-        const accessToken = await niubiz.getAccessToken();
-        const auth = await niubiz.authorize(accessToken, {
-            tokenId: entrada.transactionToken,
-            purchaseNumber: pago.id,
-            amount: Number(pago.monto),
-        });
-
-        if (!auth.ok) {
-            await prisma.$executeRaw`
-                UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ${pago.id} AND estado = 'pendiente'`;
-            console.warn('billing: pago rechazado', { purchaseNumber: pago.id, actionCode: auth.actionCode });
-            return res.status(402).json({
-                success: false,
-                error: auth.descripcion || 'pago rechazado',
-                actionCode: auth.actionCode,
-            });
+        // Reclamar el pago antes de llamar a Niubiz: solo un confirmar concurrente
+        // gana; el resto recibe 409 y puede reintentar cuando el ganador termine.
+        const reclamado = await prisma.$executeRaw`
+            UPDATE chatbot_pago SET estado = 'procesando' WHERE id = ${pago.id} AND estado = 'pendiente'`;
+        if (Number(reclamado) !== 1) {
+            return res.status(409).json({ success: false, error: 'pago en proceso, reintenta en unos segundos' });
         }
 
-        await prisma.$executeRaw`
-            UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ${auth.transactionId}
-            WHERE id = ${pago.id}`;
-        console.log('billing: pago aprobado', { purchaseNumber: pago.id, tx: auth.transactionId });
+        try {
+            const accessToken = await niubiz.getAccessToken();
+            const auth = await niubiz.authorize(accessToken, {
+                tokenId: entrada.transactionToken,
+                purchaseNumber: pago.id,
+                amount: Number(pago.monto),
+            });
 
-        const resultado = await acreditar({ ...pago, niubiz_tx: auth.transactionId });
-        return res.status(200).json({ success: true, ...resultado });
+            if (!auth.ok) {
+                await prisma.$executeRaw`
+                    UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ${pago.id} AND estado = 'procesando'`;
+                console.warn('billing: pago rechazado', { purchaseNumber: pago.id, actionCode: auth.actionCode });
+                return res.status(402).json({
+                    success: false,
+                    error: auth.descripcion || 'pago rechazado',
+                    actionCode: auth.actionCode,
+                });
+            }
+
+            await prisma.$executeRaw`
+                UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ${auth.transactionId}
+                WHERE id = ${pago.id} AND estado = 'procesando'`;
+            console.log('billing: pago aprobado', { purchaseNumber: pago.id, tx: auth.transactionId });
+
+            const resultado = await acreditar({ ...pago, niubiz_tx: auth.transactionId });
+            return res.status(200).json({ success: true, ...resultado });
+        } catch (authError) {
+            // Niubiz no respondió (red/timeout): liberar el reclamo para permitir reintentar.
+            await prisma.$executeRaw`
+                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ${pago.id} AND estado = 'procesando'`;
+            throw authError;
+        }
     } catch (error) {
         console.error('billing confirmar:', error);
         res.status(500).json({ success: false, error: 'no se pudo confirmar el pago' });

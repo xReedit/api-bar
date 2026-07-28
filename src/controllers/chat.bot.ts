@@ -286,15 +286,21 @@ router.get('/get-carta-establecimiento/:idsede', async (req: any, res) => {
 router.get("/get-reglas-carta/:idsede/:idorg", async (req, res) => {
     const { idsede } = req.params;
     const { idorg } = req.params;
-    const rpt: any = await prisma.$queryRaw`call procedure_pwa_reglas_carta_subtotales(${idorg},${idsede})`
-    // remplazar nombre de las key de la respuesta
+    // La llamada al procedure iba fuera del try/catch: un error de MySQL acá
+    // (procedure ausente, timeout, etc.) quedaba como promise rejection sin
+    // manejar dentro de un handler async de Express y tumbaba TODO el proceso
+    // (Node termina el proceso en unhandledRejection) en vez de responder 500
+    // solo a esta request. Se descubrió en un smoke test local (Fase 3) al
+    // cargar el panel contra una BD sin ese procedure.
     try {
+        const rpt: any = await prisma.$queryRaw`call procedure_pwa_reglas_carta_subtotales(${idorg},${idsede})`
+        // remplazar nombre de las key de la respuesta
         const data = {
             reglas: rpt[0].f0,
-            subtotales: rpt[0].f1,            
+            subtotales: rpt[0].f1,
         }
         res.status(200).send(data);
-    } catch (error) {        
+    } catch (error) {
         res.status(500).send(error);
     }
 })

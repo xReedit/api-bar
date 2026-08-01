@@ -14,6 +14,9 @@ export const niubizMerchantId = (): string => process.env.NIUBIZ_MERCHANT_ID || 
 export const niubizCheckoutJsUrl = (): string =>
     process.env.NIUBIZ_STATIC_JS_URL || 'https://static-content-qas.vnforapps.com/v2/js/checkout.js?qa=true';
 
+/** Logo que muestra el lightbox del checkout (merchantlogo). Vacío = logo por defecto de Niubiz. */
+export const niubizLogoUrl = (): string => process.env.NIUBIZ_LOGO_URL || '';
+
 /** true si las credenciales mínimas están configuradas. */
 export const niubizConfigurado = (): boolean =>
     Boolean(process.env.NIUBIZ_USER && process.env.NIUBIZ_PASS && process.env.NIUBIZ_MERCHANT_ID);

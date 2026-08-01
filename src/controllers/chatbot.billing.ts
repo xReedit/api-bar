@@ -91,6 +91,7 @@ router.post('/pago/iniciar', async (req: Request, res: Response) => {
             sessionKey,
             merchantId: niubiz.niubizMerchantId(),
             checkoutJsUrl: niubiz.niubizCheckoutJsUrl(),
+            logoUrl: niubiz.niubizLogoUrl(),
         });
     } catch (error) {
         console.error('billing iniciar:', error);

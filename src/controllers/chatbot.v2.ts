@@ -1,6 +1,7 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { GeocodingService } from "../services/geocoding.service";
+import { describirDelivery, resolverModo, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
@@ -16,6 +17,28 @@ const calcularTiempoEstimado = (tiempoAproxMinutos: number): string => {
     const tiempoMin = Math.max(15, tiempoAproxMinutos - margenMenos);
     const tiempoMax = tiempoAproxMinutos + margenMas;
     return `${tiempoMin}-${tiempoMax} min`;
+};
+
+// Bloque `delivery` de /config y /contexto: una sola fuente de verdad del modo
+// de cobro y su descripción (delivery.zonas.ts). En modo zonas expone nombres y
+// precios SIN geometría (el bot no necesita coordenadas en el prompt).
+const armarDeliveryConfig = (parametros: any) => {
+    const modo = resolverModo(parametros);
+    const zonas = modo === 'zonas' ? validarZonas(parametros.zonas) : [];
+    return {
+        habilitado: true,
+        tipo: zonas.length > 0 ? 'zonas' : (modo === 'fijo' ? 'fijo' : 'distancia'),
+        costo_base: Number(parametros.km_base_costo || 0),
+        costo_por_km: Number(parametros.km_adicional_costo || 0),
+        km_base: Number(parametros.km_base || 0),
+        distancia_maxima_km: Number(parametros.km_limite || 5),
+        calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
+        tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
+        ...(zonas.length > 0
+            ? { zonas: zonas.map((z) => ({ nombre: z.nombre, costo: z.costo, tiempo_aprox_entrega: z.tiempo_aprox_entrega })) }
+            : {}),
+        descripcion: describirDelivery(parametros),
+    };
 };
 
 // Normaliza una hora dicha por el cliente ("1pm", "13:00", "7.30 pm") a "HH:MM".
@@ -276,18 +299,87 @@ router.post("/calcular-delivery", async (req, res) => {
         }
 
         const parametros = sedeConfig.parametros || {};
-        const obtenerCoordenadas = parametros.obtener_coordenadas_del_cliente === 'SI';
-        const costoBase = Number(parametros.km_base_costo || 0);
+        // Modo explícito o inferido con el MISMO criterio del panel (BUG A: antes
+        // se exigía obtener_coordenadas_del_cliente === 'SI' y las sedes sin la
+        // clave cobraban fijo aunque el panel mostrara "Costo Variable").
+        let modo = resolverModo(parametros);
+        const tiempoGlobal = Number(parametros.tiempo_aprox_entrega || 30);
 
-        if (!obtenerCoordenadas) {
+        // Upsert de la dirección en pedido_preview: lo usan los 3 modos (antes el
+        // modo fijo retornaba sin persistir y el pedido quedaba sin costo/dirección).
+        const persistirDireccion = async (direccionData: any) => {
+            if (!session_id) return;
+            const existingPreview = await prisma.pedido_preview.findFirst({
+                where: { id: session_id }
+            });
+            if (existingPreview) {
+                await prisma.pedido_preview.update({
+                    where: { id: session_id },
+                    data: { direccion_cliente: direccionData }
+                });
+            } else {
+                await prisma.pedido_preview.create({
+                    data: {
+                        id: session_id,
+                        estructura: JSON.stringify({}),
+                        ticket_formateado: '',
+                        estado: 'pending',
+                        direccion_cliente: direccionData
+                    }
+                });
+            }
+        };
+
+        // ── Modo FIJO: un solo precio, sin geocodificar el texto ─────────────
+        if (modo === 'fijo') {
+            // BUG B: antes cobraba km_base_costo ignorando el input "Costo Fijo"
+            // del panel. El fallback a km_base_costo preserva las sedes legacy
+            // que configuraron el importe ahí porque era lo que se cobraba.
+            const costo = Number(parametros.costo_fijo || 0) || Number(parametros.km_base_costo || 0);
+
+            let direccionLegible = direccion;
+            let rev: any = {};
+            if (tieneGPS) {
+                rev = await GeocodingService.obtenerDireccion(latCliente, lonCliente);
+                if (rev.success && rev.direccion) {
+                    direccionLegible = rev.direccion;
+                } else if (!direccion || String(direccion).toUpperCase() === 'GPS') {
+                    direccionLegible = `Ubicación GPS (${latCliente.toFixed(5)}, ${lonCliente.toFixed(5)})`;
+                }
+            }
+
+            await persistirDireccion({
+                direccion: direccionLegible,
+                referencia: referencia || '',
+                latitude: tieneGPS ? latCliente : null,
+                longitude: tieneGPS ? lonCliente : null,
+                ciudad: rev.ciudad || '',
+                provincia: rev.provincia || '',
+                departamento: rev.departamento || '',
+                pais: rev.pais || '',
+                codigo: rev.codigo || '',
+                distancia_km: 0,
+                costo_delivery: Number(costo.toFixed(2))
+            });
+
             return res.status(200).json({
                 success: true,
                 disponible: true,
-                costo: costoBase,
+                costo: Number(costo.toFixed(2)),
                 distancia_km: 0,
-                tiempo_estimado: calcularTiempoEstimado(10),
-                mensaje: "Costo fijo de delivery"
+                // BUG D: antes hardcodeaba 10 min ignorando tiempo_aprox_entrega.
+                tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
+                mensaje: "Costo fijo de delivery",
+                direccion: direccionLegible
             });
+        }
+
+        // ── Modos VARIABLE y ZONAS: hay que ubicar al cliente ────────────────
+        const zonas = modo === 'zonas' ? validarZonas(parametros.zonas) : [];
+        if (modo === 'zonas' && zonas.length === 0) {
+            // Misconfig del panel: no tumbar el delivery de la sede.
+            console.warn('calcular-delivery: modo zonas sin zonas válidas, fallback a variable', { idsede });
+            modo = 'variable';
         }
 
         const sede: any = await prisma.sede.findUnique({
@@ -297,8 +389,11 @@ router.post("/calcular-delivery", async (req, res) => {
                 longitude: true
             }
         });
+        const sedeTieneCoords = Boolean(sede && sede.latitude && sede.longitude);
 
-        if (!sede || !sede.latitude || !sede.longitude) {
+        // En zonas la contención no necesita las coordenadas de la sede; solo se
+        // exigen para geocodificar direcciones de texto (sesgo por cercanía).
+        if (!sedeTieneCoords && !(modo === 'zonas' && tieneGPS)) {
             return res.status(400).json({
                 success: false,
                 error: 'Coordenadas del comercio no configuradas'
@@ -310,7 +405,7 @@ router.post("/calcular-delivery", async (req, res) => {
         let ciudades: string[] = [];
         if (sedeConfig.ciudades) {
             ciudades = sedeConfig.ciudades
-                .split(',')                
+                .split(',')
                 .filter((c: string) => c.length > 0);
         }
 
@@ -321,11 +416,15 @@ router.post("/calcular-delivery", async (req, res) => {
         let direccionLegible = direccion;
 
         if (tieneGPS) {
-            const distancia = GeocodingService.calcularDistanciaHaversine(
-                Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente
-            );
+            const distancia = sedeTieneCoords
+                ? GeocodingService.calcularDistanciaHaversine(
+                    Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente
+                )
+                : 0;
 
-            if (distancia > distanciaMaxima) {
+            // km_limite solo gobierna el modo variable: en zonas la cobertura la
+            // deciden las zonas dibujadas.
+            if (modo === 'variable' && distancia > distanciaMaxima) {
                 return res.status(200).json({
                     success: true,
                     disponible: false,
@@ -356,7 +455,9 @@ router.post("/calcular-delivery", async (req, res) => {
                 direccion,
                 Number(sede.latitude),
                 Number(sede.longitude),
-                distanciaMaxima,
+                // 999999 neutraliza el gate interno del servicio en modo zonas:
+                // ahí la cobertura la deciden las zonas, no km_limite.
+                modo === 'zonas' ? 999999 : distanciaMaxima,
                 ciudades
             );
         }
@@ -365,68 +466,65 @@ router.post("/calcular-delivery", async (req, res) => {
             return res.status(200).json({
                 success: true,
                 disponible: false,
-                mensaje: resultadoDistancia.error || 'No se pudo calcular la distancia'
+                mensaje: modo === 'zonas'
+                    ? 'No pude ubicar esa dirección con precisión. ¿Puedes compartirme tu ubicación por WhatsApp (clip 📎 → Ubicación) o darme la dirección con calle y número?'
+                    : (resultadoDistancia.error || 'No se pudo calcular la distancia')
             });
         }
 
         const distanciaKm = resultadoDistancia.distanciaKm;
 
-        const kmBase = Number(parametros.km_base || 2);
-        const costoAdicional = Number(parametros.km_adicional_costo || 0);
-        const costoFijo = Number(parametros.costo_fijo || 0);
+        let costo: number;
+        let tiempoMin = tiempoGlobal;
+        let zonaNombre: string | undefined;
 
-        let costo = costoFijo > 0 ? costoFijo : costoBase;
-        if (costoFijo === 0 && distanciaKm > kmBase) {
-            costo += (distanciaKm - kmBase) * costoAdicional;
-        }
-
-        const tiempoAproxEntrega = Number(parametros.tiempo_aprox_entrega || 30);
-
-        // guardar los datos de direccion en pedido_preview en la columna direccion_cliente        
-        if (session_id) {
-            const existingPreview = await prisma.pedido_preview.findFirst({
-                where: { id: session_id }
+        if (modo === 'zonas') {
+            const r = resolverZona(zonas, {
+                lat: Number(resultadoDistancia.lat),
+                lng: Number(resultadoDistancia.lng)
             });
-
-            const direccionData = {
-                direccion: direccionLegible,
-                referencia: referencia || '',
-                latitude: resultadoDistancia.lat,
-                longitude: resultadoDistancia.lng,
-                ciudad: resultadoDistancia.ciudad || '',
-                provincia: resultadoDistancia.provincia || '',
-                departamento: resultadoDistancia.departamento || '',
-                pais: resultadoDistancia.pais || '',
-                codigo: resultadoDistancia.codigo || '',
-                distancia_km: distanciaKm,
-                costo_delivery: Number(costo.toFixed(2))
-            };
-
-            if (existingPreview) {
-                await prisma.pedido_preview.update({
-                    where: { id: session_id },
-                    data: { direccion_cliente: direccionData }
-                });
-            } else {
-                await prisma.pedido_preview.create({
-                    data: {
-                        id: session_id,
-                        estructura: JSON.stringify({}),
-                        ticket_formateado: '',
-                        estado: 'pending',
-                        direccion_cliente: direccionData
-                    }
+            if (!r.cubierto) {
+                return res.status(200).json({
+                    success: true,
+                    disponible: false,
+                    mensaje: 'Lo sentimos, esa dirección está fuera de nuestras zonas de reparto 😔'
                 });
             }
+            costo = r.zona.costo;
+            tiempoMin = Number(r.zona.tiempo_aprox_entrega || 0) || tiempoGlobal;
+            zonaNombre = r.zona.nombre;
+        } else {
+            // BUG C: antes un costo_fijo residual (> 0) anulaba el cálculo por
+            // distancia en modo variable; aquí se ignora por completo.
+            const kmBase = Number(parametros.km_base || 2);
+            const costoAdicional = Number(parametros.km_adicional_costo || 0);
+            const costoBase = Number(parametros.km_base_costo || 0);
+            costo = costoBase + (distanciaKm > kmBase ? (distanciaKm - kmBase) * costoAdicional : 0);
         }
 
+        await persistirDireccion({
+            direccion: direccionLegible,
+            referencia: referencia || '',
+            latitude: resultadoDistancia.lat,
+            longitude: resultadoDistancia.lng,
+            ciudad: resultadoDistancia.ciudad || '',
+            provincia: resultadoDistancia.provincia || '',
+            departamento: resultadoDistancia.departamento || '',
+            pais: resultadoDistancia.pais || '',
+            codigo: resultadoDistancia.codigo || '',
+            distancia_km: distanciaKm,
+            costo_delivery: Number(costo.toFixed(2)),
+            // Clave aditiva: los consumidores de direccion_cliente leen por nombre.
+            ...(zonaNombre ? { zona: zonaNombre } : {})
+        });
 
         res.status(200).json({
             success: true,
             disponible: true,
             costo: Number(costo.toFixed(2)),
             distancia_km: distanciaKm,
-            tiempo_estimado: calcularTiempoEstimado(tiempoAproxEntrega),
+            tiempo_estimado: calcularTiempoEstimado(tiempoMin),
+            ...(zonaNombre ? { mensaje: `Zona de reparto: ${zonaNombre}`, zona: zonaNombre } : {}),
             // Dirección legible (reverse geocoding si vino GPS): el bot DEBE usarla
             // como la dirección del pedido en vez de "GPS".
             direccion: direccionLegible
@@ -601,17 +699,7 @@ router.get("/config/:idsede", async (req, res) => {
                     id: te.idtipo_consumo.toString(),
                     nombre: te.descripcion.toLowerCase() === 'para llevar' ? 'Recoger en Local' : te.descripcion
                 })),
-                delivery: {
-                    habilitado: true,
-                    tipo: "distancia",
-                    costo_base: Number(parametros.km_base_costo || 0),
-                    costo_por_km: Number(parametros.km_adicional_costo || 0),
-                    km_base: Number(parametros.km_base || 0),
-                    distancia_maxima_km: Number(parametros.km_limite || 5),
-                    calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
-                    tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
-                    descripcion: `Costo base S/${Number(parametros.km_base_costo || 0)} hasta ${Number(parametros.km_base || 0)} km, luego S/${Number(parametros.km_adicional_costo || 0)} por km adicional`
-                },
+                delivery: armarDeliveryConfig(parametros),
                 metodos_pago: metodosPago.map((mp: any) => ({
                     id: mp.idtipo_pago.toString(),
                     nombre: mp.descripcion,
@@ -1453,17 +1541,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                 id: te.idtipo_consumo.toString(),
                 nombre: te.descripcion.toLowerCase() === 'para llevar' ? 'Recoger en Local' : te.descripcion
             })),
-            delivery: {
-                habilitado: true,
-                tipo: "distancia",
-                costo_base: Number(parametros.km_base_costo || 0),
-                costo_por_km: Number(parametros.km_adicional_costo || 0),
-                km_base: Number(parametros.km_base || 0),
-                distancia_maxima_km: Number(parametros.km_limite || 5),
-                calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
-                tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
-                descripcion: `Costo base S/${Number(parametros.km_base_costo || 0)} hasta ${Number(parametros.km_base || 0)} km, luego S/${Number(parametros.km_adicional_costo || 0)} por km adicional`
-            },
+            delivery: armarDeliveryConfig(parametros),
             metodos_pago: metodosPago.map((mp: any) => ({
                 id: mp.idtipo_pago.toString(),
                 nombre: mp.descripcion,

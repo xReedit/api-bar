@@ -7,6 +7,7 @@ import colaborador from "../controllers/colaborador";
 import colaborador_contrato from "../controllers/colaborador.contrato";
 import chat_bot from "../controllers/chat.bot";
 import chatbot_billing from "../controllers/chatbot.billing";
+import chatbot_billing_admin from "../controllers/chatbot.billing.admin";
 import chatbot_v2 from "../controllers/chatbot.v2";
 import loginRestobar from "../controllers/login.restobar";
 import permiso_remoto from "../controllers/permiso.remoto";
@@ -43,6 +44,9 @@ router.use('/colaborador-contrato', auth, colaborador_contrato);
 // resto de /chat-bot/* que sigue sin auth por compatibilidad.
 router.use('/chat-bot/billing', auth, chatbot_billing);
 router.use('/chat-bot', chat_bot);
+// Admin de paquetes/pagos: solo el dashboard del chatbot-go (misma x-api-key
+// que /chatbot). Montado ANTES de /chatbot para que resuelva primero.
+router.use('/chatbot/billing-admin', apiKeyAuth, chatbot_billing_admin);
 router.use('/chatbot', apiKeyAuth, chatbot_v2);
 router.use('/permiso-remoto', permiso_remoto);
 router.use('/reimpresion', reinpresion);

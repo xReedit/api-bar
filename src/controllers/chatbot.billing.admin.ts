@@ -76,44 +76,22 @@ router.get('/pagos', async (req: Request, res: Response) => {
     }
 });
 
-// ── Solicitudes de activación del chatbot ────────────────────────────────────
+// ── Activaciones del chatbot (autoservicio desde Piter) ──────────────────────
 
-/** Solicitudes pendientes con los datos de contacto de la sede. */
-router.get('/solicitudes', async (_req: Request, res: Response) => {
+/** Últimas activaciones con los datos de contacto de la sede. */
+router.get('/activaciones', async (_req: Request, res: Response) => {
     try {
-        const solicitudes = await prisma.$queryRaw`
-            SELECT cs.id, cs.idsede, cs.creado_en, s.nombre, s.telefono, s.ciudad
+        const activaciones = await prisma.$queryRaw`
+            SELECT cs.id, cs.idsede, cs.atendido_en, s.nombre, s.telefono, s.ciudad
             FROM chatbot_solicitud cs
             LEFT JOIN sede s ON s.idsede = cs.idsede
-            WHERE cs.estado = 'pendiente'
-            ORDER BY cs.id ASC`;
-        res.status(200).json({ success: true, solicitudes });
+            WHERE cs.estado = 'atendida'
+            ORDER BY cs.atendido_en DESC
+            LIMIT 50`;
+        res.status(200).json({ success: true, activaciones });
     } catch (error) {
-        console.error('billing-admin solicitudes:', error);
-        res.status(500).json({ success: false, error: 'no se pudieron listar las solicitudes' });
-    }
-});
-
-/** Activa el chatbot de la sede (show_chatbot='1') y cierra su solicitud. */
-router.post('/solicitudes/activar', async (req: Request, res: Response) => {
-    const idsede = Number(req.body?.idsede);
-    if (!Number.isInteger(idsede) || idsede <= 0) {
-        return res.status(400).json({ success: false, error: 'idsede es obligatorio' });
-    }
-    try {
-        const afectadas = await prisma.$executeRaw`
-            UPDATE sede SET show_chatbot = '1' WHERE idsede = ${idsede}`;
-        if (Number(afectadas) === 0) {
-            return res.status(404).json({ success: false, error: 'sede no encontrada' });
-        }
-        await prisma.$executeRaw`
-            UPDATE chatbot_solicitud SET estado = 'atendida', atendido_en = NOW()
-            WHERE idsede = ${idsede} AND estado = 'pendiente'`;
-        console.log('billing-admin: chatbot activado', { idsede });
-        res.status(200).json({ success: true, idsede });
-    } catch (error) {
-        console.error('billing-admin activar:', error);
-        res.status(500).json({ success: false, error: 'no se pudo activar el chatbot' });
+        console.error('billing-admin activaciones:', error);
+        res.status(500).json({ success: false, error: 'no se pudieron listar las activaciones' });
     }
 });
 

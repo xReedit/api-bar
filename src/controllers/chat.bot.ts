@@ -88,42 +88,37 @@ router.get("/get-sede/:idsede", async (req, res) => {
     res.status(200).send(rpt);
 });
 
-// ── Solicitud de activación del chatbot (venta automática) ──────────────────
-// Sedes con show_chatbot='0' ven en Piter la página de venta con el botón
-// "Solicitar activación". La solicitud aparece en el dashboard del chatbot-go,
-// desde donde se activa (UPDATE sede.show_chatbot='1').
-
-/** ¿La sede ya tiene una solicitud pendiente? (para el estado del botón) */
-router.get("/solicitud-chatbot/:idsede", async (req, res) => {
-    try {
-        const rows = await prisma.$queryRaw<{ id: number }[]>`
-            SELECT id FROM chatbot_solicitud
-            WHERE idsede = ${Number(req.params.idsede)} AND estado = 'pendiente' LIMIT 1`;
-        res.status(200).json({ success: true, solicitado: rows.length > 0 });
-    } catch (error) {
-        console.error('solicitud-chatbot estado:', error);
-        res.status(500).json({ success: false, error: 'no se pudo consultar la solicitud' });
-    }
-});
-
-/** Registra la solicitud (una pendiente por sede; repetir no duplica). */
-router.post("/solicitar-chatbot", async (req, res) => {
+// ── Activación autoservicio del chatbot (venta automática) ──────────────────
+// Sedes con show_chatbot='0' ven en Piter la página de venta; al confirmar el
+// plan full la activación es inmediata: show_chatbot='1' + registro en
+// chatbot_solicitud (estado 'atendida' con fecha/hora), que el dashboard del
+// chatbot-go lista como historial de activaciones.
+router.post("/activar-chatbot", async (req, res) => {
     const idsede = Number(req.body?.idsede);
     if (!Number.isInteger(idsede) || idsede <= 0) {
         return res.status(400).json({ success: false, error: 'idsede es obligatorio' });
     }
     try {
-        const pendientes = await prisma.$queryRaw<{ id: number }[]>`
-            SELECT id FROM chatbot_solicitud
-            WHERE idsede = ${idsede} AND estado = 'pendiente' LIMIT 1`;
-        if (pendientes.length === 0) {
-            await prisma.$executeRaw`
-                INSERT INTO chatbot_solicitud (idsede) VALUES (${idsede})`;
+        // Existencia por SELECT: el UPDATE devuelve 0 filas si el valor ya era
+        // '1' (MySQL cuenta filas CAMBIADAS), así que no sirve como check.
+        const sedes = await prisma.$queryRaw<{ idsede: number; show_chatbot: string }[]>`
+            SELECT idsede, show_chatbot FROM sede WHERE idsede = ${idsede} LIMIT 1`;
+        if (!sedes.length) {
+            return res.status(404).json({ success: false, error: 'sede no encontrada' });
         }
-        res.status(200).json({ success: true, solicitado: true });
+        if (sedes[0].show_chatbot === '1') {
+            return res.status(200).json({ success: true, activado: true, ya_activo: true });
+        }
+        await prisma.$executeRaw`
+            UPDATE sede SET show_chatbot = '1' WHERE idsede = ${idsede}`;
+        await prisma.$executeRaw`
+            INSERT INTO chatbot_solicitud (idsede, estado, atendido_en)
+            VALUES (${idsede}, 'atendida', NOW())`;
+        console.log('chatbot activado (autoservicio)', { idsede });
+        res.status(200).json({ success: true, activado: true });
     } catch (error) {
-        console.error('solicitar-chatbot:', error);
-        res.status(500).json({ success: false, error: 'no se pudo registrar la solicitud' });
+        console.error('activar-chatbot:', error);
+        res.status(500).json({ success: false, error: 'no se pudo activar el chatbot' });
     }
 });
 

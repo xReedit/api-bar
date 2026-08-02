@@ -873,11 +873,28 @@ router.post("/pedido", async (req, res) => {
 
 
         const preview: any = await prisma.$queryRawUnsafe(
-            `SELECT id, estructura, estado, direccion_cliente FROM pedido_preview WHERE id = ? AND estado = 'pending' LIMIT 1`,
+            `SELECT id, estructura, estado, direccion_cliente, idpedido,
+                    TIMESTAMPDIFF(MINUTE, created_at, NOW()) AS min_desde_resumen
+             FROM pedido_preview WHERE id = ? LIMIT 1`,
             idresumen
         );
 
-        if (!preview || preview.length === 0) {
+        // Idempotencia: el bot a veces llama confirmar_pedido dos veces seguidas
+        // (ej. el cliente manda un sticker justo después de confirmar). Si el
+        // pedido ya se creó hace poco, respondemos el MISMO pedido en vez de 404
+        // para que el bot no relate un falso error al cliente.
+        if (preview?.length > 0 && preview[0].estado === 'confirmed'
+            && preview[0].idpedido && Number(preview[0].min_desde_resumen) <= 15) {
+            return res.status(200).json({
+                success: true,
+                mensaje: 'El pedido ya había sido confirmado',
+                idpedido: preview[0].idpedido,
+                numero_pedido: preview[0].idpedido,
+                ya_confirmado: true
+            });
+        }
+
+        if (!preview || preview.length === 0 || preview[0].estado !== 'pending') {
             return res.status(404).json({
                 success: false,
                 error: 'Resumen de pedido no encontrado o ya fue confirmado'

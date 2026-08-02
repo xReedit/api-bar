@@ -80,6 +80,7 @@ exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var geocoding_service_1 = require("../services/geocoding.service");
+var delivery_zonas_1 = require("../services/delivery.zonas");
 var cocinar_pedido_1 = require("../services/cocinar.pedido");
 var pedido_services_1 = __importDefault(require("../services/pedido.services"));
 var json_print_services_1 = require("../services/json.print.services");
@@ -93,6 +94,16 @@ var calcularTiempoEstimado = function (tiempoAproxMinutos) {
     var tiempoMin = Math.max(15, tiempoAproxMinutos - margenMenos);
     var tiempoMax = tiempoAproxMinutos + margenMas;
     return "".concat(tiempoMin, "-").concat(tiempoMax, " min");
+};
+// Bloque `delivery` de /config y /contexto: una sola fuente de verdad del modo
+// de cobro y su descripción (delivery.zonas.ts). En modo zonas expone nombres y
+// precios SIN geometría (el bot no necesita coordenadas en el prompt).
+var armarDeliveryConfig = function (parametros) {
+    var modo = (0, delivery_zonas_1.resolverModo)(parametros);
+    var zonas = modo === 'zonas' ? (0, delivery_zonas_1.validarZonas)(parametros.zonas) : [];
+    return __assign(__assign({ habilitado: true, tipo: zonas.length > 0 ? 'zonas' : (modo === 'fijo' ? 'fijo' : 'distancia'), costo_base: Number(parametros.km_base_costo || 0), costo_por_km: Number(parametros.km_adicional_costo || 0), km_base: Number(parametros.km_base || 0), distancia_maxima_km: Number(parametros.km_limite || 5), calcular_advertencia: parametros.obtener_coordenadas_del_cliente, tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)) }, (zonas.length > 0
+        ? { zonas: zonas.map(function (z) { return ({ nombre: z.nombre, costo: z.costo, tiempo_aprox_entrega: z.tiempo_aprox_entrega }); }) }
+        : {})), { descripcion: (0, delivery_zonas_1.describirDelivery)(parametros) });
 };
 // Normaliza una hora dicha por el cliente ("1pm", "13:00", "7.30 pm") a "HH:MM".
 // Devuelve null si no se reconoce.
@@ -330,12 +341,12 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
     });
 }); });
 router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, direccion, referencia, session_id, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, obtenerCoordenadas, costoBase, sede, distanciaMaxima, ciudades, resultadoDistancia, direccionLegible, distancia, rev, distanciaKm, kmBase, costoAdicional, costoFijo, costo, tiempoAproxEntrega, existingPreview, direccionData, error_4;
+    var _a, idorg, idsede, direccion, referencia, session_id_1, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, modo, tiempoGlobal, persistirDireccion, costo_1, direccionLegible_1, rev, zonas, sede, sedeTieneCoords, distanciaMaxima, ciudades, resultadoDistancia, direccionLegible, distancia, rev, distanciaKm, costo, tiempoMin, zonaNombre, r, kmBase, costoAdicional, costoBase, error_4;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _b.trys.push([0, 12, , 13]);
-                _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, referencia = _a.referencia, session_id = _a.session_id, lat = _a.lat, lon = _a.lon;
+                _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, referencia = _a.referencia, session_id_1 = _a.session_id, lat = _a.lat, lon = _a.lon;
                 latCliente = Number(lat);
                 lonCliente = Number(lon);
                 tieneGPS = Number.isFinite(latCliente) && Number.isFinite(lonCliente)
@@ -361,17 +372,90 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                         })];
                 }
                 parametros = sedeConfig.parametros || {};
-                obtenerCoordenadas = parametros.obtener_coordenadas_del_cliente === 'SI';
-                costoBase = Number(parametros.km_base_costo || 0);
-                if (!obtenerCoordenadas) {
-                    return [2 /*return*/, res.status(200).json({
-                            success: true,
-                            disponible: true,
-                            costo: costoBase,
-                            distancia_km: 0,
-                            tiempo_estimado: calcularTiempoEstimado(10),
-                            mensaje: "Costo fijo de delivery"
-                        })];
+                modo = (0, delivery_zonas_1.resolverModo)(parametros);
+                tiempoGlobal = Number(parametros.tiempo_aprox_entrega || 30);
+                persistirDireccion = function (direccionData) { return __awaiter(void 0, void 0, void 0, function () {
+                    var existingPreview;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0:
+                                if (!session_id_1)
+                                    return [2 /*return*/];
+                                return [4 /*yield*/, prisma.pedido_preview.findFirst({
+                                        where: { id: session_id_1 }
+                                    })];
+                            case 1:
+                                existingPreview = _a.sent();
+                                if (!existingPreview) return [3 /*break*/, 3];
+                                return [4 /*yield*/, prisma.pedido_preview.update({
+                                        where: { id: session_id_1 },
+                                        data: { direccion_cliente: direccionData }
+                                    })];
+                            case 2:
+                                _a.sent();
+                                return [3 /*break*/, 5];
+                            case 3: return [4 /*yield*/, prisma.pedido_preview.create({
+                                    data: {
+                                        id: session_id_1,
+                                        estructura: JSON.stringify({}),
+                                        ticket_formateado: '',
+                                        estado: 'pending',
+                                        direccion_cliente: direccionData
+                                    }
+                                })];
+                            case 4:
+                                _a.sent();
+                                _a.label = 5;
+                            case 5: return [2 /*return*/];
+                        }
+                    });
+                }); };
+                if (!(modo === 'fijo')) return [3 /*break*/, 5];
+                costo_1 = Number(parametros.costo_fijo || 0) || Number(parametros.km_base_costo || 0);
+                direccionLegible_1 = direccion;
+                rev = {};
+                if (!tieneGPS) return [3 /*break*/, 3];
+                return [4 /*yield*/, geocoding_service_1.GeocodingService.obtenerDireccion(latCliente, lonCliente)];
+            case 2:
+                rev = _b.sent();
+                if (rev.success && rev.direccion) {
+                    direccionLegible_1 = rev.direccion;
+                }
+                else if (!direccion || String(direccion).toUpperCase() === 'GPS') {
+                    direccionLegible_1 = "Ubicaci\u00F3n GPS (".concat(latCliente.toFixed(5), ", ").concat(lonCliente.toFixed(5), ")");
+                }
+                _b.label = 3;
+            case 3: return [4 /*yield*/, persistirDireccion({
+                    direccion: direccionLegible_1,
+                    referencia: referencia || '',
+                    latitude: tieneGPS ? latCliente : null,
+                    longitude: tieneGPS ? lonCliente : null,
+                    ciudad: rev.ciudad || '',
+                    provincia: rev.provincia || '',
+                    departamento: rev.departamento || '',
+                    pais: rev.pais || '',
+                    codigo: rev.codigo || '',
+                    distancia_km: 0,
+                    costo_delivery: Number(costo_1.toFixed(2))
+                })];
+            case 4:
+                _b.sent();
+                return [2 /*return*/, res.status(200).json({
+                        success: true,
+                        disponible: true,
+                        costo: Number(costo_1.toFixed(2)),
+                        distancia_km: 0,
+                        // BUG D: antes hardcodeaba 10 min ignorando tiempo_aprox_entrega.
+                        tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
+                        mensaje: "Costo fijo de delivery",
+                        direccion: direccionLegible_1
+                    })];
+            case 5:
+                zonas = modo === 'zonas' ? (0, delivery_zonas_1.validarZonas)(parametros.zonas) : [];
+                if (modo === 'zonas' && zonas.length === 0) {
+                    // Misconfig del panel: no tumbar el delivery de la sede.
+                    console.warn('calcular-delivery: modo zonas sin zonas válidas, fallback a variable', { idsede: idsede });
+                    modo = 'variable';
                 }
                 return [4 /*yield*/, prisma.sede.findUnique({
                         where: { idsede: Number(idsede) },
@@ -380,9 +464,12 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                             longitude: true
                         }
                     })];
-            case 2:
+            case 6:
                 sede = _b.sent();
-                if (!sede || !sede.latitude || !sede.longitude) {
+                sedeTieneCoords = Boolean(sede && sede.latitude && sede.longitude);
+                // En zonas la contención no necesita las coordenadas de la sede; solo se
+                // exigen para geocodificar direcciones de texto (sesgo por cercanía).
+                if (!sedeTieneCoords && !(modo === 'zonas' && tieneGPS)) {
                     return [2 /*return*/, res.status(400).json({
                             success: false,
                             error: 'Coordenadas del comercio no configuradas'
@@ -397,9 +484,13 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 }
                 resultadoDistancia = void 0;
                 direccionLegible = direccion;
-                if (!tieneGPS) return [3 /*break*/, 4];
-                distancia = geocoding_service_1.GeocodingService.calcularDistanciaHaversine(Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente);
-                if (distancia > distanciaMaxima) {
+                if (!tieneGPS) return [3 /*break*/, 8];
+                distancia = sedeTieneCoords
+                    ? geocoding_service_1.GeocodingService.calcularDistanciaHaversine(Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente)
+                    : 0;
+                // km_limite solo gobierna el modo variable: en zonas la cobertura la
+                // deciden las zonas dibujadas.
+                if (modo === 'variable' && distancia > distanciaMaxima) {
                     return [2 /*return*/, res.status(200).json({
                             success: true,
                             disponible: false,
@@ -407,7 +498,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                         })];
                 }
                 return [4 /*yield*/, geocoding_service_1.GeocodingService.obtenerDireccion(latCliente, lonCliente)];
-            case 3:
+            case 7:
                 rev = _b.sent();
                 if (rev.success && rev.direccion) {
                     direccionLegible = rev.direccion;
@@ -426,78 +517,57 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     pais: rev.pais || '',
                     codigo: rev.codigo || ''
                 };
-                return [3 /*break*/, 6];
-            case 4: return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion, Number(sede.latitude), Number(sede.longitude), distanciaMaxima, ciudades)];
-            case 5:
+                return [3 /*break*/, 10];
+            case 8: return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion, Number(sede.latitude), Number(sede.longitude), 
+                // 999999 neutraliza el gate interno del servicio en modo zonas:
+                // ahí la cobertura la deciden las zonas, no km_limite.
+                modo === 'zonas' ? 999999 : distanciaMaxima, ciudades)];
+            case 9:
                 resultadoDistancia = _b.sent();
-                _b.label = 6;
-            case 6:
+                _b.label = 10;
+            case 10:
                 if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
                     return [2 /*return*/, res.status(200).json({
                             success: true,
                             disponible: false,
-                            mensaje: resultadoDistancia.error || 'No se pudo calcular la distancia'
+                            mensaje: modo === 'zonas'
+                                ? 'No pude ubicar esa dirección con precisión. ¿Puedes compartirme tu ubicación por WhatsApp (clip 📎 → Ubicación) o darme la dirección con calle y número?'
+                                : (resultadoDistancia.error || 'No se pudo calcular la distancia')
                         })];
                 }
                 distanciaKm = resultadoDistancia.distanciaKm;
-                kmBase = Number(parametros.km_base || 2);
-                costoAdicional = Number(parametros.km_adicional_costo || 0);
-                costoFijo = Number(parametros.costo_fijo || 0);
-                costo = costoFijo > 0 ? costoFijo : costoBase;
-                if (costoFijo === 0 && distanciaKm > kmBase) {
-                    costo += (distanciaKm - kmBase) * costoAdicional;
-                }
-                tiempoAproxEntrega = Number(parametros.tiempo_aprox_entrega || 30);
-                if (!session_id) return [3 /*break*/, 11];
-                return [4 /*yield*/, prisma.pedido_preview.findFirst({
-                        where: { id: session_id }
-                    })];
-            case 7:
-                existingPreview = _b.sent();
-                direccionData = {
-                    direccion: direccionLegible,
-                    referencia: referencia || '',
-                    latitude: resultadoDistancia.lat,
-                    longitude: resultadoDistancia.lng,
-                    ciudad: resultadoDistancia.ciudad || '',
-                    provincia: resultadoDistancia.provincia || '',
-                    departamento: resultadoDistancia.departamento || '',
-                    pais: resultadoDistancia.pais || '',
-                    codigo: resultadoDistancia.codigo || '',
-                    distancia_km: distanciaKm,
-                    costo_delivery: Number(costo.toFixed(2))
-                };
-                if (!existingPreview) return [3 /*break*/, 9];
-                return [4 /*yield*/, prisma.pedido_preview.update({
-                        where: { id: session_id },
-                        data: { direccion_cliente: direccionData }
-                    })];
-            case 8:
-                _b.sent();
-                return [3 /*break*/, 11];
-            case 9: return [4 /*yield*/, prisma.pedido_preview.create({
-                    data: {
-                        id: session_id,
-                        estructura: JSON.stringify({}),
-                        ticket_formateado: '',
-                        estado: 'pending',
-                        direccion_cliente: direccionData
+                costo = void 0;
+                tiempoMin = tiempoGlobal;
+                zonaNombre = void 0;
+                if (modo === 'zonas') {
+                    r = (0, delivery_zonas_1.resolverZona)(zonas, {
+                        lat: Number(resultadoDistancia.lat),
+                        lng: Number(resultadoDistancia.lng)
+                    });
+                    if (!r.cubierto) {
+                        return [2 /*return*/, res.status(200).json({
+                                success: true,
+                                disponible: false,
+                                mensaje: 'Lo sentimos, esa dirección está fuera de nuestras zonas de reparto 😔'
+                            })];
                     }
-                })];
-            case 10:
-                _b.sent();
-                _b.label = 11;
+                    costo = r.zona.costo;
+                    tiempoMin = Number(r.zona.tiempo_aprox_entrega || 0) || tiempoGlobal;
+                    zonaNombre = r.zona.nombre;
+                }
+                else {
+                    kmBase = Number(parametros.km_base || 2);
+                    costoAdicional = Number(parametros.km_adicional_costo || 0);
+                    costoBase = Number(parametros.km_base_costo || 0);
+                    costo = costoBase + (distanciaKm > kmBase ? (distanciaKm - kmBase) * costoAdicional : 0);
+                }
+                return [4 /*yield*/, persistirDireccion(__assign({ direccion: direccionLegible, referencia: referencia || '', latitude: resultadoDistancia.lat, longitude: resultadoDistancia.lng, ciudad: resultadoDistancia.ciudad || '', provincia: resultadoDistancia.provincia || '', departamento: resultadoDistancia.departamento || '', pais: resultadoDistancia.pais || '', codigo: resultadoDistancia.codigo || '', distancia_km: distanciaKm, costo_delivery: Number(costo.toFixed(2)) }, (zonaNombre ? { zona: zonaNombre } : {})))];
             case 11:
-                res.status(200).json({
-                    success: true,
-                    disponible: true,
-                    costo: Number(costo.toFixed(2)),
-                    distancia_km: distanciaKm,
-                    tiempo_estimado: calcularTiempoEstimado(tiempoAproxEntrega),
+                _b.sent();
+                res.status(200).json(__assign(__assign({ success: true, disponible: true, costo: Number(costo.toFixed(2)), distancia_km: distanciaKm, tiempo_estimado: calcularTiempoEstimado(tiempoMin) }, (zonaNombre ? { mensaje: "Zona de reparto: ".concat(zonaNombre), zona: zonaNombre } : {})), { 
                     // Dirección legible (reverse geocoding si vino GPS): el bot DEBE usarla
                     // como la dirección del pedido en vez de "GPS".
-                    direccion: direccionLegible
-                });
+                    direccion: direccionLegible }));
                 return [3 /*break*/, 13];
             case 12:
                 error_4 = _b.sent();
@@ -660,17 +730,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
                             id: te.idtipo_consumo.toString(),
                             nombre: te.descripcion.toLowerCase() === 'para llevar' ? 'Recoger en Local' : te.descripcion
                         }); }),
-                        delivery: {
-                            habilitado: true,
-                            tipo: "distancia",
-                            costo_base: Number(parametros.km_base_costo || 0),
-                            costo_por_km: Number(parametros.km_adicional_costo || 0),
-                            km_base: Number(parametros.km_base || 0),
-                            distancia_maxima_km: Number(parametros.km_limite || 5),
-                            calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
-                            tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
-                            descripcion: "Costo base S/".concat(Number(parametros.km_base_costo || 0), " hasta ").concat(Number(parametros.km_base || 0), " km, luego S/").concat(Number(parametros.km_adicional_costo || 0), " por km adicional")
-                        },
+                        delivery: armarDeliveryConfig(parametros),
                         metodos_pago: metodosPago.map(function (mp) { return ({
                             id: mp.idtipo_pago.toString(),
                             nombre: mp.descripcion,
@@ -1375,17 +1435,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         id: te.idtipo_consumo.toString(),
                         nombre: te.descripcion.toLowerCase() === 'para llevar' ? 'Recoger en Local' : te.descripcion
                     }); }),
-                    delivery: {
-                        habilitado: true,
-                        tipo: "distancia",
-                        costo_base: Number(parametros.km_base_costo || 0),
-                        costo_por_km: Number(parametros.km_adicional_costo || 0),
-                        km_base: Number(parametros.km_base || 0),
-                        distancia_maxima_km: Number(parametros.km_limite || 5),
-                        calcular_advertencia: parametros.obtener_coordenadas_del_cliente,
-                        tiempo_estimado_base: calcularTiempoEstimado(Number(parametros.tiempo_aprox_entrega || 30)),
-                        descripcion: "Costo base S/".concat(Number(parametros.km_base_costo || 0), " hasta ").concat(Number(parametros.km_base || 0), " km, luego S/").concat(Number(parametros.km_adicional_costo || 0), " por km adicional")
-                    },
+                    delivery: armarDeliveryConfig(parametros),
                     metodos_pago: metodosPago.map(function (mp) { return ({
                         id: mp.idtipo_pago.toString(),
                         nombre: mp.descripcion,

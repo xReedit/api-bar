@@ -34,6 +34,8 @@ var sede_1 = __importDefault(require("../controllers/sede"));
 var colaborador_1 = __importDefault(require("../controllers/colaborador"));
 var colaborador_contrato_1 = __importDefault(require("../controllers/colaborador.contrato"));
 var chat_bot_1 = __importDefault(require("../controllers/chat.bot"));
+var chatbot_billing_1 = __importDefault(require("../controllers/chatbot.billing"));
+var chatbot_billing_admin_1 = __importDefault(require("../controllers/chatbot.billing.admin"));
 var chatbot_v2_1 = __importDefault(require("../controllers/chatbot.v2"));
 var login_restobar_1 = __importDefault(require("../controllers/login.restobar"));
 var permiso_remoto_1 = __importDefault(require("../controllers/permiso.remoto"));
@@ -63,7 +65,13 @@ router.use('/rol', auth_1.auth, rol_1["default"]);
 router.use('/sede', auth_1.auth, sede_1["default"]);
 router.use('/colaborador', auth_1.auth, colaborador_1["default"]);
 router.use('/colaborador-contrato', auth_1.auth, colaborador_contrato_1["default"]);
+// Recargas del chatbot: requiere sesión del panel (JWT), a diferencia del
+// resto de /chat-bot/* que sigue sin auth por compatibilidad.
+router.use('/chat-bot/billing', auth_1.auth, chatbot_billing_1["default"]);
 router.use('/chat-bot', chat_bot_1["default"]);
+// Admin de paquetes/pagos: solo el dashboard del chatbot-go (misma x-api-key
+// que /chatbot). Montado ANTES de /chatbot para que resuelva primero.
+router.use('/chatbot/billing-admin', auth_1.apiKeyAuth, chatbot_billing_admin_1["default"]);
 router.use('/chatbot', auth_1.apiKeyAuth, chatbot_v2_1["default"]);
 router.use('/permiso-remoto', permiso_remoto_1["default"]);
 router.use('/reimpresion', reimpresion_1["default"]);

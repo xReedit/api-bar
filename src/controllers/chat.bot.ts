@@ -81,10 +81,50 @@ router.get("/get-sede/:idsede", async (req, res) => {
             metodo_pago_aceptados_chatbot: true,
             numero_billetera_chatbot: true,
             link_carta: true,
-            chatbot_run: true
+            chatbot_run: true,
+            show_chatbot: true
         }
     })
     res.status(200).send(rpt);
+});
+
+// ── Solicitud de activación del chatbot (venta automática) ──────────────────
+// Sedes con show_chatbot='0' ven en Piter la página de venta con el botón
+// "Solicitar activación". La solicitud aparece en el dashboard del chatbot-go,
+// desde donde se activa (UPDATE sede.show_chatbot='1').
+
+/** ¿La sede ya tiene una solicitud pendiente? (para el estado del botón) */
+router.get("/solicitud-chatbot/:idsede", async (req, res) => {
+    try {
+        const rows = await prisma.$queryRaw<{ id: number }[]>`
+            SELECT id FROM chatbot_solicitud
+            WHERE idsede = ${Number(req.params.idsede)} AND estado = 'pendiente' LIMIT 1`;
+        res.status(200).json({ success: true, solicitado: rows.length > 0 });
+    } catch (error) {
+        console.error('solicitud-chatbot estado:', error);
+        res.status(500).json({ success: false, error: 'no se pudo consultar la solicitud' });
+    }
+});
+
+/** Registra la solicitud (una pendiente por sede; repetir no duplica). */
+router.post("/solicitar-chatbot", async (req, res) => {
+    const idsede = Number(req.body?.idsede);
+    if (!Number.isInteger(idsede) || idsede <= 0) {
+        return res.status(400).json({ success: false, error: 'idsede es obligatorio' });
+    }
+    try {
+        const pendientes = await prisma.$queryRaw<{ id: number }[]>`
+            SELECT id FROM chatbot_solicitud
+            WHERE idsede = ${idsede} AND estado = 'pendiente' LIMIT 1`;
+        if (pendientes.length === 0) {
+            await prisma.$executeRaw`
+                INSERT INTO chatbot_solicitud (idsede) VALUES (${idsede})`;
+        }
+        res.status(200).json({ success: true, solicitado: true });
+    } catch (error) {
+        console.error('solicitar-chatbot:', error);
+        res.status(500).json({ success: false, error: 'no se pudo registrar la solicitud' });
+    }
 });
 
 // busca cliente por el numero de telefono

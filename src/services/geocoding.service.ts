@@ -22,9 +22,29 @@ interface ResultadoDistancia {
     pais?: string;
     codigo?: string;
     error?: string;
+    // 'baja' = Google adivinó (typo, solo ubicó la ciudad, o vino del fallback
+    // de Places): el bot debe confirmar la dirección con el cliente antes de usarla.
+    confianza?: 'alta' | 'baja';
+    direccionFormateada?: string;
+    // true = la dirección SÍ se ubicó pero está fuera del km_limite (no debe
+    // confundirse con "no encontrada": aquí no aplica el costo base de rescate).
+    fueraDeCobertura?: boolean;
 }
 
 const getApiKey = () => process.env.GOOGLE_MAPS_API_KEY || '';
+
+/**
+ * Clasifica qué tan confiable es un resultado de la Geocoding API.
+ * partial_match = Google no encontró exacto y devolvió lo más parecido;
+ * locality/APPROXIMATE = solo ubicó la ciudad (típico con calles mal escritas).
+ */
+export const clasificarConfianza = (result: any): 'alta' | 'baja' => {
+    if (result?.partial_match) return 'baja';
+    const types: string[] = result?.types || [];
+    if (types.includes('locality')) return 'baja';
+    if (result?.geometry?.location_type === 'APPROXIMATE') return 'baja';
+    return 'alta';
+};
 
 export class GeocodingService {
     
@@ -167,6 +187,11 @@ export class GeocodingService {
                 });
 
                 if (response.data.status !== 'OK' || !response.data.results || response.data.results.length === 0) {
+                    // Distinguir "no existe" de errores de API (key, billing, etc.):
+                    // antes REQUEST_DENIED se logueaba igual que dirección no hallada.
+                    if (!['OK', 'ZERO_RESULTS'].includes(response.data.status)) {
+                        console.error('Geocoding API:', response.data.status, response.data.error_message || '');
+                    }
                     console.log(`No se encontró dirección con ciudad "${ciudad}"`);
                     continue;
                 }
@@ -208,9 +233,12 @@ export class GeocodingService {
 
                 console.log(`Encontrado con ciudad "${ciudad}": ${distanciaKm} km (línea recta)`);
 
-                if (distanciaKm > kmLimite) {
+                const confianza = clasificarConfianza(response.data.results[0]);
+
+                if (confianza === 'alta' && distanciaKm > kmLimite) {
                     return {
                         success: false,
+                        fueraDeCobertura: true,
                         error: `Dirección fuera del rango de cobertura (${distanciaKm.toFixed(2)} km, máximo ${kmLimite} km)`
                     };
                 }
@@ -224,7 +252,26 @@ export class GeocodingService {
                     provincia: provinciaExtraida,
                     departamento: departamentoExtraido,
                     pais: paisExtraido,
-                    codigo: codigoExtraido
+                    codigo: codigoExtraido,
+                    confianza,
+                    direccionFormateada: response.data.results[0].formatted_address
+                };
+            }
+
+            // Fallback tolerante a typos: Places Text Search (el buscador de
+            // Google Maps) sesgado a la sede. Si encuentra algo, siempre vuelve
+            // como confianza 'baja' para que el bot confirme con el cliente.
+            const lugar = await this.buscarConPlaces(direccion, ciudadesABuscar[0] || '', latComercio, lngComercio);
+            if (lugar.success && lugar.lat !== undefined && lugar.lng !== undefined) {
+                const distanciaKm = this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng);
+                console.log(`Places fallback encontró "${lugar.direccion}": ${distanciaKm} km`);
+                return {
+                    success: true,
+                    lat: lugar.lat,
+                    lng: lugar.lng,
+                    distanciaKm: Math.round(distanciaKm * 100) / 100,
+                    confianza: 'baja',
+                    direccionFormateada: lugar.direccion
                 };
             }
 
@@ -276,6 +323,38 @@ export class GeocodingService {
                 success: false,
                 error: error.message || 'Error al calcular distancia'
             };
+        }
+    }
+
+    // Places Text Search: tolera direcciones mal escritas ("jr calao" → Jr.
+    // Callao). Solo se usa como fallback cuando la Geocoding API no encontró.
+    private static async buscarConPlaces(
+        direccion: string,
+        ciudad: string,
+        lat: number,
+        lng: number
+    ): Promise<{ success: boolean; direccion?: string; lat?: number; lng?: number }> {
+        try {
+            const query = ciudad ? `${direccion}, ${ciudad}, Peru` : `${direccion}, Peru`;
+            const response = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+                params: { query, location: `${lat},${lng}`, radius: 15000, region: 'pe', key: getApiKey() }
+            });
+            const r = response.data?.results?.[0];
+            if (response.data?.status !== 'OK' || !r?.geometry?.location) {
+                if (!['OK', 'ZERO_RESULTS'].includes(response.data?.status)) {
+                    console.error('Places API:', response.data?.status, response.data?.error_message || '');
+                }
+                return { success: false };
+            }
+            return {
+                success: true,
+                direccion: r.formatted_address || r.name,
+                lat: r.geometry.location.lat,
+                lng: r.geometry.location.lng
+            };
+        } catch (error: any) {
+            console.error('Error en Places fallback:', error.message);
+            return { success: false };
         }
     }
 

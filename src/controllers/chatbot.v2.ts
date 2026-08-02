@@ -339,13 +339,13 @@ router.post("/calcular-delivery", async (req, res) => {
 
             let direccionLegible = direccion;
             let rev: any = {};
-            if (tieneGPS) {
+            // Reverse geocoding solo si no hay texto de dirección (coordenadas de
+            // la dirección guardada del cliente ya vienen con su texto: 0 llamadas).
+            if (tieneGPS && (!direccion || String(direccion).toUpperCase() === 'GPS')) {
                 rev = await GeocodingService.obtenerDireccion(latCliente, lonCliente);
-                if (rev.success && rev.direccion) {
-                    direccionLegible = rev.direccion;
-                } else if (!direccion || String(direccion).toUpperCase() === 'GPS') {
-                    direccionLegible = `Ubicación GPS (${latCliente.toFixed(5)}, ${lonCliente.toFixed(5)})`;
-                }
+                direccionLegible = rev.success && rev.direccion
+                    ? rev.direccion
+                    : `Ubicación GPS (${latCliente.toFixed(5)}, ${lonCliente.toFixed(5)})`;
             }
 
             await persistirDireccion({
@@ -359,7 +359,8 @@ router.post("/calcular-delivery", async (req, res) => {
                 pais: rev.pais || '',
                 codigo: rev.codigo || '',
                 distancia_km: 0,
-                costo_delivery: Number(costo.toFixed(2))
+                costo_delivery: Number(costo.toFixed(2)),
+                verificada: true
             });
 
             return res.status(200).json({
@@ -432,11 +433,14 @@ router.post("/calcular-delivery", async (req, res) => {
                 });
             }
 
-            const rev = await GeocodingService.obtenerDireccion(latCliente, lonCliente);
-            if (rev.success && rev.direccion) {
-                direccionLegible = rev.direccion;
-            } else if (!direccion || direccion.toUpperCase() === 'GPS') {
-                direccionLegible = `Ubicación GPS (${latCliente.toFixed(5)}, ${lonCliente.toFixed(5)})`;
+            // Reverse geocoding solo si no hay texto de dirección (si vienen las
+            // coordenadas guardadas del cliente, su texto ya es bueno: 0 llamadas).
+            let rev: any = {};
+            if (!direccion || direccion.toUpperCase() === 'GPS') {
+                rev = await GeocodingService.obtenerDireccion(latCliente, lonCliente);
+                direccionLegible = rev.success && rev.direccion
+                    ? rev.direccion
+                    : `Ubicación GPS (${latCliente.toFixed(5)}, ${lonCliente.toFixed(5)})`;
             }
 
             resultadoDistancia = {
@@ -462,13 +466,54 @@ router.post("/calcular-delivery", async (req, res) => {
             );
         }
 
-        if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
+        // ── Cascada anti-typo (solo direcciones de texto) ────────────────────
+        // Confianza baja = Google adivinó (typo, o vino del fallback de Places):
+        // confirmar con el cliente antes de cobrar, ofreciendo el GPS como plan B.
+        if (resultadoDistancia.success && resultadoDistancia.confianza === 'baja') {
+            const sugerida = resultadoDistancia.direccionFormateada || direccion;
             return res.status(200).json({
                 success: true,
                 disponible: false,
-                mensaje: modo === 'zonas'
-                    ? 'No pude ubicar esa dirección con precisión. ¿Puedes compartirme tu ubicación por WhatsApp (clip 📎 → Ubicación) o darme la dirección con calle y número?'
-                    : (resultadoDistancia.error || 'No se pudo calcular la distancia')
+                requiere_confirmacion: true,
+                direccion_sugerida: sugerida,
+                accion: 'Si el cliente confirma, vuelve a llamar calcular_delivery con direccion_sugerida tal cual.',
+                mensaje: `¿Te refieres a "${sugerida}"? 🤔 Si es así dime "sí"; si no, mejor compárteme tu ubicación por WhatsApp (clip 📎 → Ubicación) 📍`
+            });
+        }
+
+        if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
+            // Fuera de cobertura = la dirección SÍ se ubicó; rechazar como siempre.
+            if (resultadoDistancia.fueraDeCobertura) {
+                return res.status(200).json({
+                    success: true,
+                    disponible: false,
+                    mensaje: resultadoDistancia.error || 'Dirección fuera del rango de cobertura'
+                });
+            }
+            // No encontrada ni con Places: cobrar el costo base y NO trabar el
+            // pedido. La dirección queda marcada sin verificar para reparto.
+            const costoEstimado = modo === 'zonas' && zonas.length > 0
+                ? Math.min(...zonas.map((z) => z.costo))
+                : Number(parametros.km_base_costo || 0);
+            await persistirDireccion({
+                direccion,
+                referencia: referencia || '',
+                latitude: null,
+                longitude: null,
+                ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
+                distancia_km: 0,
+                costo_delivery: Number(costoEstimado.toFixed(2)),
+                verificada: false
+            });
+            return res.status(200).json({
+                success: true,
+                disponible: true,
+                costo: Number(costoEstimado.toFixed(2)),
+                distancia_km: 0,
+                tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
+                direccion,
+                direccion_no_verificada: true,
+                mensaje: 'No se pudo verificar la dirección en el mapa: se aplicó el costo base y el pedido puede continuar con normalidad. NO le digas al cliente que no encontraste su dirección; solo continúa.'
             });
         }
 
@@ -514,6 +559,7 @@ router.post("/calcular-delivery", async (req, res) => {
             codigo: resultadoDistancia.codigo || '',
             distancia_km: distanciaKm,
             costo_delivery: Number(costo.toFixed(2)),
+            verificada: true,
             // Clave aditiva: los consumidores de direccion_cliente leen por nombre.
             ...(zonaNombre ? { zona: zonaNombre } : {})
         });
@@ -1085,7 +1131,12 @@ router.post("/pedido", async (req, res) => {
         
         if (isDelivery) {
             const direccionDelivery = datosDeliveryGuardados?.direccion || infoCliente.direccion || "";
-            const referenciaDelivery = datosDeliveryGuardados?.referencia || "";
+            // Dirección que no se pudo ubicar en el mapa (se cobró costo base):
+            // avisar a reparto en la referencia para que confirme con el cliente.
+            const referenciaDelivery = [
+                datosDeliveryGuardados?.referencia || "",
+                datosDeliveryGuardados?.verificada === false ? "(DIRECCION NO VERIFICADA - confirmar con cliente)" : ""
+            ].filter(Boolean).join(" ");
             const latitudeDelivery = datosDeliveryGuardados?.latitude || "";
             const longitudeDelivery = datosDeliveryGuardados?.longitude || "";
             const ciudadDelivery = datosDeliveryGuardados?.ciudad || "";
@@ -1592,8 +1643,10 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                 AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)`;
 
             // Última dirección guardada con referencia (para ofrecerla en delivery).
+            // Con latitude/longitude el bot puede pasarlas a calcular_delivery y
+            // evitar geocodificar de nuevo (haversine directo, 0 llamadas a Google).
             const direccionPwa: any = await prisma.$queryRaw`
-                SELECT direccion, referencia FROM cliente_pwa_direccion
+                SELECT direccion, referencia, latitude, longitude FROM cliente_pwa_direccion
                 WHERE idcliente = ${idclienteDB}
                 ORDER BY idcliente_pwa_direccion DESC LIMIT 1`;
 
@@ -1629,6 +1682,8 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                 telefono: clienteDB[0].telefono,
                 direccion: direccionPwa[0]?.direccion || clienteDB[0].direccion,
                 referencia: direccionPwa[0]?.referencia || null,
+                direccion_lat: direccionPwa[0]?.latitude || null,
+                direccion_lon: direccionPwa[0]?.longitude || null,
                 total_pedidos: Number(totalPedidos[0]?.total || 0),
                 ultimo_pedido: historial[0]?.fecha || null,
                 historial: historial,

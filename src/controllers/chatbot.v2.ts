@@ -415,6 +415,9 @@ router.post("/calcular-delivery", async (req, res) => {
         // para obtener una dirección legible (antes quedaba "GPS" como dirección).
         // Sin GPS: geocodificar el texto de la dirección como siempre.
         let resultadoDistancia: any;
+        // true = distancia resuelta desde la dirección guardada del cliente
+        // (habitual): no pedirle referencia, el repartidor ya conoce.
+        let desdeGuardada = false;
         let direccionLegible = direccion;
 
         if (tieneGPS) {
@@ -503,6 +506,7 @@ router.post("/calcular-delivery", async (req, res) => {
                     Number(sede.latitude), Number(sede.longitude), coordsGuardadas.lat, coordsGuardadas.lng
                 ));
                 console.log(`calcular-delivery: direccion guardada reusada ("${coordsGuardadas.direccion}", ${distanciaGuardada} km) — sin geocoding`);
+                desdeGuardada = true;
                 direccionLegible = coordsGuardadas.direccion;
                 resultadoDistancia = {
                     success: true,
@@ -575,9 +579,9 @@ router.post("/calcular-delivery", async (req, res) => {
                 tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
                 direccion,
                 direccion_no_verificada: true,
-                mensaje: yaSugerida
+                mensaje: yaSugerida || referencia
                     ? 'Costo de delivery aplicado. Continúa el pedido con normalidad; NO le digas al cliente que no encontraste su dirección.'
-                    : 'Costo de delivery aplicado y el pedido CONTINÚA. NO le digas al cliente que no encontraste su dirección ni le exijas nada: solo sugiérele en una línea, junto con el siguiente paso del pedido, que si puede comparta su ubicación (clip 📎 → Ubicación) para que el repartidor llegue más rápido. Si no la comparte, el pedido sigue igual.'
+                    : 'Costo de delivery aplicado y el pedido CONTINÚA. NO le digas al cliente que no encontraste su dirección ni le exijas nada: solo pídele en una línea, junto con el siguiente paso del pedido, una referencia para que el repartidor llegue sin problemas, o que comparta su ubicación (clip 📎 → Ubicación). Si no responde eso, el pedido sigue igual.'
             });
         }
 
@@ -656,13 +660,22 @@ router.post("/calcular-delivery", async (req, res) => {
             ...(zonaNombre ? { zona: zonaNombre } : {})
         });
 
+        // Dirección de texto SIN referencia y no-habitual: pedirla en la misma
+        // respuesta, sin bloquear (ayuda al repartidor, único "pedido" permitido).
+        const pedirReferencia = !tieneGPS && !referencia && !desdeGuardada;
+        const partesMensaje = [
+            ...(zonaNombre ? [`Zona de reparto: ${zonaNombre}.`] : []),
+            ...(pedirReferencia ? ['Mientras continúas con el pedido, pídele en una línea una referencia para que el repartidor llegue sin problemas, o que comparta su ubicación (clip 📎 → Ubicación). NO bloquees el pedido esperando esa respuesta.'] : [])
+        ];
+
         res.status(200).json({
             success: true,
             disponible: true,
             costo: Number(costo.toFixed(2)),
             distancia_km: distanciaKm,
             tiempo_estimado: calcularTiempoEstimado(tiempoMin),
-            ...(zonaNombre ? { mensaje: `Zona de reparto: ${zonaNombre}`, zona: zonaNombre } : {}),
+            ...(zonaNombre ? { zona: zonaNombre } : {}),
+            ...(partesMensaje.length ? { mensaje: partesMensaje.join(' ') } : {}),
             // Dirección legible (reverse geocoding si vino GPS): el bot DEBE usarla
             // como la dirección del pedido en vez de "GPS".
             direccion: direccionLegible

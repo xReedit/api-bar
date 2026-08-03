@@ -22,7 +22,7 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 exports.__esModule = true;
-exports.describirDelivery = exports.resolverModo = exports.resolverZona = exports.validarZonas = exports.puntoEnZona = exports.puntoEnCirculo = exports.puntoEnPoligono = exports.haversineKm = void 0;
+exports.resolverResumenFormato = exports.describirDelivery = exports.resolverModo = exports.resolverZona = exports.validarZonas = exports.puntoEnZona = exports.puntoEnCirculo = exports.puntoEnPoligono = exports.haversineKm = void 0;
 var R_KM = 6371;
 /** Distancia en km entre dos puntos (fórmula del haversine). */
 var haversineKm = function (a, b) {
@@ -157,3 +157,12 @@ var describirDelivery = function (parametros) {
     return "Costo base S/".concat(Number((parametros === null || parametros === void 0 ? void 0 : parametros.km_base_costo) || 0), " hasta ").concat(Number((parametros === null || parametros === void 0 ? void 0 : parametros.km_base) || 0), " km, luego S/").concat(Number((parametros === null || parametros === void 0 ? void 0 : parametros.km_adicional_costo) || 0), " por km adicional");
 };
 exports.describirDelivery = describirDelivery;
+/**
+ * Formato del resumen de pedido que el bot manda por WhatsApp.
+ * 'imagen' = ticket PNG (files-bot/tickets/, sobreescrito por sesión);
+ * 'texto' = comportamiento histórico. Vive en parametros (JSON sin DDL).
+ */
+var resolverResumenFormato = function (parametros) {
+    return (parametros === null || parametros === void 0 ? void 0 : parametros.resumen_formato) === 'imagen' ? 'imagen' : 'texto';
+};
+exports.resolverResumenFormato = resolverResumenFormato;

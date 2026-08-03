@@ -84,6 +84,7 @@ var delivery_zonas_1 = require("../services/delivery.zonas");
 var cocinar_pedido_1 = require("../services/cocinar.pedido");
 var pedido_services_1 = __importDefault(require("../services/pedido.services"));
 var json_print_services_1 = require("../services/json.print.services");
+var ticket_image_service_1 = require("../services/ticket.image.service");
 var axios_1 = __importDefault(require("axios"));
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -341,11 +342,11 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
     });
 }); });
 router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, direccion, referencia, session_id_1, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, modo, tiempoGlobal, persistirDireccion, costo_1, direccionLegible_1, rev, zonas, sede, sedeTieneCoords, distanciaMaxima, ciudades, resultadoDistancia, direccionLegible, distancia, rev, distanciaKm, costo, tiempoMin, zonaNombre, r, kmBase, costoAdicional, costoBase, error_4;
+    var _a, idorg, idsede, direccion, referencia, session_id_1, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, modo, tiempoGlobal, persistirDireccion, costo_1, direccionLegible_1, rev, zonas, sede, sedeTieneCoords, distanciaMaxima, ciudades, resultadoDistancia, direccionLegible, distancia, rev, sugerida, costoEstimado, distanciaKm, costo, tiempoMin, zonaNombre, r, kmBase, costoAdicional, costoBase, error_4;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                _b.trys.push([0, 12, , 13]);
+                _b.trys.push([0, 15, , 16]);
                 _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, referencia = _a.referencia, session_id_1 = _a.session_id, lat = _a.lat, lon = _a.lon;
                 latCliente = Number(lat);
                 lonCliente = Number(lon);
@@ -414,16 +415,13 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 costo_1 = Number(parametros.costo_fijo || 0) || Number(parametros.km_base_costo || 0);
                 direccionLegible_1 = direccion;
                 rev = {};
-                if (!tieneGPS) return [3 /*break*/, 3];
+                if (!(tieneGPS && (!direccion || String(direccion).toUpperCase() === 'GPS'))) return [3 /*break*/, 3];
                 return [4 /*yield*/, geocoding_service_1.GeocodingService.obtenerDireccion(latCliente, lonCliente)];
             case 2:
                 rev = _b.sent();
-                if (rev.success && rev.direccion) {
-                    direccionLegible_1 = rev.direccion;
-                }
-                else if (!direccion || String(direccion).toUpperCase() === 'GPS') {
-                    direccionLegible_1 = "Ubicaci\u00F3n GPS (".concat(latCliente.toFixed(5), ", ").concat(lonCliente.toFixed(5), ")");
-                }
+                direccionLegible_1 = rev.success && rev.direccion
+                    ? rev.direccion
+                    : "Ubicaci\u00F3n GPS (".concat(latCliente.toFixed(5), ", ").concat(lonCliente.toFixed(5), ")");
                 _b.label = 3;
             case 3: return [4 /*yield*/, persistirDireccion({
                     direccion: direccionLegible_1,
@@ -436,7 +434,8 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     pais: rev.pais || '',
                     codigo: rev.codigo || '',
                     distancia_km: 0,
-                    costo_delivery: Number(costo_1.toFixed(2))
+                    costo_delivery: Number(costo_1.toFixed(2)),
+                    verificada: true
                 })];
             case 4:
                 _b.sent();
@@ -484,7 +483,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 }
                 resultadoDistancia = void 0;
                 direccionLegible = direccion;
-                if (!tieneGPS) return [3 /*break*/, 8];
+                if (!tieneGPS) return [3 /*break*/, 9];
                 distancia = sedeTieneCoords
                     ? geocoding_service_1.GeocodingService.calcularDistanciaHaversine(Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente)
                     : 0;
@@ -497,15 +496,16 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                             mensaje: "Direcci\u00F3n fuera del rango de cobertura (".concat(distancia.toFixed(2), " km, m\u00E1ximo ").concat(distanciaMaxima, " km)")
                         })];
                 }
+                rev = {};
+                if (!(!direccion || direccion.toUpperCase() === 'GPS')) return [3 /*break*/, 8];
                 return [4 /*yield*/, geocoding_service_1.GeocodingService.obtenerDireccion(latCliente, lonCliente)];
             case 7:
                 rev = _b.sent();
-                if (rev.success && rev.direccion) {
-                    direccionLegible = rev.direccion;
-                }
-                else if (!direccion || direccion.toUpperCase() === 'GPS') {
-                    direccionLegible = "Ubicaci\u00F3n GPS (".concat(latCliente.toFixed(5), ", ").concat(lonCliente.toFixed(5), ")");
-                }
+                direccionLegible = rev.success && rev.direccion
+                    ? rev.direccion
+                    : "Ubicaci\u00F3n GPS (".concat(latCliente.toFixed(5), ", ").concat(lonCliente.toFixed(5), ")");
+                _b.label = 8;
+            case 8:
                 resultadoDistancia = {
                     success: true,
                     lat: latCliente,
@@ -517,24 +517,63 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     pais: rev.pais || '',
                     codigo: rev.codigo || ''
                 };
-                return [3 /*break*/, 10];
-            case 8: return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion, Number(sede.latitude), Number(sede.longitude), 
+                return [3 /*break*/, 11];
+            case 9: return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion, Number(sede.latitude), Number(sede.longitude), 
                 // 999999 neutraliza el gate interno del servicio en modo zonas:
                 // ahí la cobertura la deciden las zonas, no km_limite.
                 modo === 'zonas' ? 999999 : distanciaMaxima, ciudades)];
-            case 9:
-                resultadoDistancia = _b.sent();
-                _b.label = 10;
             case 10:
-                if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
+                resultadoDistancia = _b.sent();
+                _b.label = 11;
+            case 11:
+                // ── Cascada anti-typo (solo direcciones de texto) ────────────────────
+                // Confianza baja = Google adivinó (typo, o vino del fallback de Places):
+                // confirmar con el cliente antes de cobrar, ofreciendo el GPS como plan B.
+                if (resultadoDistancia.success && resultadoDistancia.confianza === 'baja') {
+                    sugerida = resultadoDistancia.direccionFormateada || direccion;
                     return [2 /*return*/, res.status(200).json({
                             success: true,
                             disponible: false,
-                            mensaje: modo === 'zonas'
-                                ? 'No pude ubicar esa dirección con precisión. ¿Puedes compartirme tu ubicación por WhatsApp (clip 📎 → Ubicación) o darme la dirección con calle y número?'
-                                : (resultadoDistancia.error || 'No se pudo calcular la distancia')
+                            requiere_confirmacion: true,
+                            direccion_sugerida: sugerida,
+                            accion: 'Si el cliente confirma, vuelve a llamar calcular_delivery con direccion_sugerida tal cual.',
+                            mensaje: "\u00BFTe refieres a \"".concat(sugerida, "\"? \uD83E\uDD14 Si es as\u00ED dime \"s\u00ED\"; si no, mejor comp\u00E1rteme tu ubicaci\u00F3n por WhatsApp (clip \uD83D\uDCCE \u2192 Ubicaci\u00F3n) \uD83D\uDCCD")
                         })];
                 }
+                if (!(!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined)) return [3 /*break*/, 13];
+                // Fuera de cobertura = la dirección SÍ se ubicó; rechazar como siempre.
+                if (resultadoDistancia.fueraDeCobertura) {
+                    return [2 /*return*/, res.status(200).json({
+                            success: true,
+                            disponible: false,
+                            mensaje: resultadoDistancia.error || 'Dirección fuera del rango de cobertura'
+                        })];
+                }
+                costoEstimado = modo === 'zonas' && zonas.length > 0
+                    ? Math.min.apply(Math, zonas.map(function (z) { return z.costo; })) : Number(parametros.km_base_costo || 0);
+                return [4 /*yield*/, persistirDireccion({
+                        direccion: direccion,
+                        referencia: referencia || '',
+                        latitude: null,
+                        longitude: null,
+                        ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
+                        distancia_km: 0,
+                        costo_delivery: Number(costoEstimado.toFixed(2)),
+                        verificada: false
+                    })];
+            case 12:
+                _b.sent();
+                return [2 /*return*/, res.status(200).json({
+                        success: true,
+                        disponible: true,
+                        costo: Number(costoEstimado.toFixed(2)),
+                        distancia_km: 0,
+                        tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
+                        direccion: direccion,
+                        direccion_no_verificada: true,
+                        mensaje: 'No se pudo verificar la dirección en el mapa: se aplicó el costo base y el pedido puede continuar con normalidad. NO le digas al cliente que no encontraste su dirección; solo continúa.'
+                    })];
+            case 13:
                 distanciaKm = resultadoDistancia.distanciaKm;
                 costo = void 0;
                 tiempoMin = tiempoGlobal;
@@ -561,23 +600,23 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     costoBase = Number(parametros.km_base_costo || 0);
                     costo = costoBase + (distanciaKm > kmBase ? (distanciaKm - kmBase) * costoAdicional : 0);
                 }
-                return [4 /*yield*/, persistirDireccion(__assign({ direccion: direccionLegible, referencia: referencia || '', latitude: resultadoDistancia.lat, longitude: resultadoDistancia.lng, ciudad: resultadoDistancia.ciudad || '', provincia: resultadoDistancia.provincia || '', departamento: resultadoDistancia.departamento || '', pais: resultadoDistancia.pais || '', codigo: resultadoDistancia.codigo || '', distancia_km: distanciaKm, costo_delivery: Number(costo.toFixed(2)) }, (zonaNombre ? { zona: zonaNombre } : {})))];
-            case 11:
+                return [4 /*yield*/, persistirDireccion(__assign({ direccion: direccionLegible, referencia: referencia || '', latitude: resultadoDistancia.lat, longitude: resultadoDistancia.lng, ciudad: resultadoDistancia.ciudad || '', provincia: resultadoDistancia.provincia || '', departamento: resultadoDistancia.departamento || '', pais: resultadoDistancia.pais || '', codigo: resultadoDistancia.codigo || '', distancia_km: distanciaKm, costo_delivery: Number(costo.toFixed(2)), verificada: true }, (zonaNombre ? { zona: zonaNombre } : {})))];
+            case 14:
                 _b.sent();
                 res.status(200).json(__assign(__assign({ success: true, disponible: true, costo: Number(costo.toFixed(2)), distancia_km: distanciaKm, tiempo_estimado: calcularTiempoEstimado(tiempoMin) }, (zonaNombre ? { mensaje: "Zona de reparto: ".concat(zonaNombre), zona: zonaNombre } : {})), { 
                     // Dirección legible (reverse geocoding si vino GPS): el bot DEBE usarla
                     // como la dirección del pedido en vez de "GPS".
                     direccion: direccionLegible }));
-                return [3 /*break*/, 13];
-            case 12:
+                return [3 /*break*/, 16];
+            case 15:
                 error_4 = _b.sent();
                 console.error('Error en calcular_delivery:', error_4);
                 res.status(500).json({
                     success: false,
                     error: 'Error al calcular delivery'
                 });
-                return [3 /*break*/, 13];
-            case 13: return [2 /*return*/];
+                return [3 /*break*/, 16];
+            case 16: return [2 /*return*/];
         }
     });
 }); });
@@ -755,13 +794,13 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
     });
 }); });
 router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, estructuraJson, error_6, msg;
-    var _b, _c;
-    return __generator(this, function (_d) {
-        switch (_d.label) {
+    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, cliente_nombre, hora_programada, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, numeroResumen, direccionPreview, prevRow, direccionData, error_6, estructuraJson, imagenUrl, resumenRespuesta, numeroResumenRespuesta, configDelivery, sedeInfo, confPrint, ahoraLima, direccionTicket, descripcionCanal, horaEntrega, total, error_7, error_8, msg;
+    var _b, _c, _d, _e, _f;
+    return __generator(this, function (_g) {
+        switch (_g.label) {
             case 0:
-                _d.trys.push([0, 3, , 4]);
-                _a = req.body, session_id = _a.session_id, idsede = _a.idsede, items = _a.items, tipo_entrega = _a.tipo_entrega, direccion = _a.direccion, costo_delivery = _a.costo_delivery;
+                _g.trys.push([0, 15, , 16]);
+                _a = req.body, session_id = _a.session_id, idsede = _a.idsede, items = _a.items, tipo_entrega = _a.tipo_entrega, direccion = _a.direccion, costo_delivery = _a.costo_delivery, cliente_nombre = _a.cliente_nombre, hora_programada = _a.hora_programada;
                 if (!items || items.length === 0) {
                     return [2 /*return*/, res.status(400).json({
                             success: false,
@@ -800,26 +839,131 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 };
                 return [4 /*yield*/, (0, cocinar_pedido_1.getEstructuraPedido)(itemsParaCocinar, tipoEntregaObj, datosEntrega, Number(idsede))];
             case 1:
-                estructuraPedidoCocinada = _d.sent();
+                estructuraPedidoCocinada = _g.sent();
                 tipoConsumo = (_c = (_b = estructuraPedidoCocinada.p_body) === null || _b === void 0 ? void 0 : _b.tipoconsumo) === null || _c === void 0 ? void 0 : _c[0];
                 secciones = (tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.secciones) || [];
                 subtotales = estructuraPedidoCocinada.p_subtotales || [];
                 pedidoService = new pedido_services_1["default"]();
                 ticketFormateado = pedidoService.getResumenPedidoShowCliente(secciones, tipoConsumo, subtotales);
                 previewId = session_id;
+                numeroResumen = 1;
+                direccionPreview = null;
+                _g.label = 2;
+            case 2:
+                _g.trys.push([2, 4, , 5]);
+                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT estado, JSON_EXTRACT(estructura, '$._resumen_num') AS num, direccion_cliente FROM pedido_preview WHERE id = ? LIMIT 1", previewId)];
+            case 3:
+                prevRow = _g.sent();
+                numeroResumen = (((_d = prevRow === null || prevRow === void 0 ? void 0 : prevRow[0]) === null || _d === void 0 ? void 0 : _d.estado) === 'pending' && Number(prevRow[0].num) > 0)
+                    ? Number(prevRow[0].num) + 1
+                    : 1;
+                // Parseo de direccion_cliente en su propio try: un JSON malformado
+                // ahí no debe resetear el correlativo ya calculado arriba.
+                try {
+                    if ((_e = prevRow === null || prevRow === void 0 ? void 0 : prevRow[0]) === null || _e === void 0 ? void 0 : _e.direccion_cliente) {
+                        direccionData = typeof prevRow[0].direccion_cliente === 'string'
+                            ? JSON.parse(prevRow[0].direccion_cliente)
+                            : prevRow[0].direccion_cliente;
+                        direccionPreview = (direccionData === null || direccionData === void 0 ? void 0 : direccionData.direccion) || null;
+                    }
+                }
+                catch (errorDireccion) {
+                    console.error('resumen-pedido: fallo parseando direccion_cliente del preview:', errorDireccion.message);
+                }
+                return [3 /*break*/, 5];
+            case 4:
+                error_6 = _g.sent();
+                console.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error_6.message);
+                numeroResumen = 1;
+                return [3 /*break*/, 5];
+            case 5:
+                // Clave aditiva top-level: los consumidores de esta estructura leen
+                // claves específicas (p_body, p_subtotales, p_header), no iteran
+                // sobre todas las keys, así que no les afecta.
+                estructuraPedidoCocinada._resumen_num = numeroResumen;
                 estructuraJson = JSON.stringify(estructuraPedidoCocinada);
                 return [4 /*yield*/, prisma.$queryRawUnsafe("INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado)\n             VALUES (?, ?, ?, ?)\n             ON DUPLICATE KEY UPDATE\n             estructura = VALUES(estructura),\n             ticket_formateado = VALUES(ticket_formateado),\n             estado = 'pending',\n             recordatorios = 0,\n             last_recordatorio_at = NULL,\n             created_at = CURRENT_TIMESTAMP", previewId, estructuraJson, ticketFormateado, 'pending')];
-            case 2:
-                _d.sent();
-                res.status(200).json({
-                    success: true,
-                    resumen: ticketFormateado
+            case 6:
+                _g.sent();
+                imagenUrl = null;
+                resumenRespuesta = ticketFormateado;
+                numeroResumenRespuesta = null;
+                _g.label = 7;
+            case 7:
+                _g.trys.push([7, 13, , 14]);
+                if (!session_id) return [3 /*break*/, 12];
+                return [4 /*yield*/, prisma.sede_costo_delivery.findFirst({
+                        where: { idsede: Number(idsede), estado: '0' },
+                        select: { parametros: true }
+                    })];
+            case 8:
+                configDelivery = _g.sent();
+                if (!((0, delivery_zonas_1.resolverResumenFormato)(configDelivery === null || configDelivery === void 0 ? void 0 : configDelivery.parametros) === 'imagen')) return [3 /*break*/, 12];
+                return [4 /*yield*/, prisma.sede.findUnique({
+                        where: { idsede: Number(idsede) },
+                        select: { nombre: true, logo64: true }
+                    })];
+            case 9:
+                sedeInfo = _g.sent();
+                return [4 /*yield*/, prisma.$queryRawUnsafe('SELECT logo FROM conf_print WHERE idsede = ? LIMIT 1', Number(idsede))];
+            case 10:
+                confPrint = _g.sent();
+                ahoraLima = new Date().toLocaleString('es-PE', {
+                    timeZone: 'America/Lima',
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
                 });
-                return [3 /*break*/, 4];
-            case 3:
-                error_6 = _d.sent();
-                console.error('Error en resumen-pedido:', error_6);
-                msg = ((error_6 === null || error_6 === void 0 ? void 0 : error_6.message) || '').toLowerCase();
+                direccionTicket = direccion || direccionPreview || undefined;
+                descripcionCanal = String((tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.descripcion) || '').toLowerCase();
+                horaEntrega = void 0;
+                if (hora_programada) {
+                    // Sinónimos de canal según la convención del repo
+                    // (pedido.services.ts): llevar/recog/recoj y local/mesa/salon.
+                    if (descripcionCanal.includes('llevar') || descripcionCanal.includes('recog') || descripcionCanal.includes('recoj')) {
+                        horaEntrega = { etiqueta: 'Recojo', valor: hora_programada };
+                    }
+                    else if (descripcionCanal.includes('local') || descripcionCanal.includes('mesa') || descripcionCanal.includes('salon')) {
+                        horaEntrega = { etiqueta: 'Reserva', valor: hora_programada };
+                    }
+                }
+                return [4 /*yield*/, (0, ticket_image_service_1.generarYSubirTicket)(session_id, {
+                        nombreSede: (sedeInfo === null || sedeInfo === void 0 ? void 0 : sedeInfo.nombre) || '',
+                        canal: (tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.descripcion) || '',
+                        secciones: secciones,
+                        subtotales: subtotales,
+                        logoArchivo: ((_f = confPrint === null || confPrint === void 0 ? void 0 : confPrint[0]) === null || _f === void 0 ? void 0 : _f.logo) || null,
+                        logo64: (sedeInfo === null || sedeInfo === void 0 ? void 0 : sedeInfo.logo64) || null,
+                        numeroResumen: String(numeroResumen),
+                        hora: ahoraLima,
+                        cliente: cliente_nombre || undefined,
+                        direccion: direccionTicket,
+                        horaEntrega: horaEntrega
+                    })];
+            case 11:
+                imagenUrl = _g.sent();
+                if (imagenUrl) {
+                    total = subtotales.length
+                        ? parseFloat(subtotales[subtotales.length - 1].importe).toFixed(2)
+                        : '0.00';
+                    numeroResumenRespuesta = String(numeroResumen);
+                    resumenRespuesta = "Resumen #".concat(numeroResumen, " \u2014 Pedido *").concat((tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.descripcion) || '', "* \u2014 Total *S/ ").concat(total, "* \uD83E\uDDFE (detalle en el ticket adjunto)");
+                }
+                _g.label = 12;
+            case 12: return [3 /*break*/, 14];
+            case 13:
+                error_7 = _g.sent();
+                console.error('resumen-pedido: fallo modo imagen, usando texto:', error_7.message);
+                imagenUrl = null;
+                numeroResumenRespuesta = null;
+                resumenRespuesta = ticketFormateado;
+                return [3 /*break*/, 14];
+            case 14:
+                res.status(200).json(__assign({ success: true, resumen: resumenRespuesta }, (imagenUrl ? { imagen_url: imagenUrl, numero_resumen: numeroResumenRespuesta } : {})));
+                return [3 /*break*/, 16];
+            case 15:
+                error_8 = _g.sent();
+                console.error('Error en resumen-pedido:', error_8);
+                msg = ((error_8 === null || error_8 === void 0 ? void 0 : error_8.message) || '').toLowerCase();
                 if (msg.includes('canal de consumo no encontrado')) {
                     return [2 /*return*/, res.status(200).json({
                             success: false,
@@ -830,8 +974,8 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                     success: false,
                     error: 'Error al generar resumen del pedido'
                 });
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
+                return [3 /*break*/, 16];
+            case 16: return [2 /*return*/];
         }
     });
 }); });
@@ -840,7 +984,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
     // Reserva (consumo en el local): hora de llegada y cantidad de personas.
     reserva_hora, reserva_personas, 
     // Pedido programado (recojo/delivery a una hora): "13:00"
-    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_7;
+    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_9;
     var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     return __generator(this, function (_p) {
         switch (_p.label) {
@@ -854,16 +998,34 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                             error: 'idresumen es requerido'
                         })];
                 }
-                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT id, estructura, estado, direccion_cliente FROM pedido_preview WHERE id = ? AND estado = 'pending' LIMIT 1", idresumen)];
+                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT id, estructura, estado, direccion_cliente, idpedido,\n                    TIMESTAMPDIFF(MINUTE, created_at, NOW()) AS min_desde_resumen\n             FROM pedido_preview WHERE id = ? LIMIT 1", idresumen)];
             case 1:
                 preview = _p.sent();
-                if (!preview || preview.length === 0) {
+                // Idempotencia: el bot a veces llama confirmar_pedido dos veces seguidas
+                // (ej. el cliente manda un sticker justo después de confirmar). Si el
+                // pedido ya se creó hace poco, respondemos el MISMO pedido en vez de 404
+                // para que el bot no relate un falso error al cliente.
+                if ((preview === null || preview === void 0 ? void 0 : preview.length) > 0 && preview[0].estado === 'confirmed'
+                    && preview[0].idpedido && Number(preview[0].min_desde_resumen) <= 15) {
+                    return [2 /*return*/, res.status(200).json({
+                            success: true,
+                            mensaje: 'El pedido ya había sido confirmado',
+                            idpedido: preview[0].idpedido,
+                            numero_pedido: preview[0].idpedido,
+                            ya_confirmado: true
+                        })];
+                }
+                if (!preview || preview.length === 0 || preview[0].estado !== 'pending') {
                     return [2 /*return*/, res.status(404).json({
                             success: false,
                             error: 'Resumen de pedido no encontrado o ya fue confirmado'
                         })];
                 }
                 estructuraPedidoCocinada_1 = preview[0].estructura;
+                // _resumen_num es un contador interno (correlativo de resúmenes por
+                // conversación, ver /resumen-pedido) — no debe filtrarse al pedido
+                // confirmado que se reenvía completo al legacy (send-bot-pedido).
+                delete estructuraPedidoCocinada_1._resumen_num;
                 datosDeliveryGuardados = null;
                 if (preview[0].direccion_cliente) {
                     try {
@@ -1007,7 +1169,10 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 arrDatosDelivery = {};
                 if (isDelivery) {
                     direccionDelivery = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.direccion) || infoCliente.direccion || "";
-                    referenciaDelivery = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.referencia) || "";
+                    referenciaDelivery = [
+                        (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.referencia) || "",
+                        (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.verificada) === false ? "(DIRECCION NO VERIFICADA - confirmar con cliente)" : ""
+                    ].filter(Boolean).join(" ");
                     latitudeDelivery = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.latitude) || "";
                     longitudeDelivery = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.longitude) || "";
                     ciudadDelivery = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.ciudad) || "";
@@ -1218,7 +1383,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 });
                 return [3 /*break*/, 22];
             case 21:
-                error_7 = _p.sent();
+                error_9 = _p.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al crear pedido'
@@ -1230,7 +1395,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
 }); });
 // consultar pedido por session_id
 router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var session_id, pedidoPreview, pedido, infoPedido, pedidoSerializable, resultado, error_8;
+    var session_id, pedidoPreview, pedido, infoPedido, pedidoSerializable, resultado, error_10;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -1278,7 +1443,7 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
                 });
                 return [3 /*break*/, 5];
             case 4:
-                error_8 = _a.sent();
+                error_10 = _a.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al consultar pedido'
@@ -1289,12 +1454,12 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
     });
 }); });
 router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, idsAceptados_2, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, idclienteDB, totalPedidos, direccionPwa, historialDB, historial, rpt, carta, productos_2, itemsVistos_2, referenciaDB, referencia_chatbot, error_9;
-    var _b, _c, _d, _e, _f, _g;
-    return __generator(this, function (_h) {
-        switch (_h.label) {
+    var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, idsAceptados_2, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, idclienteDB, totalPedidos, direccionPwa, historialDB, historial, rpt, carta, productos_2, itemsVistos_2, referenciaDB, referencia_chatbot, error_11;
+    var _b, _c, _d, _e, _f, _g, _h, _j;
+    return __generator(this, function (_k) {
+        switch (_k.label) {
             case 0:
-                _h.trys.push([0, 14, , 15]);
+                _k.trys.push([0, 14, , 15]);
                 _a = req.params, idorg = _a.idorg, idsede = _a.idsede, telefono = _a.telefono;
                 return [4 /*yield*/, prisma.sede.findFirst({
                         where: {
@@ -1311,7 +1476,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 1:
-                sede = _h.sent();
+                sede = _k.sent();
                 if (!sede) {
                     return [2 /*return*/, res.status(404).json({
                             success: false,
@@ -1329,7 +1494,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 2:
-                categoria = _h.sent();
+                categoria = _k.sent();
                 return [4 /*yield*/, prisma.sede_costo_delivery.findFirst({
                         where: {
                             idsede: Number(idsede),
@@ -1337,7 +1502,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 3:
-                sedeConfig = _h.sent();
+                sedeConfig = _k.sent();
                 return [4 /*yield*/, prisma.tipo_consumo.findMany({
                         where: {
                             idsede: Number(idsede),
@@ -1350,7 +1515,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 4:
-                tiposEntrega = _h.sent();
+                tiposEntrega = _k.sent();
                 return [4 /*yield*/, prisma.tipo_pago.findMany({
                         where: {
                             estado: 0,
@@ -1362,7 +1527,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 5:
-                metodosPago = _h.sent();
+                metodosPago = _k.sent();
                 idsAceptados_2 = String(sede.metodo_pago_aceptados_chatbot || '')
                     .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
                 if (idsAceptados_2.length > 0) {
@@ -1370,7 +1535,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 }
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_17 || (templateObject_17 = __makeTemplateObject(["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"], ["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"])), idsede)];
             case 6:
-                horariosDB = _h.sent();
+                horariosDB = _k.sent();
                 horaActual = new Date();
                 diaActual = horaActual.getDay();
                 mapaDias_2 = {
@@ -1451,19 +1616,19 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 telefonoLimpio = telefono.replace(/\s/g, '');
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_18 || (templateObject_18 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoLimpio + '%')];
             case 7:
-                clienteDB = _h.sent();
+                clienteDB = _k.sent();
                 cliente = null;
                 if (!(clienteDB && clienteDB.length > 0)) return [3 /*break*/, 11];
                 idclienteDB = clienteDB[0].idcliente;
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_19 || (templateObject_19 = __makeTemplateObject(["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"], ["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"])), idclienteDB, idsede)];
             case 8:
-                totalPedidos = _h.sent();
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_20 || (templateObject_20 = __makeTemplateObject(["\n                SELECT direccion, referencia FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"], ["\n                SELECT direccion, referencia FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"])), idclienteDB)];
+                totalPedidos = _k.sent();
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_20 || (templateObject_20 = __makeTemplateObject(["\n                SELECT direccion, referencia, latitude, longitude FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"], ["\n                SELECT direccion, referencia, latitude, longitude FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"])), idclienteDB)];
             case 9:
-                direccionPwa = _h.sent();
+                direccionPwa = _k.sent();
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_21 || (templateObject_21 = __makeTemplateObject(["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"], ["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"])), idclienteDB, idsede)];
             case 10:
-                historialDB = _h.sent();
+                historialDB = _k.sent();
                 historial = (historialDB || [])
                     .filter(function (h) { return h.items; })
                     .map(function (h) { return ({
@@ -1479,16 +1644,18 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                     telefono: clienteDB[0].telefono,
                     direccion: ((_b = direccionPwa[0]) === null || _b === void 0 ? void 0 : _b.direccion) || clienteDB[0].direccion,
                     referencia: ((_c = direccionPwa[0]) === null || _c === void 0 ? void 0 : _c.referencia) || null,
-                    total_pedidos: Number(((_d = totalPedidos[0]) === null || _d === void 0 ? void 0 : _d.total) || 0),
-                    ultimo_pedido: ((_e = historial[0]) === null || _e === void 0 ? void 0 : _e.fecha) || null,
+                    direccion_lat: ((_d = direccionPwa[0]) === null || _d === void 0 ? void 0 : _d.latitude) || null,
+                    direccion_lon: ((_e = direccionPwa[0]) === null || _e === void 0 ? void 0 : _e.longitude) || null,
+                    total_pedidos: Number(((_f = totalPedidos[0]) === null || _f === void 0 ? void 0 : _f.total) || 0),
+                    ultimo_pedido: ((_g = historial[0]) === null || _g === void 0 ? void 0 : _g.fecha) || null,
                     historial: historial,
                     encontrado: true
                 };
-                _h.label = 11;
+                _k.label = 11;
             case 11: return [4 /*yield*/, prisma.$queryRaw(templateObject_22 || (templateObject_22 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(", ",", ",1)"], ["call porcedure_pwa_pedido_carta(", ",", ",1)"])), idorg, idsede)];
             case 12:
-                rpt = _h.sent();
-                carta = ((_f = rpt[0]) === null || _f === void 0 ? void 0 : _f.f0) || [];
+                rpt = _k.sent();
+                carta = ((_h = rpt[0]) === null || _h === void 0 ? void 0 : _h.f0) || [];
                 productos_2 = [];
                 itemsVistos_2 = new Set();
                 carta.forEach(function (categoria) {
@@ -1514,8 +1681,8 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 });
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_23 || (templateObject_23 = __makeTemplateObject(["\n            SELECT referencia FROM chatbot_cliente_referencia\n            WHERE idsede = ", "\n              AND REPLACE(telefono, ' ', '') LIKE ", "\n            ORDER BY idchatbot_cliente_referencia DESC LIMIT 1"], ["\n            SELECT referencia FROM chatbot_cliente_referencia\n            WHERE idsede = ", "\n              AND REPLACE(telefono, ' ', '') LIKE ", "\n            ORDER BY idchatbot_cliente_referencia DESC LIMIT 1"])), idsede, '%' + telefonoLimpio + '%')];
             case 13:
-                referenciaDB = _h.sent();
-                referencia_chatbot = ((_g = referenciaDB === null || referenciaDB === void 0 ? void 0 : referenciaDB[0]) === null || _g === void 0 ? void 0 : _g.referencia) || '';
+                referenciaDB = _k.sent();
+                referencia_chatbot = ((_j = referenciaDB === null || referenciaDB === void 0 ? void 0 : referenciaDB[0]) === null || _j === void 0 ? void 0 : _j.referencia) || '';
                 res.status(200).json({
                     negocio: negocio,
                     cliente: cliente,
@@ -1524,10 +1691,10 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 });
                 return [3 /*break*/, 15];
             case 14:
-                error_9 = _h.sent();
+                error_11 = _k.sent();
                 // Log del error real: antes era mudo y un fallo aquí dejaba al bot
                 // sin carta/menú sin pista alguna en los logs.
-                console.error('Error en /chatbot/contexto:', error_9);
+                console.error('Error en /chatbot/contexto:', error_11);
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener contexto'

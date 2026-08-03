@@ -39,9 +39,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 exports.__esModule = true;
-exports.GeocodingService = void 0;
+exports.GeocodingService = exports.clasificarConfianza = void 0;
 var axios_1 = __importDefault(require("axios"));
 var getApiKey = function () { return process.env.GOOGLE_MAPS_API_KEY || ''; };
+/**
+ * Clasifica qué tan confiable es un resultado de la Geocoding API.
+ * partial_match = Google no encontró exacto y devolvió lo más parecido;
+ * locality/APPROXIMATE = solo ubicó la ciudad (típico con calles mal escritas).
+ */
+var clasificarConfianza = function (result) {
+    var _a;
+    if (result === null || result === void 0 ? void 0 : result.partial_match)
+        return 'baja';
+    var types = (result === null || result === void 0 ? void 0 : result.types) || [];
+    if (types.includes('locality'))
+        return 'baja';
+    if (((_a = result === null || result === void 0 ? void 0 : result.geometry) === null || _a === void 0 ? void 0 : _a.location_type) === 'APPROXIMATE')
+        return 'baja';
+    return 'alta';
+};
+exports.clasificarConfianza = clasificarConfianza;
 var GeocodingService = /** @class */ (function () {
     function GeocodingService() {
     }
@@ -165,11 +182,11 @@ var GeocodingService = /** @class */ (function () {
     };
     GeocodingService.calcularDistanciaRuta = function (direccion, latComercio, lngComercio, kmLimite, ciudades) {
         return __awaiter(this, void 0, void 0, function () {
-            var apiKey, url, ciudadesABuscar, _loop_1, this_1, _i, ciudadesABuscar_1, ciudad, state_1, error_3;
+            var apiKey, url, ciudadesABuscar, _loop_1, this_1, _i, ciudadesABuscar_1, ciudad, state_1, lugar, distanciaKm, error_3;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 5, , 6]);
+                        _a.trys.push([0, 6, , 7]);
                         apiKey = getApiKey();
                         if (!apiKey) {
                             return [2 /*return*/, {
@@ -180,7 +197,7 @@ var GeocodingService = /** @class */ (function () {
                         url = "https://maps.googleapis.com/maps/api/geocode/json";
                         ciudadesABuscar = ciudades && ciudades.length > 0 ? ciudades : [''];
                         _loop_1 = function (ciudad) {
-                            var direccionCompleta, response, location, addressComponents, ciudadExtraida, provinciaExtraida, departamentoExtraido, paisExtraido, codigoExtraido, distanciaKm;
+                            var direccionCompleta, response, location, addressComponents, ciudadExtraida, provinciaExtraida, departamentoExtraido, paisExtraido, codigoExtraido, distanciaKm, confianza;
                             return __generator(this, function (_b) {
                                 switch (_b.label) {
                                     case 0:
@@ -198,6 +215,11 @@ var GeocodingService = /** @class */ (function () {
                                     case 1:
                                         response = _b.sent();
                                         if (response.data.status !== 'OK' || !response.data.results || response.data.results.length === 0) {
+                                            // Distinguir "no existe" de errores de API (key, billing, etc.):
+                                            // antes REQUEST_DENIED se logueaba igual que dirección no hallada.
+                                            if (!['OK', 'ZERO_RESULTS'].includes(response.data.status)) {
+                                                console.error('Geocoding API:', response.data.status, response.data.error_message || '');
+                                            }
                                             console.log("No se encontr\u00F3 direcci\u00F3n con ciudad \"".concat(ciudad, "\""));
                                             return [2 /*return*/, "continue"];
                                         }
@@ -227,9 +249,11 @@ var GeocodingService = /** @class */ (function () {
                                         });
                                         distanciaKm = this_1.calcularDistanciaHaversine(latComercio, lngComercio, location.lat, location.lng);
                                         console.log("Encontrado con ciudad \"".concat(ciudad, "\": ").concat(distanciaKm, " km (l\u00EDnea recta)"));
-                                        if (distanciaKm > kmLimite) {
+                                        confianza = (0, exports.clasificarConfianza)(response.data.results[0]);
+                                        if (confianza === 'alta' && distanciaKm > kmLimite) {
                                             return [2 /*return*/, { value: {
                                                         success: false,
+                                                        fueraDeCobertura: true,
                                                         error: "Direcci\u00F3n fuera del rango de cobertura (".concat(distanciaKm.toFixed(2), " km, m\u00E1ximo ").concat(kmLimite, " km)")
                                                     } }];
                                         }
@@ -242,7 +266,9 @@ var GeocodingService = /** @class */ (function () {
                                                     provincia: provinciaExtraida,
                                                     departamento: departamentoExtraido,
                                                     pais: paisExtraido,
-                                                    codigo: codigoExtraido
+                                                    codigo: codigoExtraido,
+                                                    confianza: confianza,
+                                                    direccionFormateada: response.data.results[0].formatted_address
                                                 } }];
                                 }
                             });
@@ -262,18 +288,33 @@ var GeocodingService = /** @class */ (function () {
                     case 3:
                         _i++;
                         return [3 /*break*/, 1];
-                    case 4: return [2 /*return*/, {
-                            success: false,
-                            error: 'No se pudo encontrar la dirección en ninguna de las ciudades de cobertura'
-                        }];
+                    case 4: return [4 /*yield*/, this.buscarConPlaces(direccion, ciudadesABuscar[0] || '', latComercio, lngComercio)];
                     case 5:
+                        lugar = _a.sent();
+                        if (lugar.success && lugar.lat !== undefined && lugar.lng !== undefined) {
+                            distanciaKm = this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng);
+                            console.log("Places fallback encontr\u00F3 \"".concat(lugar.direccion, "\": ").concat(distanciaKm, " km"));
+                            return [2 /*return*/, {
+                                    success: true,
+                                    lat: lugar.lat,
+                                    lng: lugar.lng,
+                                    distanciaKm: Math.round(distanciaKm * 100) / 100,
+                                    confianza: 'baja',
+                                    direccionFormateada: lugar.direccion
+                                }];
+                        }
+                        return [2 /*return*/, {
+                                success: false,
+                                error: 'No se pudo encontrar la dirección en ninguna de las ciudades de cobertura'
+                            }];
+                    case 6:
                         error_3 = _a.sent();
                         console.error('Error al geocodificar:', error_3);
                         return [2 /*return*/, {
                                 success: false,
                                 error: error_3.message || 'Error al calcular distancia'
                             }];
-                    case 6: return [2 /*return*/];
+                    case 7: return [2 /*return*/];
                 }
             });
         });
@@ -306,6 +347,44 @@ var GeocodingService = /** @class */ (function () {
                                 success: false,
                                 error: error_4.message || 'Error al calcular distancia'
                             }];
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    // Places Text Search: tolera direcciones mal escritas ("jr calao" → Jr.
+    // Callao). Solo se usa como fallback cuando la Geocoding API no encontró.
+    GeocodingService.buscarConPlaces = function (direccion, ciudad, lat, lng) {
+        var _a, _b, _c, _d, _e, _f, _g;
+        return __awaiter(this, void 0, void 0, function () {
+            var query, response, r, error_5;
+            return __generator(this, function (_h) {
+                switch (_h.label) {
+                    case 0:
+                        _h.trys.push([0, 2, , 3]);
+                        query = ciudad ? "".concat(direccion, ", ").concat(ciudad, ", Peru") : "".concat(direccion, ", Peru");
+                        return [4 /*yield*/, axios_1["default"].get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+                                params: { query: query, location: "".concat(lat, ",").concat(lng), radius: 15000, region: 'pe', key: getApiKey() }
+                            })];
+                    case 1:
+                        response = _h.sent();
+                        r = (_b = (_a = response.data) === null || _a === void 0 ? void 0 : _a.results) === null || _b === void 0 ? void 0 : _b[0];
+                        if (((_c = response.data) === null || _c === void 0 ? void 0 : _c.status) !== 'OK' || !((_d = r === null || r === void 0 ? void 0 : r.geometry) === null || _d === void 0 ? void 0 : _d.location)) {
+                            if (!['OK', 'ZERO_RESULTS'].includes((_e = response.data) === null || _e === void 0 ? void 0 : _e.status)) {
+                                console.error('Places API:', (_f = response.data) === null || _f === void 0 ? void 0 : _f.status, ((_g = response.data) === null || _g === void 0 ? void 0 : _g.error_message) || '');
+                            }
+                            return [2 /*return*/, { success: false }];
+                        }
+                        return [2 /*return*/, {
+                                success: true,
+                                direccion: r.formatted_address || r.name,
+                                lat: r.geometry.location.lat,
+                                lng: r.geometry.location.lng
+                            }];
+                    case 2:
+                        error_5 = _h.sent();
+                        console.error('Error en Places fallback:', error_5.message);
+                        return [2 /*return*/, { success: false }];
                     case 3: return [2 /*return*/];
                 }
             });

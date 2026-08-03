@@ -110,10 +110,10 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
     partes.push(`<line x1="${PAD}" y1="${y}" x2="${W - PAD}" y2="${y}" stroke="#cccccc" stroke-width="2" stroke-dasharray="6 6"/>`);
     y += 34;
     if (d.hora) {
-        partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" fill="#999999">${esc(d.hora)}</text>`);
+        partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" font-weight="bold" fill="#999999">${esc(d.hora)}</text>`);
         y += 26;
     }
-    partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" fill="#999999">papaya.com.pe</text>`);
+    partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" font-weight="bold" fill="#999999">papaya.com.pe</text>`);
 
     y += 10;
     const height = y + 20;

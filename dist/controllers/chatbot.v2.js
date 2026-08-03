@@ -485,7 +485,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 direccionLegible = direccion;
                 if (!tieneGPS) return [3 /*break*/, 9];
                 distancia = sedeTieneCoords
-                    ? geocoding_service_1.GeocodingService.calcularDistanciaHaversine(Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente)
+                    ? (0, geocoding_service_1.estimarKmRuta)(geocoding_service_1.GeocodingService.calcularDistanciaHaversine(Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente))
                     : 0;
                 // km_limite solo gobierna el modo variable: en zonas la cobertura la
                 // deciden las zonas dibujadas.

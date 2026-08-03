@@ -39,9 +39,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 exports.__esModule = true;
-exports.GeocodingService = exports.clasificarConfianza = void 0;
+exports.GeocodingService = exports.clasificarConfianza = exports.estimarKmRuta = void 0;
 var axios_1 = __importDefault(require("axios"));
 var getApiKey = function () { return process.env.GOOGLE_MAPS_API_KEY || ''; };
+/**
+ * La línea recta (haversine) subestima la ruta real de reparto. Factor de
+ * desvío urbano típico: ruta ≈ recta × 1.3, ajustable por env
+ * DELIVERY_FACTOR_RUTA sin deploy. Techo conocido: si algún día se necesita
+ * el km exacto, upgrade a Routes API/Mapbox con fallback a esto.
+ */
+var estimarKmRuta = function (kmRecta) {
+    var factor = Number(process.env.DELIVERY_FACTOR_RUTA) || 1.3;
+    return Math.round(kmRecta * factor * 100) / 100;
+};
+exports.estimarKmRuta = estimarKmRuta;
 /**
  * Clasifica qué tan confiable es un resultado de la Geocoding API.
  * partial_match = Google no encontró exacto y devolvió lo más parecido;
@@ -247,8 +258,8 @@ var GeocodingService = /** @class */ (function () {
                                                 codigoExtraido = component.long_name;
                                             }
                                         });
-                                        distanciaKm = this_1.calcularDistanciaHaversine(latComercio, lngComercio, location.lat, location.lng);
-                                        console.log("Encontrado con ciudad \"".concat(ciudad, "\": ").concat(distanciaKm, " km (l\u00EDnea recta)"));
+                                        distanciaKm = (0, exports.estimarKmRuta)(this_1.calcularDistanciaHaversine(latComercio, lngComercio, location.lat, location.lng));
+                                        console.log("Encontrado con ciudad \"".concat(ciudad, "\": ").concat(distanciaKm, " km (ruta estimada = recta \u00D7 factor)"));
                                         confianza = (0, exports.clasificarConfianza)(response.data.results[0]);
                                         if (confianza === 'alta' && distanciaKm > kmLimite) {
                                             return [2 /*return*/, { value: {
@@ -292,8 +303,8 @@ var GeocodingService = /** @class */ (function () {
                     case 5:
                         lugar = _a.sent();
                         if (lugar.success && lugar.lat !== undefined && lugar.lng !== undefined) {
-                            distanciaKm = this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng);
-                            console.log("Places fallback encontr\u00F3 \"".concat(lugar.direccion, "\": ").concat(distanciaKm, " km"));
+                            distanciaKm = (0, exports.estimarKmRuta)(this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng));
+                            console.log("Places fallback encontr\u00F3 \"".concat(lugar.direccion, "\": ").concat(distanciaKm, " km (ruta estimada)"));
                             return [2 /*return*/, {
                                     success: true,
                                     lat: lugar.lat,

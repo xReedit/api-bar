@@ -1,6 +1,6 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
-import { GeocodingService } from "../services/geocoding.service";
+import { GeocodingService, estimarKmRuta } from "../services/geocoding.service";
 import { describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
@@ -418,10 +418,12 @@ router.post("/calcular-delivery", async (req, res) => {
         let direccionLegible = direccion;
 
         if (tieneGPS) {
+            // Ruta estimada (recta × factor de desvío): mismo criterio que el
+            // path de direcciones de texto para costo y km_limite.
             const distancia = sedeTieneCoords
-                ? GeocodingService.calcularDistanciaHaversine(
+                ? estimarKmRuta(GeocodingService.calcularDistanciaHaversine(
                     Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente
-                )
+                ))
                 : 0;
 
             // km_limite solo gobierna el modo variable: en zonas la cobertura la

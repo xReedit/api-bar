@@ -1,5 +1,30 @@
-import { describe, it, expect } from 'vitest';
-import { clasificarConfianza } from './geocoding.service';
+import { describe, it, expect, afterEach } from 'vitest';
+import { clasificarConfianza, estimarKmRuta } from './geocoding.service';
+
+describe('estimarKmRuta', () => {
+    afterEach(() => {
+        delete process.env.DELIVERY_FACTOR_RUTA;
+    });
+
+    it('aplica el factor de desvío urbano 1.3 por defecto', () => {
+        expect(estimarKmRuta(10)).toBe(13);
+        expect(estimarKmRuta(2.5)).toBe(3.25);
+    });
+
+    it('redondea a 2 decimales', () => {
+        expect(estimarKmRuta(1.333)).toBe(1.73);
+    });
+
+    it('el factor es ajustable por env DELIVERY_FACTOR_RUTA', () => {
+        process.env.DELIVERY_FACTOR_RUTA = '1.5';
+        expect(estimarKmRuta(10)).toBe(15);
+    });
+
+    it('env inválida cae al factor por defecto', () => {
+        process.env.DELIVERY_FACTOR_RUTA = 'abc';
+        expect(estimarKmRuta(10)).toBe(13);
+    });
+});
 
 describe('clasificarConfianza', () => {
     it('match exacto de calle con número es alta', () => {

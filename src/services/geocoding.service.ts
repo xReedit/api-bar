@@ -34,6 +34,17 @@ interface ResultadoDistancia {
 const getApiKey = () => process.env.GOOGLE_MAPS_API_KEY || '';
 
 /**
+ * La línea recta (haversine) subestima la ruta real de reparto. Factor de
+ * desvío urbano típico: ruta ≈ recta × 1.3, ajustable por env
+ * DELIVERY_FACTOR_RUTA sin deploy. Techo conocido: si algún día se necesita
+ * el km exacto, upgrade a Routes API/Mapbox con fallback a esto.
+ */
+export const estimarKmRuta = (kmRecta: number): number => {
+    const factor = Number(process.env.DELIVERY_FACTOR_RUTA) || 1.3;
+    return Math.round(kmRecta * factor * 100) / 100;
+};
+
+/**
  * Clasifica qué tan confiable es un resultado de la Geocoding API.
  * partial_match = Google no encontró exacto y devolvió lo más parecido;
  * locality/APPROXIMATE = solo ubicó la ciudad (típico con calles mal escritas).
@@ -224,14 +235,16 @@ export class GeocodingService {
                     }
                 });
                 
-                const distanciaKm = this.calcularDistanciaHaversine(
+                // Ruta estimada: recta × factor de desvío urbano (el costo por
+                // km y el km_limite se evalúan sobre km de ruta, no de recta).
+                const distanciaKm = estimarKmRuta(this.calcularDistanciaHaversine(
                     latComercio,
                     lngComercio,
                     location.lat,
                     location.lng
-                );
+                ));
 
-                console.log(`Encontrado con ciudad "${ciudad}": ${distanciaKm} km (línea recta)`);
+                console.log(`Encontrado con ciudad "${ciudad}": ${distanciaKm} km (ruta estimada = recta × factor)`);
 
                 const confianza = clasificarConfianza(response.data.results[0]);
 
@@ -263,8 +276,8 @@ export class GeocodingService {
             // como confianza 'baja' para que el bot confirme con el cliente.
             const lugar = await this.buscarConPlaces(direccion, ciudadesABuscar[0] || '', latComercio, lngComercio);
             if (lugar.success && lugar.lat !== undefined && lugar.lng !== undefined) {
-                const distanciaKm = this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng);
-                console.log(`Places fallback encontró "${lugar.direccion}": ${distanciaKm} km`);
+                const distanciaKm = estimarKmRuta(this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng));
+                console.log(`Places fallback encontró "${lugar.direccion}": ${distanciaKm} km (ruta estimada)`);
                 return {
                     success: true,
                     lat: lugar.lat,

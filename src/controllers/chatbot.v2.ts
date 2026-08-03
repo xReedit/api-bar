@@ -871,6 +871,7 @@ router.post("/resumen-pedido", async (req, res) => {
         // tickets de otras sesiones.
         let imagenUrl: string | null = null;
         let resumenRespuesta = ticketFormateado;
+        let numeroResumenRespuesta: string | null = null;
         try {
             if (session_id) {
                 const configDelivery: any = await prisma.sede_costo_delivery.findFirst({
@@ -880,34 +881,46 @@ router.post("/resumen-pedido", async (req, res) => {
                 if (resolverResumenFormato(configDelivery?.parametros) === 'imagen') {
                     const sedeInfo: any = await prisma.sede.findUnique({
                         where: { idsede: Number(idsede) },
-                        select: { nombre: true, logo64: true, img_mini: true }
+                        select: { nombre: true, logo64: true }
                     });
+                    // Número + hora de este resumen: el cliente puede pedir
+                    // modificar el pedido y se regenera el ticket para la misma
+                    // sesión (misma key S3) — HHMMSS distingue cada versión.
+                    const ahoraLima = new Date().toLocaleString('es-PE', {
+                        timeZone: 'America/Lima',
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                    });
+                    const numeroResumen = ahoraLima.replace(/\D/g, '').slice(-6);
                     imagenUrl = await generarYSubirTicket(session_id, {
                         nombreSede: sedeInfo?.nombre || '',
                         canal: tipoConsumo?.descripcion || '',
                         secciones,
                         subtotales,
-                        imgMini: sedeInfo?.img_mini || null,
-                        logo64: sedeInfo?.logo64 || null
+                        logoDataUrl: sedeInfo?.logo64 || null,
+                        numeroResumen,
+                        hora: ahoraLima
                     });
                     if (imagenUrl) {
                         const total = subtotales.length
                             ? parseFloat(subtotales[subtotales.length - 1].importe).toFixed(2)
                             : '0.00';
-                        resumenRespuesta = `Pedido *${tipoConsumo?.descripcion || ''}* — Total *S/ ${total}* 🧾 (detalle en el ticket adjunto)`;
+                        numeroResumenRespuesta = numeroResumen;
+                        resumenRespuesta = `Resumen #${numeroResumen} — Pedido *${tipoConsumo?.descripcion || ''}* — Total *S/ ${total}* 🧾 (detalle en el ticket adjunto)`;
                     }
                 }
             }
         } catch (error: any) {
             console.error('resumen-pedido: fallo modo imagen, usando texto:', error.message);
             imagenUrl = null;
+            numeroResumenRespuesta = null;
             resumenRespuesta = ticketFormateado;
         }
 
         res.status(200).json({
             success: true,
             resumen: resumenRespuesta,
-            ...(imagenUrl ? { imagen_url: imagenUrl } : {})
+            ...(imagenUrl ? { imagen_url: imagenUrl, numero_resumen: numeroResumenRespuesta } : {})
         });
 
     } catch (error: any) {

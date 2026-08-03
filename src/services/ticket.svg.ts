@@ -8,6 +8,8 @@ export type DatosTicket = {
     secciones: any[];
     subtotales: any[];
     logoDataUrl?: string | null;
+    numeroResumen?: string;
+    hora?: string;
 };
 
 const W = 640;
@@ -41,7 +43,7 @@ const wrap = (texto: string, n: number): string[] => {
 
 export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number; height: number } => {
     const partes: string[] = [];
-    let y = 40;
+    let y = 64; // margen superior (antes 40; +24 de aire antes del logo)
 
     // ── Header: logo + nombre + canal ────────────────────────────────────
     // Caja apaisada (240x96): los logos reales suelen ser rectangulares
@@ -50,13 +52,19 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
     // siguen viéndose bien porque "meet" los centra sin recortar.
     if (d.logoDataUrl) {
         partes.push(`<image x="${W / 2 - 120}" y="${y - 10}" width="240" height="96" href="${esc(d.logoDataUrl)}" preserveAspectRatio="xMidYMid meet"/>`);
-        y += 106;
+        y += 126; // antes 106; +20 de aire entre el logo y el nombre de la sede
     }
     partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="30" font-weight="bold" fill="#1a1a1a">${esc(d.nombreSede)}</text>`);
     y += 44;
     partes.push(`<rect x="${W / 2 - 110}" y="${y - 26}" width="220" height="38" rx="19" fill="#0b7a3e"/>`);
     partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="${FS}" font-weight="bold" fill="#ffffff">PEDIDO ${esc(d.canal.toUpperCase())}</text>`);
     y += 40;
+    // Número de resumen: distingue versiones cuando el cliente pide modificar
+    // el pedido y se regenera el ticket para la misma sesión.
+    if (d.numeroResumen) {
+        partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" fill="#666666">Resumen #${esc(d.numeroResumen)}</text>`);
+        y += 30;
+    }
     partes.push(`<line x1="${PAD}" y1="${y}" x2="${W - PAD}" y2="${y}" stroke="#cccccc" stroke-width="2" stroke-dasharray="6 6"/>`);
     y += 34;
 
@@ -97,10 +105,14 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
         y += esTotal ? LH + 18 : LH;
     });
 
-    // ── Pie: publicidad discreta ────────────────────────────────────────
+    // ── Pie: hora del resumen (si viene) + publicidad discreta ──────────
     y += 30;
     partes.push(`<line x1="${PAD}" y1="${y}" x2="${W - PAD}" y2="${y}" stroke="#cccccc" stroke-width="2" stroke-dasharray="6 6"/>`);
     y += 34;
+    if (d.hora) {
+        partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" fill="#999999">${esc(d.hora)}</text>`);
+        y += 26;
+    }
     partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" fill="#999999">papaya.com.pe</text>`);
 
     y += 10;

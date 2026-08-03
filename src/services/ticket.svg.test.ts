@@ -61,4 +61,15 @@ describe('construirTicketSVG', () => {
         const { svg } = construirTicketSVG(datos);
         expect(svg).toContain('papaya.com.pe');
     });
+
+    it('incluye el numero de resumen y la hora cuando vienen', () => {
+        const { svg } = construirTicketSVG({ ...datos, numeroResumen: '123456', hora: '02/08/2026, 20:15:30' });
+        expect(svg).toContain('Resumen #123456');
+        expect(svg).toContain('02/08/2026, 20:15:30');
+    });
+
+    it('sin numeroResumen no incluye "Resumen #"', () => {
+        const { svg } = construirTicketSVG(datos);
+        expect(svg).not.toContain('Resumen #');
+    });
 });

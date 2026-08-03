@@ -845,6 +845,25 @@ router.post("/resumen-pedido", async (req, res) => {
         );
 
         const previewId = session_id;
+
+        // Correlativo de este resumen dentro de la conversación (1, 2, 3...).
+        // No hay ALTER disponible en prod (usuario MySQL sin permisos DDL), así
+        // que el contador viaja dentro del JSON de estructura de la fila
+        // previa. Se lee ANTES del INSERT/UPSERT de abajo (que sobreescribe la
+        // fila). Si no hay fila previa 'pending' con contador, es una
+        // conversación de pedido nueva y arranca en 1.
+        const prevRow: any = await prisma.$queryRawUnsafe(
+            "SELECT estado, JSON_EXTRACT(estructura, '$._resumen_num') AS num FROM pedido_preview WHERE id = ? LIMIT 1",
+            previewId
+        );
+        const numeroResumen = (prevRow?.[0]?.estado === 'pending' && Number(prevRow[0].num) > 0)
+            ? Number(prevRow[0].num) + 1
+            : 1;
+        // Clave aditiva top-level: los consumidores de esta estructura leen
+        // claves específicas (p_body, p_subtotales, p_header), no iteran
+        // sobre todas las keys, así que no les afecta.
+        (estructuraPedidoCocinada as any)._resumen_num = numeroResumen;
+
         const estructuraJson = JSON.stringify(estructuraPedidoCocinada);
 
 
@@ -883,29 +902,35 @@ router.post("/resumen-pedido", async (req, res) => {
                         where: { idsede: Number(idsede) },
                         select: { nombre: true, logo64: true }
                     });
-                    // Número + hora de este resumen: el cliente puede pedir
-                    // modificar el pedido y se regenera el ticket para la misma
-                    // sesión (misma key S3) — HHMMSS distingue cada versión.
+                    // Nombre del archivo del logo real (carpeta legacy
+                    // /restobar/print/logo/), NO sede.img_mini (esa es la foto
+                    // del establecimiento). sede.logo64 queda como fallback.
+                    const confPrint: any = await prisma.$queryRawUnsafe(
+                        'SELECT logo FROM conf_print WHERE idsede = ? LIMIT 1',
+                        Number(idsede)
+                    );
+                    // Hora de este resumen (el número correlativo ya se calculó
+                    // arriba, antes del INSERT, y viaja en _resumen_num).
                     const ahoraLima = new Date().toLocaleString('es-PE', {
                         timeZone: 'America/Lima',
                         day: '2-digit', month: '2-digit', year: 'numeric',
                         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
                     });
-                    const numeroResumen = ahoraLima.replace(/\D/g, '').slice(-6);
                     imagenUrl = await generarYSubirTicket(session_id, {
                         nombreSede: sedeInfo?.nombre || '',
                         canal: tipoConsumo?.descripcion || '',
                         secciones,
                         subtotales,
-                        logoDataUrl: sedeInfo?.logo64 || null,
-                        numeroResumen,
+                        logoArchivo: confPrint?.[0]?.logo || null,
+                        logo64: sedeInfo?.logo64 || null,
+                        numeroResumen: String(numeroResumen),
                         hora: ahoraLima
                     });
                     if (imagenUrl) {
                         const total = subtotales.length
                             ? parseFloat(subtotales[subtotales.length - 1].importe).toFixed(2)
                             : '0.00';
-                        numeroResumenRespuesta = numeroResumen;
+                        numeroResumenRespuesta = String(numeroResumen);
                         resumenRespuesta = `Resumen #${numeroResumen} — Pedido *${tipoConsumo?.descripcion || ''}* — Total *S/ ${total}* 🧾 (detalle en el ticket adjunto)`;
                     }
                 }

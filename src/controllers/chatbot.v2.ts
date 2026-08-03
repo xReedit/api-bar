@@ -852,13 +852,22 @@ router.post("/resumen-pedido", async (req, res) => {
         // previa. Se lee ANTES del INSERT/UPSERT de abajo (que sobreescribe la
         // fila). Si no hay fila previa 'pending' con contador, es una
         // conversación de pedido nueva y arranca en 1.
-        const prevRow: any = await prisma.$queryRawUnsafe(
-            "SELECT estado, JSON_EXTRACT(estructura, '$._resumen_num') AS num FROM pedido_preview WHERE id = ? LIMIT 1",
-            previewId
-        );
-        const numeroResumen = (prevRow?.[0]?.estado === 'pending' && Number(prevRow[0].num) > 0)
-            ? Number(prevRow[0].num) + 1
-            : 1;
+        // Try/catch propio: esto corre ANTES del bloque try del modo imagen,
+        // así que un fallo aquí (blip de BD, timeout) NUNCA debe tumbar
+        // también el resumen en modo texto — fallback a 1 y seguir.
+        let numeroResumen = 1;
+        try {
+            const prevRow: any = await prisma.$queryRawUnsafe(
+                "SELECT estado, JSON_EXTRACT(estructura, '$._resumen_num') AS num FROM pedido_preview WHERE id = ? LIMIT 1",
+                previewId
+            );
+            numeroResumen = (prevRow?.[0]?.estado === 'pending' && Number(prevRow[0].num) > 0)
+                ? Number(prevRow[0].num) + 1
+                : 1;
+        } catch (error: any) {
+            console.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error.message);
+            numeroResumen = 1;
+        }
         // Clave aditiva top-level: los consumidores de esta estructura leen
         // claves específicas (p_body, p_subtotales, p_header), no iteran
         // sobre todas las keys, así que no les afecta.
@@ -1027,7 +1036,12 @@ router.post("/pedido", async (req, res) => {
         }
         
         const estructuraPedidoCocinada = preview[0].estructura;
-        
+
+        // _resumen_num es un contador interno (correlativo de resúmenes por
+        // conversación, ver /resumen-pedido) — no debe filtrarse al pedido
+        // confirmado que se reenvía completo al legacy (send-bot-pedido).
+        delete (estructuraPedidoCocinada as any)._resumen_num;
+
         // Parsear datos de dirección guardados previamente
         let datosDeliveryGuardados = null;
         if (preview[0].direccion_cliente) {

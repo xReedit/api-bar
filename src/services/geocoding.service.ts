@@ -206,7 +206,12 @@ export class GeocodingService {
                     params: {
                         address: direccionCompleta,
                         key: apiKey,
-                        region: 'pe'
+                        region: 'pe',
+                        // Sesgo a ~10 km alrededor de la sede: hay calles con el
+                        // mismo nombre en distritos vecinos (caso real: "Jr.
+                        // Iquitos" existe en Moyobamba 22001 Y en Calzada 22800,
+                        // y sin bounds Google prefería el de Calzada a 13 km).
+                        bounds: `${latComercio - 0.09},${lngComercio - 0.09}|${latComercio + 0.09},${lngComercio + 0.09}`
                     }
                 });
 
@@ -220,8 +225,28 @@ export class GeocodingService {
                     continue;
                 }
 
-                const location = response.data.results[0].geometry.location;
-                const addressComponents = response.data.results[0].address_components;
+                // Si Google devuelve varios candidatos (calles homónimas en
+                // distritos vecinos), respetar SU ranking pero saltando los que
+                // caen fuera de cobertura: el primero dentro del límite gana.
+                // (No elegir "el más cercano a la sede": eso prefiere calles
+                // pegadas al local por encima del match correcto.)
+                const candidatos: any[] = response.data.results;
+                let elegido = candidatos[0];
+                for (const c of candidatos) {
+                    const loc = c?.geometry?.location;
+                    if (!loc) continue;
+                    const d = estimarKmRuta(this.calcularDistanciaHaversine(latComercio, lngComercio, loc.lat, loc.lng));
+                    if (d <= kmLimite) {
+                        elegido = c;
+                        break;
+                    }
+                }
+                if (candidatos.length > 1) {
+                    console.log(`Geocoding devolvió ${candidatos.length} candidatos; elegido: ${elegido.formatted_address}`);
+                }
+
+                const location = elegido.geometry.location;
+                const addressComponents = elegido.address_components;
                 
                 // Extraer componentes de la dirección
                 let ciudadExtraida = '';
@@ -262,12 +287,12 @@ export class GeocodingService {
                 // Match a nivel ciudad (sin calle): NO sirve ni para confirmar
                 // — se sigue buscando (Places) y si nada da calle, el caller
                 // cae al costo base sin preguntarle nada al cliente.
-                if (esSoloCiudad(response.data.results[0].types)) {
+                if (esSoloCiudad(elegido.types)) {
                     console.log(`Match solo-ciudad para "${direccion}" — se descarta y sigue el fallback`);
                     continue;
                 }
 
-                const confianza = clasificarConfianza(response.data.results[0]);
+                const confianza = clasificarConfianza(elegido);
 
                 if (confianza === 'alta' && distanciaKm > kmLimite) {
                     return {
@@ -288,7 +313,7 @@ export class GeocodingService {
                     pais: paisExtraido,
                     codigo: codigoExtraido,
                     confianza,
-                    direccionFormateada: response.data.results[0].formatted_address
+                    direccionFormateada: elegido.formatted_address
                 };
             }
 

@@ -427,11 +427,14 @@ router.post("/calcular-delivery", async (req, res) => {
                 : 0;
 
             // km_limite solo gobierna el modo variable: en zonas la cobertura la
-            // deciden las zonas dibujadas.
+            // deciden las zonas dibujadas. Con GPS las coordenadas son reales:
+            // el rechazo es legítimo, pero el bot NUNCA debe ofrecer recojo
+            // como alternativa (el cliente pidió delivery; espantó ventas).
             if (modo === 'variable' && distancia > distanciaMaxima) {
                 return res.status(200).json({
                     success: true,
                     disponible: false,
+                    accion: 'Discúlpate con empatía. NO ofrezcas recojo en local ni otras alternativas salvo que el cliente las pida.',
                     mensaje: `Dirección fuera del rango de cobertura (${distancia.toFixed(2)} km, máximo ${distanciaMaxima} km)`
                 });
             }
@@ -545,12 +548,20 @@ router.post("/calcular-delivery", async (req, res) => {
         }
 
         if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
-            // Fuera de cobertura = la dirección SÍ se ubicó; rechazar como siempre.
-            if (resultadoDistancia.fueraDeCobertura) {
+            // "Fuera de cobertura" con dirección de TEXTO suele ser un geocode
+            // erróneo (ej. "Jr. Iquitos" → la ciudad de Iquitos, 500 km), no un
+            // cliente lejano de verdad. NUNCA rechazar la venta a la primera:
+            // 1er intento (sin referencia) → pedir ubicación GPS o referencia;
+            // 2do intento (ya dio referencia) → cae al costo base de abajo y el
+            // pedido sigue (la dirección queda marcada sin verificar).
+            if (resultadoDistancia.fueraDeCobertura && !referencia) {
                 return res.status(200).json({
                     success: true,
                     disponible: false,
-                    mensaje: resultadoDistancia.error || 'Dirección fuera del rango de cobertura'
+                    requiere_confirmacion: true,
+                    pedir_ubicacion: true,
+                    accion: 'NO rechaces el pedido y NO ofrezcas recojo en local. Pide la ubicación o una referencia; cuando el cliente responda, vuelve a llamar calcular_delivery con la misma direccion y la referencia en el campo referencia (o con lat/lon si compartió ubicación).',
+                    mensaje: 'No logro ubicar bien esa dirección 📍 ¿Me compartes tu ubicación por WhatsApp (clip 📎 → Ubicación) o me das una referencia cercana? (una tienda, parque o colegio)'
                 });
             }
             // No encontrada ni con Places: cobrar el costo base y NO trabar el
@@ -592,9 +603,47 @@ router.post("/calcular-delivery", async (req, res) => {
                 lng: Number(resultadoDistancia.lng)
             });
             if (!r.cubierto) {
+                // Punto de TEXTO geocodificado fuera de zonas: puede ser un
+                // geocode erróneo — antes de rechazar, pedir ubicación o
+                // referencia (1er intento); con referencia ya dada, cobrar la
+                // zona más barata y seguir (dirección sin verificar).
+                if (!tieneGPS && !referencia) {
+                    return res.status(200).json({
+                        success: true,
+                        disponible: false,
+                        requiere_confirmacion: true,
+                        pedir_ubicacion: true,
+                        accion: 'NO rechaces el pedido y NO ofrezcas recojo en local. Pide la ubicación o una referencia y vuelve a llamar calcular_delivery.',
+                        mensaje: 'No logro ubicar bien esa dirección 📍 ¿Me compartes tu ubicación por WhatsApp (clip 📎 → Ubicación) o me das una referencia cercana? (una tienda, parque o colegio)'
+                    });
+                }
+                if (!tieneGPS && referencia) {
+                    const costoEstimadoZona = Math.min(...zonas.map((z) => z.costo));
+                    await persistirDireccion({
+                        direccion: direccionLegible,
+                        referencia: referencia || '',
+                        latitude: null, longitude: null,
+                        ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
+                        distancia_km: 0,
+                        costo_delivery: Number(costoEstimadoZona.toFixed(2)),
+                        verificada: false
+                    });
+                    return res.status(200).json({
+                        success: true,
+                        disponible: true,
+                        costo: Number(costoEstimadoZona.toFixed(2)),
+                        distancia_km: 0,
+                        tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
+                        direccion: direccionLegible,
+                        direccion_no_verificada: true,
+                        mensaje: 'No se pudo verificar la dirección en el mapa: se aplicó el costo base y el pedido puede continuar con normalidad. NO le digas al cliente que no encontraste su dirección; solo continúa.'
+                    });
+                }
+                // GPS real fuera de las zonas: rechazo legítimo, sin ofrecer recojo.
                 return res.status(200).json({
                     success: true,
                     disponible: false,
+                    accion: 'Discúlpate con empatía. NO ofrezcas recojo en local ni otras alternativas salvo que el cliente las pida.',
                     mensaje: 'Lo sentimos, esa dirección está fuera de nuestras zonas de reparto 😔'
                 });
             }

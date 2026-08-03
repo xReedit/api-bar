@@ -88,9 +88,11 @@ export const generarYSubirTicket = async (
         const { svg } = construirTicketSVG({ ...resto, logoDataUrl });
         const png = await sharp(Buffer.from(svg)).png().toBuffer();
 
-        // Key fija por sesión: el ticket anterior de la misma conversación se
-        // sobreescribe (requisito: no llenar el bucket).
-        const key = `files-bot/tickets/ticket-${String(sessionId).replace(/[^a-zA-Z0-9._-]/g, '')}.png`;
+        // Key ÚNICA por resumen (timestamp): el dashboard del chatbot guarda la
+        // URL en el historial de la conversación, así que cada ticket debe
+        // conservarse tal como se envió. El espacio lo controla la lifecycle
+        // rule del bucket (prefijo files-bot/tickets/, expira a 30 días).
+        const key = `files-bot/tickets/ticket-${String(sessionId).replace(/[^a-zA-Z0-9._-]/g, '')}-${Date.now()}.png`;
         const s3 = new S3Client({ region: region() });
         await s3.send(new PutObjectCommand({
             Bucket: bucket(),

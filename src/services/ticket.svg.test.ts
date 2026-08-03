@@ -114,4 +114,16 @@ describe('construirTicketSVG', () => {
         expect(svg).not.toContain('Recojo:');
         expect(svg).not.toContain('Reserva:');
     });
+
+    it('el badge es rojo "PEDIDO POR CONFIRMAR" (el resumen no es un pedido oficial)', () => {
+        const { svg } = construirTicketSVG(datos);
+        expect(svg).toContain('PEDIDO POR CONFIRMAR');
+        expect(svg).toContain('#d32f2f');
+    });
+
+    it('el canal no se pierde: aparece como "Entrega: {canal}" en el bloque de datos', () => {
+        const { svg } = construirTicketSVG(datos);
+        expect(svg).toContain('Entrega: ');
+        expect(svg).toContain('DELIVERY');
+    });
 });

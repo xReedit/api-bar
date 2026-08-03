@@ -59,8 +59,12 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
     }
     partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="30" font-weight="bold" fill="#1a1a1a">${esc(d.nombreSede)}</text>`);
     y += 44;
-    partes.push(`<rect x="${W / 2 - 110}" y="${y - 26}" width="220" height="38" rx="19" fill="#0b7a3e"/>`);
-    partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="${FS}" font-weight="bold" fill="#ffffff">PEDIDO ${esc(d.canal.toUpperCase())}</text>`);
+    // Badge ROJO fijo: este ticket es un RESUMEN, no un pedido confirmado
+    // todavía (el dueño lo pidió explícito para que no se confunda con uno
+    // oficial). El canal (delivery/para llevar/local) no se pierde: se
+    // muestra debajo, en la línea "Entrega:" del bloque de datos.
+    partes.push(`<rect x="${W / 2 - 180}" y="${y - 26}" width="360" height="38" rx="19" fill="#d32f2f"/>`);
+    partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="${FS}" font-weight="bold" fill="#ffffff">PEDIDO POR CONFIRMAR</text>`);
     y += 40;
     // Número de resumen: distingue versiones cuando el cliente pide modificar
     // el pedido y se regenera el ticket para la misma sesión.
@@ -76,11 +80,14 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
     // reglas de XML por defecto, pegando la etiqueta al valor ("Cliente:Zare").
     const FS_DATOS = 22;
     const LH_DATOS = 28;
-    let huboDatos = false;
+    // Canal (delivery/para llevar/local): ya no aparece en el badge (ahora
+    // fijo "PEDIDO POR CONFIRMAR"), así que va como primera línea aquí —
+    // por eso este bloque siempre pinta al menos una línea.
+    partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">Entrega: </tspan>${esc(d.canal.toUpperCase())}</text>`);
+    y += LH_DATOS;
     if (d.cliente) {
         partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">Cliente: </tspan>${esc(d.cliente)}</text>`);
         y += LH_DATOS;
-        huboDatos = true;
     }
     if (d.direccion) {
         wrap(d.direccion, 32).forEach((linea, i) => {
@@ -88,16 +95,12 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
             partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve">${etiqueta}${esc(linea)}</text>`);
             y += LH_DATOS;
         });
-        huboDatos = true;
     }
     if (d.horaEntrega) {
         partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">${esc(d.horaEntrega.etiqueta)}: </tspan>${esc(d.horaEntrega.valor)}</text>`);
         y += LH_DATOS;
-        huboDatos = true;
     }
-    if (huboDatos) {
-        y += 8; // pequeño gap antes de la línea punteada de items
-    }
+    y += 8; // pequeño gap antes de la línea punteada de items
     partes.push(`<line x1="${PAD}" y1="${y}" x2="${W - PAD}" y2="${y}" stroke="#cccccc" stroke-width="2" stroke-dasharray="6 6"/>`);
     y += 34;
 

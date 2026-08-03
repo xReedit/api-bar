@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    decidirDireccionTexto,
     describirDelivery,
     haversineKm,
     puntoEnCirculo,
@@ -10,6 +11,49 @@ import {
     validarZonas,
     ZonaDelivery,
 } from './delivery.zonas';
+import { esSoloCiudad } from './geocoding.service';
+
+// Casos construidos con los resultados REALES de Google para las
+// conversaciones abandonadas del 03-08 (Silvia, César, Adelma, Jr. Iquitos):
+// la dirección nunca debe detener la venta.
+describe('decidirDireccionTexto (conversaciones reales 03-08)', () => {
+    it('Silvia: "calle bomberos al lado de una iglesia" → Google dio solo "22001, Peru" (postal, ya descartado por el servicio) → costo base, sin preguntar', () => {
+        expect(decidirDireccionTexto({ success: false }, 'variable', 10)).toBe('costo_base');
+    });
+
+    it('César: "Jr. Las Orquídeas 135" → Google dio plus code X2HH+7QF (descartado) → costo base, sin mostrar códigos raros', () => {
+        expect(decidirDireccionTexto({ success: false }, 'variable', 10)).toBe('costo_base');
+    });
+
+    it('Adelma: "Puno 666" → match de calle a 1.79 km (partial, confianza baja) → USAR sin pedir confirmación', () => {
+        expect(decidirDireccionTexto({ success: true, distanciaKm: 1.79 }, 'variable', 10)).toBe('usar');
+    });
+
+    it('Jr. Iquitos 148: homónima en Calzada a 13.55 km (geocode erróneo) → costo base, NUNCA rechazar la venta', () => {
+        expect(decidirDireccionTexto({ success: true, distanciaKm: 13.55 }, 'variable', 10)).toBe('costo_base');
+    });
+
+    it('modo zonas: el punto se usa aunque esté lejos (la cobertura la deciden las zonas, no km_limite)', () => {
+        expect(decidirDireccionTexto({ success: true, distanciaKm: 13.55 }, 'zonas', 999999)).toBe('usar');
+    });
+
+    it('resultado nulo o sin distancia → costo base', () => {
+        expect(decidirDireccionTexto(null, 'variable', 10)).toBe('costo_base');
+        expect(decidirDireccionTexto({ success: true }, 'variable', 10)).toBe('costo_base');
+    });
+});
+
+describe('esSoloCiudad con los matches reales del 03-08', () => {
+    it('el "22001, Peru" de Silvia (postal_code) no sirve como sugerencia', () => {
+        expect(esSoloCiudad(['postal_code'])).toBe(true);
+    });
+    it('el "X2HH+7QF" de César (plus_code) no sirve como sugerencia', () => {
+        expect(esSoloCiudad(['plus_code'])).toBe(true);
+    });
+    it('el "Puno 666" de Adelma (route) SÍ es una calle usable', () => {
+        expect(esSoloCiudad(['route'])).toBe(false);
+    });
+});
 
 // Cuadrado ~2km de lado alrededor de la plaza de Tarapoto (-6.4889, -76.3650).
 const cuadrado = [

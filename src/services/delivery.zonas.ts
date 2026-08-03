@@ -117,6 +117,30 @@ export const resolverZona = (zonas: ZonaDelivery[], p: LatLng): ResultadoZona =>
 };
 
 /**
+ * Decisión sobre una dirección de TEXTO geocodificada (no aplica a GPS, cuyas
+ * coordenadas son reales). Filosofía: la dirección NUNCA detiene la venta —
+ * jamás se pregunta "¿te refieres a...?" ni se rechaza por un geocode dudoso.
+ *  - 'usar': hay punto de calle dentro de cobertura → cobrar por distancia/zona.
+ *  - 'costo_base': no hay punto utilizable (no encontrado, solo-ciudad,
+ *    plus code) o el punto cae fuera del límite (geocode probablemente
+ *    erróneo, ej. calle homónima en otro distrito) → costo base y el pedido
+ *    sigue; la referencia del cliente viaja al ticket del repartidor.
+ */
+export type DecisionDireccionTexto = 'usar' | 'costo_base';
+
+export const decidirDireccionTexto = (
+    resultado: { success?: boolean; distanciaKm?: number } | null | undefined,
+    modo: ModoDelivery,
+    kmLimite: number
+): DecisionDireccionTexto => {
+    if (resultado?.success && Number.isFinite(resultado.distanciaKm)) {
+        if (modo === 'variable' && (resultado.distanciaKm as number) > kmLimite) return 'costo_base';
+        return 'usar';
+    }
+    return 'costo_base';
+};
+
+/**
  * Modo de cobro de la sede. Si `parametros.modo` falta (configs anteriores a
  * este campo), se infiere con el MISMO criterio del panel Piter
  * (obtener_coordenadas_del_cliente === 'NO' → fijo, cualquier otra cosa →

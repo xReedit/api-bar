@@ -1,7 +1,7 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { GeocodingService, estimarKmRuta } from "../services/geocoding.service";
-import { describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
+import { decidirDireccionTexto, describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
@@ -532,43 +532,30 @@ router.post("/calcular-delivery", async (req, res) => {
             }
         }
 
-        // ── Cascada anti-typo (solo direcciones de texto) ────────────────────
-        // Confianza baja = Google adivinó (typo, o vino del fallback de Places):
-        // confirmar con el cliente antes de cobrar, ofreciendo el GPS como plan B.
-        if (resultadoDistancia.success && resultadoDistancia.confianza === 'baja') {
-            const sugerida = resultadoDistancia.direccionFormateada || direccion;
-            return res.status(200).json({
-                success: true,
-                disponible: false,
-                requiere_confirmacion: true,
-                direccion_sugerida: sugerida,
-                accion: 'Si el cliente confirma, vuelve a llamar calcular_delivery con direccion_sugerida tal cual.',
-                mensaje: `¿Te refieres a "${sugerida}"? 🤔 Si es así dime "sí"; si no, mejor compárteme tu ubicación por WhatsApp (clip 📎 → Ubicación) 📍`
-            });
-        }
+        // ── Decisión sobre dirección de TEXTO ────────────────────────────────
+        // La dirección NUNCA detiene la venta: sin preguntas "¿te refieres
+        // a...?" (mataban conversaciones: caso Silvia/Adelma 03-08) y sin
+        // rechazos por geocode dudoso. Match de calle dentro de cobertura →
+        // usar; cualquier otra cosa → costo base y el pedido SIGUE (la
+        // referencia del cliente viaja al ticket del repartidor).
+        const decision = decidirDireccionTexto(resultadoDistancia as any, modo, distanciaMaxima);
 
-        if (!resultadoDistancia.success || resultadoDistancia.distanciaKm === undefined) {
-            // "Fuera de cobertura" con dirección de TEXTO suele ser un geocode
-            // erróneo (ej. "Jr. Iquitos" → la ciudad de Iquitos, 500 km), no un
-            // cliente lejano de verdad. NUNCA rechazar la venta a la primera:
-            // 1er intento (sin referencia) → pedir ubicación GPS o referencia;
-            // 2do intento (ya dio referencia) → cae al costo base de abajo y el
-            // pedido sigue (la dirección queda marcada sin verificar).
-            if (resultadoDistancia.fueraDeCobertura && !referencia) {
-                return res.status(200).json({
-                    success: true,
-                    disponible: false,
-                    requiere_confirmacion: true,
-                    pedir_ubicacion: true,
-                    accion: 'NO rechaces el pedido y NO ofrezcas recojo en local. Pide la ubicación o una referencia; cuando el cliente responda, vuelve a llamar calcular_delivery con la misma direccion y la referencia en el campo referencia (o con lat/lon si compartió ubicación).',
-                    mensaje: 'No logro ubicar bien esa dirección 📍 ¿Me compartes tu ubicación por WhatsApp (clip 📎 → Ubicación) o me das una referencia cercana? (una tienda, parque o colegio)'
-                });
-            }
-            // No encontrada ni con Places: cobrar el costo base y NO trabar el
-            // pedido. La dirección queda marcada sin verificar para reparto.
+        if (decision === 'costo_base') {
             const costoEstimado = modo === 'zonas' && zonas.length > 0
                 ? Math.min(...zonas.map((z) => z.costo))
                 : Number(parametros.km_base_costo || 0);
+            // Sugerir la ubicación GPS solo UNA vez por sesión (y sin bloquear:
+            // el pedido continúa aunque el cliente no la mande).
+            let yaSugerida = false;
+            try {
+                const prevPreview = await prisma.pedido_preview.findFirst({
+                    where: { id: session_id }, select: { direccion_cliente: true }
+                });
+                const prevDir: any = typeof (prevPreview as any)?.direccion_cliente === 'string'
+                    ? JSON.parse((prevPreview as any).direccion_cliente)
+                    : (prevPreview as any)?.direccion_cliente;
+                yaSugerida = prevDir?.ubicacion_sugerida === true;
+            } catch { /* sin historial: se sugiere */ }
             await persistirDireccion({
                 direccion,
                 referencia: referencia || '',
@@ -577,7 +564,8 @@ router.post("/calcular-delivery", async (req, res) => {
                 ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
                 distancia_km: 0,
                 costo_delivery: Number(costoEstimado.toFixed(2)),
-                verificada: false
+                verificada: false,
+                ubicacion_sugerida: true
             });
             return res.status(200).json({
                 success: true,
@@ -587,7 +575,9 @@ router.post("/calcular-delivery", async (req, res) => {
                 tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
                 direccion,
                 direccion_no_verificada: true,
-                mensaje: 'No se pudo verificar la dirección en el mapa: se aplicó el costo base y el pedido puede continuar con normalidad. NO le digas al cliente que no encontraste su dirección; solo continúa.'
+                mensaje: yaSugerida
+                    ? 'Costo de delivery aplicado. Continúa el pedido con normalidad; NO le digas al cliente que no encontraste su dirección.'
+                    : 'Costo de delivery aplicado y el pedido CONTINÚA. NO le digas al cliente que no encontraste su dirección ni le exijas nada: solo sugiérele en una línea, junto con el siguiente paso del pedido, que si puede comparta su ubicación (clip 📎 → Ubicación) para que el repartidor llegue más rápido. Si no la comparte, el pedido sigue igual.'
             });
         }
 
@@ -603,21 +593,10 @@ router.post("/calcular-delivery", async (req, res) => {
                 lng: Number(resultadoDistancia.lng)
             });
             if (!r.cubierto) {
-                // Punto de TEXTO geocodificado fuera de zonas: puede ser un
-                // geocode erróneo — antes de rechazar, pedir ubicación o
-                // referencia (1er intento); con referencia ya dada, cobrar la
-                // zona más barata y seguir (dirección sin verificar).
-                if (!tieneGPS && !referencia) {
-                    return res.status(200).json({
-                        success: true,
-                        disponible: false,
-                        requiere_confirmacion: true,
-                        pedir_ubicacion: true,
-                        accion: 'NO rechaces el pedido y NO ofrezcas recojo en local. Pide la ubicación o una referencia y vuelve a llamar calcular_delivery.',
-                        mensaje: 'No logro ubicar bien esa dirección 📍 ¿Me compartes tu ubicación por WhatsApp (clip 📎 → Ubicación) o me das una referencia cercana? (una tienda, parque o colegio)'
-                    });
-                }
-                if (!tieneGPS && referencia) {
+                // Punto de TEXTO fuera de zonas: probable geocode erróneo — la
+                // venta sigue con la zona más barata (dirección sin verificar,
+                // la referencia viaja al ticket del repartidor).
+                if (!tieneGPS) {
                     const costoEstimadoZona = Math.min(...zonas.map((z) => z.costo));
                     await persistirDireccion({
                         direccion: direccionLegible,
@@ -626,7 +605,8 @@ router.post("/calcular-delivery", async (req, res) => {
                         ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
                         distancia_km: 0,
                         costo_delivery: Number(costoEstimadoZona.toFixed(2)),
-                        verificada: false
+                        verificada: false,
+                        ubicacion_sugerida: true
                     });
                     return res.status(200).json({
                         success: true,
@@ -636,7 +616,7 @@ router.post("/calcular-delivery", async (req, res) => {
                         tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
                         direccion: direccionLegible,
                         direccion_no_verificada: true,
-                        mensaje: 'No se pudo verificar la dirección en el mapa: se aplicó el costo base y el pedido puede continuar con normalidad. NO le digas al cliente que no encontraste su dirección; solo continúa.'
+                        mensaje: 'Costo de delivery aplicado y el pedido CONTINÚA. NO le digas al cliente que no encontraste su dirección: solo sugiérele en una línea, junto con el siguiente paso, que si puede comparta su ubicación (clip 📎 → Ubicación) para que el repartidor llegue más rápido.'
                     });
                 }
                 // GPS real fuera de las zonas: rechazo legítimo, sin ofrecer recojo.

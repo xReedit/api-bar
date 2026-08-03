@@ -771,13 +771,15 @@ router.get("/config/:idsede", async (req, res) => {
 router.post("/resumen-pedido", async (req, res) => {
     
     try {
-        const { 
+        const {
             session_id,
-            idsede, 
-            items, 
-            tipo_entrega, 
-            direccion, 
-            costo_delivery
+            idsede,
+            items,
+            tipo_entrega,
+            direccion,
+            costo_delivery,
+            cliente_nombre,
+            hora_programada
         } = req.body;
 
         
@@ -856,14 +858,32 @@ router.post("/resumen-pedido", async (req, res) => {
         // así que un fallo aquí (blip de BD, timeout) NUNCA debe tumbar
         // también el resumen en modo texto — fallback a 1 y seguir.
         let numeroResumen = 1;
+        // Dirección guardada de una llamada previa a calcular-delivery para esta
+        // misma sesión (persistida en pedido_preview.direccion_cliente). Se usa
+        // como fallback en el ticket-imagen si el body de este request no trae
+        // "direccion". Se lee del mismo SELECT de arriba, dentro del mismo
+        // try/catch falla-abierto.
+        let direccionPreview: string | null = null;
         try {
             const prevRow: any = await prisma.$queryRawUnsafe(
-                "SELECT estado, JSON_EXTRACT(estructura, '$._resumen_num') AS num FROM pedido_preview WHERE id = ? LIMIT 1",
+                "SELECT estado, JSON_EXTRACT(estructura, '$._resumen_num') AS num, direccion_cliente FROM pedido_preview WHERE id = ? LIMIT 1",
                 previewId
             );
             numeroResumen = (prevRow?.[0]?.estado === 'pending' && Number(prevRow[0].num) > 0)
                 ? Number(prevRow[0].num) + 1
                 : 1;
+            // Parseo de direccion_cliente en su propio try: un JSON malformado
+            // ahí no debe resetear el correlativo ya calculado arriba.
+            try {
+                if (prevRow?.[0]?.direccion_cliente) {
+                    const direccionData = typeof prevRow[0].direccion_cliente === 'string'
+                        ? JSON.parse(prevRow[0].direccion_cliente)
+                        : prevRow[0].direccion_cliente;
+                    direccionPreview = direccionData?.direccion || null;
+                }
+            } catch (errorDireccion: any) {
+                console.error('resumen-pedido: fallo parseando direccion_cliente del preview:', errorDireccion.message);
+            }
         } catch (error: any) {
             console.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error.message);
             numeroResumen = 1;
@@ -925,6 +945,23 @@ router.post("/resumen-pedido", async (req, res) => {
                         day: '2-digit', month: '2-digit', year: 'numeric',
                         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
                     });
+                    // Cliente y dirección/hora de entrega para el bloque del
+                    // ticket (solo modo imagen; el modo texto no cambia).
+                    // Dirección: la del body de este request, o si no vino, la
+                    // guardada en pedido_preview de una llamada previa a
+                    // calcular-delivery para la misma sesión.
+                    const direccionTicket = direccion || direccionPreview || undefined;
+                    // Hora de recojo/reserva según el canal — delivery no lleva
+                    // hora (el cliente espera la entrega, no "recoge" a una hora).
+                    const descripcionCanal = String(tipoConsumo?.descripcion || '').toLowerCase();
+                    let horaEntrega: { etiqueta: string; valor: string } | undefined;
+                    if (hora_programada) {
+                        if (descripcionCanal.includes('llevar')) {
+                            horaEntrega = { etiqueta: 'Recojo', valor: hora_programada };
+                        } else if (descripcionCanal.includes('local') || descripcionCanal.includes('mesa')) {
+                            horaEntrega = { etiqueta: 'Reserva', valor: hora_programada };
+                        }
+                    }
                     imagenUrl = await generarYSubirTicket(session_id, {
                         nombreSede: sedeInfo?.nombre || '',
                         canal: tipoConsumo?.descripcion || '',
@@ -933,7 +970,10 @@ router.post("/resumen-pedido", async (req, res) => {
                         logoArchivo: confPrint?.[0]?.logo || null,
                         logo64: sedeInfo?.logo64 || null,
                         numeroResumen: String(numeroResumen),
-                        hora: ahoraLima
+                        hora: ahoraLima,
+                        cliente: cliente_nombre || undefined,
+                        direccion: direccionTicket,
+                        horaEntrega
                     });
                     if (imagenUrl) {
                         const total = subtotales.length

@@ -10,6 +10,9 @@ export type DatosTicket = {
     logoDataUrl?: string | null;
     numeroResumen?: string;
     hora?: string;
+    cliente?: string;
+    direccion?: string;
+    horaEntrega?: { etiqueta: string; valor: string };
 };
 
 const W = 640;
@@ -62,8 +65,38 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
     // Número de resumen: distingue versiones cuando el cliente pide modificar
     // el pedido y se regenera el ticket para la misma sesión.
     if (d.numeroResumen) {
-        partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" fill="#666666">Resumen #${esc(d.numeroResumen)}</text>`);
+        partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" font-weight="bold" fill="#666666">Resumen #${esc(d.numeroResumen)}</text>`);
         y += 30;
+    }
+    // Datos del pedido: cliente, dirección (con wrap si es larga) y/o hora de
+    // recojo/reserva. Alineado a la izquierda, etiqueta en negrita + valor
+    // normal en la misma línea. Solo se pintan las líneas cuyo dato venga.
+    // xml:space="preserve" es necesario: sin él, el espacio final del tspan
+    // ("Cliente: ") es whitespace de borde y se colapsa/recorta por las
+    // reglas de XML por defecto, pegando la etiqueta al valor ("Cliente:Zare").
+    const FS_DATOS = 22;
+    const LH_DATOS = 28;
+    let huboDatos = false;
+    if (d.cliente) {
+        partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">Cliente: </tspan>${esc(d.cliente)}</text>`);
+        y += LH_DATOS;
+        huboDatos = true;
+    }
+    if (d.direccion) {
+        wrap(d.direccion, 32).forEach((linea, i) => {
+            const etiqueta = i === 0 ? `<tspan font-weight="bold">Dirección: </tspan>` : '';
+            partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve">${etiqueta}${esc(linea)}</text>`);
+            y += LH_DATOS;
+        });
+        huboDatos = true;
+    }
+    if (d.horaEntrega) {
+        partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">${esc(d.horaEntrega.etiqueta)}: </tspan>${esc(d.horaEntrega.valor)}</text>`);
+        y += LH_DATOS;
+        huboDatos = true;
+    }
+    if (huboDatos) {
+        y += 8; // pequeño gap antes de la línea punteada de items
     }
     partes.push(`<line x1="${PAD}" y1="${y}" x2="${W - PAD}" y2="${y}" stroke="#cccccc" stroke-width="2" stroke-dasharray="6 6"/>`);
     y += 34;

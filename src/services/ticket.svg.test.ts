@@ -84,4 +84,34 @@ describe('construirTicketSVG', () => {
         const aperturasComillasDobles = (match![0].match(/"/g) || []).length;
         expect(aperturasComillasDobles % 2).toBe(0);
     });
+
+    it('"Resumen #" se pinta en negrita', () => {
+        const { svg } = construirTicketSVG({ ...datos, numeroResumen: '2' });
+        expect(svg).toMatch(/font-weight="bold"[^>]*>Resumen #2/);
+    });
+
+    it('incluye cliente, direccion (con wrap) y hora de entrega cuando vienen', () => {
+        const { svg } = construirTicketSVG({
+            ...datos,
+            cliente: 'Zare',
+            direccion: 'Jr. Reyes Guerra cdr. 7, restaurante San Carlos, Moyobamba',
+            horaEntrega: { etiqueta: 'Recojo', valor: '13:00' }
+        });
+        expect(svg).toContain('Cliente: ');
+        expect(svg).toContain('Zare');
+        expect(svg).toContain('Dirección: ');
+        expect(svg).toContain('Jr. Reyes Guerra');
+        // La dirección larga se parte en más de una línea (wrap a 32 chars).
+        expect((svg.match(/Dirección: /g) || []).length).toBe(1);
+        expect(svg).toContain('Recojo: ');
+        expect(svg).toContain('13:00');
+    });
+
+    it('sin cliente/direccion/horaEntrega no incluye esas etiquetas', () => {
+        const { svg } = construirTicketSVG(datos);
+        expect(svg).not.toContain('Cliente:');
+        expect(svg).not.toContain('Dirección:');
+        expect(svg).not.toContain('Recojo:');
+        expect(svg).not.toContain('Reserva:');
+    });
 });

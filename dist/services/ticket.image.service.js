@@ -173,7 +173,7 @@ var generarYSubirTicket = function (sessionId, datos) { return __awaiter(void 0,
                 return [4 /*yield*/, (0, sharp_1["default"])(Buffer.from(svg)).png().toBuffer()];
             case 2:
                 png = _a.sent();
-                key = "files-bot/tickets/ticket-".concat(String(sessionId).replace(/[^a-zA-Z0-9._-]/g, ''), ".png");
+                key = "files-bot/tickets/ticket-".concat(String(sessionId).replace(/[^a-zA-Z0-9._-]/g, ''), "-").concat(Date.now(), ".png");
                 s3 = new client_s3_1.S3Client({ region: region() });
                 return [4 /*yield*/, s3.send(new client_s3_1.PutObjectCommand({
                         Bucket: bucket(),

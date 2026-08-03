@@ -39,7 +39,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 exports.__esModule = true;
-exports.GeocodingService = exports.clasificarConfianza = exports.estimarKmRuta = void 0;
+exports.GeocodingService = exports.esSoloCiudad = exports.clasificarConfianza = exports.estimarKmRuta = void 0;
 var axios_1 = __importDefault(require("axios"));
 var getApiKey = function () { return process.env.GOOGLE_MAPS_API_KEY || ''; };
 /**
@@ -70,6 +70,20 @@ var clasificarConfianza = function (result) {
     return 'alta';
 };
 exports.clasificarConfianza = clasificarConfianza;
+/**
+ * ¿El resultado es solo la ciudad/zona, sin calle? Preguntarle al cliente
+ * "¿Te refieres a Moyobamba, Perú?" es absurdo (claro que sí) y lo espanta:
+ * estos matches se tratan como NO ENCONTRADO para que el flujo caiga al
+ * costo base sin fricción.
+ */
+var esSoloCiudad = function (types) {
+    var t = Array.isArray(types) ? types : [];
+    if (t.length === 0)
+        return false;
+    var conCalle = ['street_address', 'route', 'premise', 'subpremise', 'street_number', 'intersection', 'point_of_interest', 'establishment'];
+    return !t.some(function (x) { return conCalle.includes(x); });
+};
+exports.esSoloCiudad = esSoloCiudad;
 var GeocodingService = /** @class */ (function () {
     function GeocodingService() {
     }
@@ -192,12 +206,13 @@ var GeocodingService = /** @class */ (function () {
         return grados * (Math.PI / 180);
     };
     GeocodingService.calcularDistanciaRuta = function (direccion, latComercio, lngComercio, kmLimite, ciudades) {
+        var _a;
         return __awaiter(this, void 0, void 0, function () {
             var apiKey, url, ciudadesABuscar, _loop_1, this_1, _i, ciudadesABuscar_1, ciudad, state_1, lugar, distanciaKm, error_3;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
-                        _a.trys.push([0, 6, , 7]);
+                        _b.trys.push([0, 6, , 7]);
                         apiKey = getApiKey();
                         if (!apiKey) {
                             return [2 /*return*/, {
@@ -208,9 +223,9 @@ var GeocodingService = /** @class */ (function () {
                         url = "https://maps.googleapis.com/maps/api/geocode/json";
                         ciudadesABuscar = ciudades && ciudades.length > 0 ? ciudades : [''];
                         _loop_1 = function (ciudad) {
-                            var direccionCompleta, response, location, addressComponents, ciudadExtraida, provinciaExtraida, departamentoExtraido, paisExtraido, codigoExtraido, distanciaKm, confianza;
-                            return __generator(this, function (_b) {
-                                switch (_b.label) {
+                            var direccionCompleta, response, candidatos, elegido, _c, candidatos_1, c, loc, d, location, addressComponents, ciudadExtraida, provinciaExtraida, departamentoExtraido, paisExtraido, codigoExtraido, distanciaKm, confianza;
+                            return __generator(this, function (_d) {
+                                switch (_d.label) {
                                     case 0:
                                         direccionCompleta = ciudad
                                             ? "".concat(direccion, ", ").concat(ciudad, ", Peru")
@@ -220,11 +235,16 @@ var GeocodingService = /** @class */ (function () {
                                                 params: {
                                                     address: direccionCompleta,
                                                     key: apiKey,
-                                                    region: 'pe'
+                                                    region: 'pe',
+                                                    // Sesgo a ~10 km alrededor de la sede: hay calles con el
+                                                    // mismo nombre en distritos vecinos (caso real: "Jr.
+                                                    // Iquitos" existe en Moyobamba 22001 Y en Calzada 22800,
+                                                    // y sin bounds Google prefería el de Calzada a 13 km).
+                                                    bounds: "".concat(latComercio - 0.09, ",").concat(lngComercio - 0.09, "|").concat(latComercio + 0.09, ",").concat(lngComercio + 0.09)
                                                 }
                                             })];
                                     case 1:
-                                        response = _b.sent();
+                                        response = _d.sent();
                                         if (response.data.status !== 'OK' || !response.data.results || response.data.results.length === 0) {
                                             // Distinguir "no existe" de errores de API (key, billing, etc.):
                                             // antes REQUEST_DENIED se logueaba igual que dirección no hallada.
@@ -234,8 +254,24 @@ var GeocodingService = /** @class */ (function () {
                                             console.log("No se encontr\u00F3 direcci\u00F3n con ciudad \"".concat(ciudad, "\""));
                                             return [2 /*return*/, "continue"];
                                         }
-                                        location = response.data.results[0].geometry.location;
-                                        addressComponents = response.data.results[0].address_components;
+                                        candidatos = response.data.results;
+                                        elegido = candidatos[0];
+                                        for (_c = 0, candidatos_1 = candidatos; _c < candidatos_1.length; _c++) {
+                                            c = candidatos_1[_c];
+                                            loc = (_a = c === null || c === void 0 ? void 0 : c.geometry) === null || _a === void 0 ? void 0 : _a.location;
+                                            if (!loc)
+                                                continue;
+                                            d = (0, exports.estimarKmRuta)(this_1.calcularDistanciaHaversine(latComercio, lngComercio, loc.lat, loc.lng));
+                                            if (d <= kmLimite) {
+                                                elegido = c;
+                                                break;
+                                            }
+                                        }
+                                        if (candidatos.length > 1) {
+                                            console.log("Geocoding devolvi\u00F3 ".concat(candidatos.length, " candidatos; elegido: ").concat(elegido.formatted_address));
+                                        }
+                                        location = elegido.geometry.location;
+                                        addressComponents = elegido.address_components;
                                         ciudadExtraida = '';
                                         provinciaExtraida = '';
                                         departamentoExtraido = '';
@@ -260,7 +296,14 @@ var GeocodingService = /** @class */ (function () {
                                         });
                                         distanciaKm = (0, exports.estimarKmRuta)(this_1.calcularDistanciaHaversine(latComercio, lngComercio, location.lat, location.lng));
                                         console.log("Encontrado con ciudad \"".concat(ciudad, "\": ").concat(distanciaKm, " km (ruta estimada = recta \u00D7 factor)"));
-                                        confianza = (0, exports.clasificarConfianza)(response.data.results[0]);
+                                        // Match a nivel ciudad (sin calle): NO sirve ni para confirmar
+                                        // — se sigue buscando (Places) y si nada da calle, el caller
+                                        // cae al costo base sin preguntarle nada al cliente.
+                                        if ((0, exports.esSoloCiudad)(elegido.types)) {
+                                            console.log("Match solo-ciudad para \"".concat(direccion, "\" \u2014 se descarta y sigue el fallback"));
+                                            return [2 /*return*/, "continue"];
+                                        }
+                                        confianza = (0, exports.clasificarConfianza)(elegido);
                                         if (confianza === 'alta' && distanciaKm > kmLimite) {
                                             return [2 /*return*/, { value: {
                                                         success: false,
@@ -279,29 +322,29 @@ var GeocodingService = /** @class */ (function () {
                                                     pais: paisExtraido,
                                                     codigo: codigoExtraido,
                                                     confianza: confianza,
-                                                    direccionFormateada: response.data.results[0].formatted_address
+                                                    direccionFormateada: elegido.formatted_address
                                                 } }];
                                 }
                             });
                         };
                         this_1 = this;
                         _i = 0, ciudadesABuscar_1 = ciudadesABuscar;
-                        _a.label = 1;
+                        _b.label = 1;
                     case 1:
                         if (!(_i < ciudadesABuscar_1.length)) return [3 /*break*/, 4];
                         ciudad = ciudadesABuscar_1[_i];
                         return [5 /*yield**/, _loop_1(ciudad)];
                     case 2:
-                        state_1 = _a.sent();
+                        state_1 = _b.sent();
                         if (typeof state_1 === "object")
                             return [2 /*return*/, state_1.value];
-                        _a.label = 3;
+                        _b.label = 3;
                     case 3:
                         _i++;
                         return [3 /*break*/, 1];
                     case 4: return [4 /*yield*/, this.buscarConPlaces(direccion, ciudadesABuscar[0] || '', latComercio, lngComercio)];
                     case 5:
-                        lugar = _a.sent();
+                        lugar = _b.sent();
                         if (lugar.success && lugar.lat !== undefined && lugar.lng !== undefined) {
                             distanciaKm = (0, exports.estimarKmRuta)(this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng));
                             console.log("Places fallback encontr\u00F3 \"".concat(lugar.direccion, "\": ").concat(distanciaKm, " km (ruta estimada)"));
@@ -319,7 +362,7 @@ var GeocodingService = /** @class */ (function () {
                                 error: 'No se pudo encontrar la dirección en ninguna de las ciudades de cobertura'
                             }];
                     case 6:
-                        error_3 = _a.sent();
+                        error_3 = _b.sent();
                         console.error('Error al geocodificar:', error_3);
                         return [2 /*return*/, {
                                 success: false,
@@ -368,7 +411,7 @@ var GeocodingService = /** @class */ (function () {
     GeocodingService.buscarConPlaces = function (direccion, ciudad, lat, lng) {
         var _a, _b, _c, _d, _e, _f, _g;
         return __awaiter(this, void 0, void 0, function () {
-            var query, response, r, error_5;
+            var query, response, r, tiposDireccion_1, error_5;
             return __generator(this, function (_h) {
                 switch (_h.label) {
                     case 0:
@@ -384,6 +427,11 @@ var GeocodingService = /** @class */ (function () {
                             if (!['OK', 'ZERO_RESULTS'].includes((_e = response.data) === null || _e === void 0 ? void 0 : _e.status)) {
                                 console.error('Places API:', (_f = response.data) === null || _f === void 0 ? void 0 : _f.status, ((_g = response.data) === null || _g === void 0 ? void 0 : _g.error_message) || '');
                             }
+                            return [2 /*return*/, { success: false }];
+                        }
+                        tiposDireccion_1 = ['street_address', 'route', 'premise', 'subpremise', 'intersection'];
+                        if (!Array.isArray(r.types) || !r.types.some(function (t) { return tiposDireccion_1.includes(t); })) {
+                            console.log("Places devolvi\u00F3 algo que no es direcci\u00F3n (".concat((r.types || []).join(','), ") para \"").concat(direccion, "\" \u2014 descartado"));
                             return [2 /*return*/, { success: false }];
                         }
                         return [2 /*return*/, {

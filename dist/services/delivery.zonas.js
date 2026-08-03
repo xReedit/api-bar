@@ -22,7 +22,7 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 exports.__esModule = true;
-exports.resolverResumenFormato = exports.describirDelivery = exports.resolverModo = exports.resolverZona = exports.validarZonas = exports.puntoEnZona = exports.puntoEnCirculo = exports.puntoEnPoligono = exports.haversineKm = void 0;
+exports.resolverResumenFormato = exports.describirDelivery = exports.resolverModo = exports.decidirDireccionTexto = exports.resolverZona = exports.validarZonas = exports.puntoEnZona = exports.puntoEnCirculo = exports.puntoEnPoligono = exports.haversineKm = void 0;
 var R_KM = 6371;
 /** Distancia en km entre dos puntos (fórmula del haversine). */
 var haversineKm = function (a, b) {
@@ -119,6 +119,15 @@ var resolverZona = function (zonas, p) {
     return { cubierto: false };
 };
 exports.resolverZona = resolverZona;
+var decidirDireccionTexto = function (resultado, modo, kmLimite) {
+    if ((resultado === null || resultado === void 0 ? void 0 : resultado.success) && Number.isFinite(resultado.distanciaKm)) {
+        if (modo === 'variable' && resultado.distanciaKm > kmLimite)
+            return 'costo_base';
+        return 'usar';
+    }
+    return 'costo_base';
+};
+exports.decidirDireccionTexto = decidirDireccionTexto;
 /**
  * Modo de cobro de la sede. Si `parametros.modo` falta (configs anteriores a
  * este campo), se infiere con el MISMO criterio del panel Piter

@@ -75,7 +75,7 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
         for (const item of seccion.items || []) {
             const nombre = `${item.cantidad_seleccionada} ${item.des}`;
             const precio = parseFloat(item.precio_print).toFixed(2);
-            const lineas = wrap(nombre, 34); // deja sitio a la columna precio
+            const lineas = wrap(nombre, 30); // monoespaciada: caracteres más anchos, deja sitio a la columna precio
             lineas.forEach((linea, i) => {
                 partes.push(`<text x="${PAD}" y="${y}" font-size="${FS}" fill="#1a1a1a">${esc(linea)}</text>`);
                 if (i === 0) partes.push(`<text x="${W - PAD}" y="${y}" text-anchor="end" font-size="${FS}" fill="#1a1a1a">${esc(precio)}</text>`);
@@ -117,7 +117,11 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
 
     y += 10;
     const height = y + 20;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${height}" font-family="DejaVu Sans, Arial, sans-serif">`
+    // Comillas simples dentro del valor del atributo: como el atributo usa
+    // comillas dobles como delimitador, las simples no necesitan escaparse
+    // (XML/SVG válido) — se usan para declarar los nombres de familia con
+    // espacios, igual que en CSS.
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${height}" font-family="'Courier New', 'DejaVu Sans Mono', monospace">`
         + `<rect width="${W}" height="${height}" fill="#fffdf7"/>`
         + partes.join('')
         + `</svg>`;

@@ -72,4 +72,16 @@ describe('construirTicketSVG', () => {
         const { svg } = construirTicketSVG(datos);
         expect(svg).not.toContain('Resumen #');
     });
+
+    it('usa tipografia monoespaciada (estetica de ticket) con el atributo bien formado', () => {
+        const { svg } = construirTicketSVG(datos);
+        expect(svg).toContain(`font-family="'Courier New', 'DejaVu Sans Mono', monospace"`);
+        // El atributo debe quedar bien formado: un solo par de comillas dobles
+        // delimitando el valor, sin comillas dobles sueltas dentro que lo
+        // rompan (las comillas simples de los nombres de familia no cuentan).
+        const match = svg.match(/<svg[^>]*>/);
+        expect(match).not.toBeNull();
+        const aperturasComillasDobles = (match![0].match(/"/g) || []).length;
+        expect(aperturasComillasDobles % 2).toBe(0);
+    });
 });

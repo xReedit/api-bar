@@ -44,8 +44,12 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
     let y = 40;
 
     // ── Header: logo + nombre + canal ────────────────────────────────────
+    // Caja apaisada (240x96): los logos reales suelen ser rectangulares
+    // (p.ej. 337x61) — con una caja cuadrada 96x96 y preserveAspectRatio
+    // "meet" quedaban aplastados a ~96x17, ilegibles. Los logos cuadrados
+    // siguen viéndose bien porque "meet" los centra sin recortar.
     if (d.logoDataUrl) {
-        partes.push(`<image x="${W / 2 - 48}" y="${y - 10}" width="96" height="96" href="${esc(d.logoDataUrl)}" preserveAspectRatio="xMidYMid meet"/>`);
+        partes.push(`<image x="${W / 2 - 120}" y="${y - 10}" width="240" height="96" href="${esc(d.logoDataUrl)}" preserveAspectRatio="xMidYMid meet"/>`);
         y += 106;
     }
     partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="30" font-weight="bold" fill="#1a1a1a">${esc(d.nombreSede)}</text>`);

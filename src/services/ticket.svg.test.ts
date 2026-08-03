@@ -56,4 +56,9 @@ describe('construirTicketSVG', () => {
         const { svg } = construirTicketSVG({ ...datos, logoDataUrl: null });
         expect(svg).not.toContain('<image');
     });
+
+    it('incluye el pie de página con papaya.com.pe', () => {
+        const { svg } = construirTicketSVG(datos);
+        expect(svg).toContain('papaya.com.pe');
+    });
 });

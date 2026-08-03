@@ -97,6 +97,12 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
         y += esTotal ? LH + 18 : LH;
     });
 
+    // ── Pie: publicidad discreta ────────────────────────────────────────
+    y += 30;
+    partes.push(`<line x1="${PAD}" y1="${y}" x2="${W - PAD}" y2="${y}" stroke="#cccccc" stroke-width="2" stroke-dasharray="6 6"/>`);
+    y += 34;
+    partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" fill="#999999">papaya.com.pe</text>`);
+
     y += 10;
     const height = y + 20;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${height}" font-family="DejaVu Sans, Arial, sans-serif">`

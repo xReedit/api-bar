@@ -880,14 +880,15 @@ router.post("/resumen-pedido", async (req, res) => {
                 if (resolverResumenFormato(configDelivery?.parametros) === 'imagen') {
                     const sedeInfo: any = await prisma.sede.findUnique({
                         where: { idsede: Number(idsede) },
-                        select: { nombre: true, logo64: true }
+                        select: { nombre: true, logo64: true, img_mini: true }
                     });
                     imagenUrl = await generarYSubirTicket(session_id, {
                         nombreSede: sedeInfo?.nombre || '',
                         canal: tipoConsumo?.descripcion || '',
                         secciones,
                         subtotales,
-                        logoDataUrl: sedeInfo?.logo64 || null
+                        imgMini: sedeInfo?.img_mini || null,
+                        logo64: sedeInfo?.logo64 || null
                     });
                     if (imagenUrl) {
                         const total = subtotales.length

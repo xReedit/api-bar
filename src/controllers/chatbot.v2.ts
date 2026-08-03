@@ -458,15 +458,75 @@ router.post("/calcular-delivery", async (req, res) => {
                 codigo: rev.codigo || ''
             };
         } else {
-            resultadoDistancia = await GeocodingService.calcularDistanciaPorRango(
-                direccion,
-                Number(sede.latitude),
-                Number(sede.longitude),
-                // 999999 neutraliza el gate interno del servicio en modo zonas:
-                // ahí la cobertura la deciden las zonas, no km_limite.
-                modo === 'zonas' ? 999999 : distanciaMaxima,
-                ciudades
-            );
+            // Cliente recurrente: si la dirección pedida coincide con su
+            // dirección guardada (cliente_pwa_direccion) y esta tiene
+            // coordenadas, se reusan — ni Google ni preguntas. Es el flujo más
+            // común: el bot le ofrece su dirección de la vez pasada y el
+            // cliente dice "sí". Falla-abierto: cualquier error → geocoding.
+            let coordsGuardadas: { lat: number; lng: number; direccion: string } | null = null;
+            try {
+                const telefonoSesion = String(session_id || '').split('_')[0].replace(/\D/g, '');
+                if (telefonoSesion.length >= 6 && direccion) {
+                    const normalizar = (s: string) => String(s || '')
+                        .toLowerCase()
+                        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                        .replace(/[^a-z0-9]/g, '');
+                    const dirPedida = normalizar(direccion);
+                    const guardadas: any = await prisma.$queryRaw`
+                        SELECT cpd.direccion, cpd.latitude, cpd.longitude
+                        FROM cliente_pwa_direccion cpd
+                        INNER JOIN cliente c ON c.idcliente = cpd.idcliente
+                        WHERE REPLACE(c.telefono, ' ', '') LIKE ${'%' + telefonoSesion + '%'}
+                        ORDER BY cpd.idcliente_pwa_direccion DESC
+                        LIMIT 3`;
+                    for (const g of guardadas || []) {
+                        const dirGuardada = normalizar(g.direccion);
+                        const lat = Number(g.latitude);
+                        const lng = Number(g.longitude);
+                        if (dirPedida.length >= 10 && dirGuardada.length >= 10
+                            && (dirPedida.includes(dirGuardada) || dirGuardada.includes(dirPedida))
+                            && Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+                            coordsGuardadas = { lat, lng, direccion: g.direccion };
+                            break;
+                        }
+                    }
+                }
+            } catch (error: any) {
+                console.error('calcular-delivery: fallo buscando direccion guardada, sigue geocoding:', error.message);
+            }
+
+            if (coordsGuardadas) {
+                const distanciaGuardada = estimarKmRuta(GeocodingService.calcularDistanciaHaversine(
+                    Number(sede.latitude), Number(sede.longitude), coordsGuardadas.lat, coordsGuardadas.lng
+                ));
+                console.log(`calcular-delivery: direccion guardada reusada ("${coordsGuardadas.direccion}", ${distanciaGuardada} km) — sin geocoding`);
+                direccionLegible = coordsGuardadas.direccion;
+                resultadoDistancia = {
+                    success: true,
+                    lat: coordsGuardadas.lat,
+                    lng: coordsGuardadas.lng,
+                    distanciaKm: distanciaGuardada,
+                    confianza: 'alta',
+                    ciudad: '', provincia: '', departamento: '', pais: '', codigo: ''
+                };
+                if (modo === 'variable' && distanciaGuardada > distanciaMaxima) {
+                    resultadoDistancia = {
+                        success: false,
+                        fueraDeCobertura: true,
+                        error: `Dirección fuera del rango de cobertura (${distanciaGuardada.toFixed(2)} km, máximo ${distanciaMaxima} km)`
+                    };
+                }
+            } else {
+                resultadoDistancia = await GeocodingService.calcularDistanciaPorRango(
+                    direccion,
+                    Number(sede.latitude),
+                    Number(sede.longitude),
+                    // 999999 neutraliza el gate interno del servicio en modo zonas:
+                    // ahí la cobertura la deciden las zonas, no km_limite.
+                    modo === 'zonas' ? 999999 : distanciaMaxima,
+                    ciudades
+                );
+            }
         }
 
         // ── Cascada anti-typo (solo direcciones de texto) ────────────────────

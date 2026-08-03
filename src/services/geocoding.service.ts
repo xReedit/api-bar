@@ -57,6 +57,19 @@ export const clasificarConfianza = (result: any): 'alta' | 'baja' => {
     return 'alta';
 };
 
+/**
+ * ¿El resultado es solo la ciudad/zona, sin calle? Preguntarle al cliente
+ * "¿Te refieres a Moyobamba, Perú?" es absurdo (claro que sí) y lo espanta:
+ * estos matches se tratan como NO ENCONTRADO para que el flujo caiga al
+ * costo base sin fricción.
+ */
+export const esSoloCiudad = (types: any): boolean => {
+    const t: string[] = Array.isArray(types) ? types : [];
+    if (t.length === 0) return false;
+    const conCalle = ['street_address', 'route', 'premise', 'subpremise', 'street_number', 'intersection', 'point_of_interest', 'establishment'];
+    return !t.some((x) => conCalle.includes(x));
+};
+
 export class GeocodingService {
     
     static async obtenerCoordenadas(direccion: string, ciudad: string): Promise<ResultadoGeocodificacion> {
@@ -246,6 +259,14 @@ export class GeocodingService {
 
                 console.log(`Encontrado con ciudad "${ciudad}": ${distanciaKm} km (ruta estimada = recta × factor)`);
 
+                // Match a nivel ciudad (sin calle): NO sirve ni para confirmar
+                // — se sigue buscando (Places) y si nada da calle, el caller
+                // cae al costo base sin preguntarle nada al cliente.
+                if (esSoloCiudad(response.data.results[0].types)) {
+                    console.log(`Match solo-ciudad para "${direccion}" — se descarta y sigue el fallback`);
+                    continue;
+                }
+
                 const confianza = clasificarConfianza(response.data.results[0]);
 
                 if (confianza === 'alta' && distanciaKm > kmLimite) {
@@ -357,6 +378,16 @@ export class GeocodingService {
                 if (!['OK', 'ZERO_RESULTS'].includes(response.data?.status)) {
                     console.error('Places API:', response.data?.status, response.data?.error_message || '');
                 }
+                return { success: false };
+            }
+            // Places es un buscador de LUGARES: ante una dirección que no
+            // existe devuelve el negocio más parecido (verificado: un
+            // supermercado en otra calle). Solo aceptamos resultados que sean
+            // direcciones de calle reales; lo demás = no encontrado (el caller
+            // cae al costo base sin preguntar nada raro al cliente).
+            const tiposDireccion = ['street_address', 'route', 'premise', 'subpremise', 'intersection'];
+            if (!Array.isArray(r.types) || !r.types.some((t: string) => tiposDireccion.includes(t))) {
+                console.log(`Places devolvió algo que no es dirección (${(r.types || []).join(',')}) para "${direccion}" — descartado`);
                 return { success: false };
             }
             return {

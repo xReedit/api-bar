@@ -1,5 +1,24 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { clasificarConfianza, estimarKmRuta } from './geocoding.service';
+import { clasificarConfianza, estimarKmRuta, esSoloCiudad } from './geocoding.service';
+
+describe('esSoloCiudad', () => {
+    it('la ciudad sola es solo-ciudad (no sirve para confirmar)', () => {
+        expect(esSoloCiudad(['locality', 'political'])).toBe(true);
+        expect(esSoloCiudad(['administrative_area_level_2', 'political'])).toBe(true);
+        expect(esSoloCiudad(['postal_code'])).toBe(true);
+    });
+
+    it('resultados con calle NO son solo-ciudad', () => {
+        expect(esSoloCiudad(['street_address'])).toBe(false);
+        expect(esSoloCiudad(['route'])).toBe(false);
+        expect(esSoloCiudad(['establishment', 'point_of_interest'])).toBe(false);
+    });
+
+    it('types vacío o inválido no es solo-ciudad (no descarta de más)', () => {
+        expect(esSoloCiudad([])).toBe(false);
+        expect(esSoloCiudad(undefined)).toBe(false);
+    });
+});
 
 describe('estimarKmRuta', () => {
     afterEach(() => {

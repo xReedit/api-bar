@@ -956,9 +956,11 @@ router.post("/resumen-pedido", async (req, res) => {
                     const descripcionCanal = String(tipoConsumo?.descripcion || '').toLowerCase();
                     let horaEntrega: { etiqueta: string; valor: string } | undefined;
                     if (hora_programada) {
-                        if (descripcionCanal.includes('llevar')) {
+                        // Sinónimos de canal según la convención del repo
+                        // (pedido.services.ts): llevar/recog/recoj y local/mesa/salon.
+                        if (descripcionCanal.includes('llevar') || descripcionCanal.includes('recog') || descripcionCanal.includes('recoj')) {
                             horaEntrega = { etiqueta: 'Recojo', valor: hora_programada };
-                        } else if (descripcionCanal.includes('local') || descripcionCanal.includes('mesa')) {
+                        } else if (descripcionCanal.includes('local') || descripcionCanal.includes('mesa') || descripcionCanal.includes('salon')) {
                             horaEntrega = { etiqueta: 'Reserva', valor: hora_programada };
                         }
                     }

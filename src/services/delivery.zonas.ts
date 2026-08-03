@@ -152,3 +152,11 @@ export const describirDelivery = (parametros: any): string => {
     }
     return `Costo base S/${Number(parametros?.km_base_costo || 0)} hasta ${Number(parametros?.km_base || 0)} km, luego S/${Number(parametros?.km_adicional_costo || 0)} por km adicional`;
 };
+
+/**
+ * Formato del resumen de pedido que el bot manda por WhatsApp.
+ * 'imagen' = ticket PNG (files-bot/tickets/, sobreescrito por sesión);
+ * 'texto' = comportamiento histórico. Vive en parametros (JSON sin DDL).
+ */
+export const resolverResumenFormato = (parametros: any): 'texto' | 'imagen' =>
+    parametros?.resumen_formato === 'imagen' ? 'imagen' : 'texto';

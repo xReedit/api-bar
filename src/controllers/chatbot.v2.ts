@@ -1,10 +1,11 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { GeocodingService } from "../services/geocoding.service";
-import { describirDelivery, resolverModo, resolverZona, validarZonas } from "../services/delivery.zonas";
+import { describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
+import { generarYSubirTicket } from "../services/ticket.image.service";
 import axios from "axios";
 
 const prisma = new PrismaClient();
@@ -862,11 +863,50 @@ router.post("/resumen-pedido", async (req, res) => {
             ticketFormateado,
             'pending'
         );
-        
+
+
+        // Formato imagen (opcional por sede): renderiza el ticket como PNG y
+        // responde imagen_url + resumen corto. Cualquier fallo cae a texto.
+        // Sin session_id no se genera imagen: una key S3 degenerada pisaría
+        // tickets de otras sesiones.
+        let imagenUrl: string | null = null;
+        let resumenRespuesta = ticketFormateado;
+        try {
+            if (session_id) {
+                const configDelivery: any = await prisma.sede_costo_delivery.findFirst({
+                    where: { idsede: Number(idsede), estado: '0' },
+                    select: { parametros: true }
+                });
+                if (resolverResumenFormato(configDelivery?.parametros) === 'imagen') {
+                    const sedeInfo: any = await prisma.sede.findUnique({
+                        where: { idsede: Number(idsede) },
+                        select: { nombre: true, logo64: true }
+                    });
+                    imagenUrl = await generarYSubirTicket(session_id, {
+                        nombreSede: sedeInfo?.nombre || '',
+                        canal: tipoConsumo?.descripcion || '',
+                        secciones,
+                        subtotales,
+                        logoDataUrl: sedeInfo?.logo64 || null
+                    });
+                    if (imagenUrl) {
+                        const total = subtotales.length
+                            ? parseFloat(subtotales[subtotales.length - 1].importe).toFixed(2)
+                            : '0.00';
+                        resumenRespuesta = `Pedido *${tipoConsumo?.descripcion || ''}* — Total *S/ ${total}* 🧾 (detalle en el ticket adjunto)`;
+                    }
+                }
+            }
+        } catch (error: any) {
+            console.error('resumen-pedido: fallo modo imagen, usando texto:', error.message);
+            imagenUrl = null;
+            resumenRespuesta = ticketFormateado;
+        }
 
         res.status(200).json({
-            success: true,            
-            resumen: ticketFormateado            
+            success: true,
+            resumen: resumenRespuesta,
+            ...(imagenUrl ? { imagen_url: imagenUrl } : {})
         });
 
     } catch (error: any) {

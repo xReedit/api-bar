@@ -5,6 +5,7 @@ import {
     puntoEnCirculo,
     puntoEnPoligono,
     resolverModo,
+    resolverResumenFormato,
     resolverZona,
     validarZonas,
     ZonaDelivery,
@@ -135,5 +136,16 @@ describe('describirDelivery', () => {
     it('zonas vacías cae a la descripción variable', () => {
         const d = describirDelivery({ modo: 'zonas', zonas: [], km_base_costo: 5, km_base: 2, km_adicional_costo: 1 });
         expect(d).toContain('Costo base S/5');
+    });
+});
+
+describe('resolverResumenFormato', () => {
+    it('default texto cuando falta el flag', () => {
+        expect(resolverResumenFormato({})).toBe('texto');
+        expect(resolverResumenFormato(null)).toBe('texto');
+    });
+    it('imagen solo cuando esta explicito', () => {
+        expect(resolverResumenFormato({ resumen_formato: 'imagen' })).toBe('imagen');
+        expect(resolverResumenFormato({ resumen_formato: 'otro' })).toBe('texto');
     });
 });

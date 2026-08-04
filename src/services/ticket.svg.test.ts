@@ -24,7 +24,7 @@ describe('construirTicketSVG', () => {
     it('genera un SVG con canal, items y total', () => {
         const { svg, width, height } = construirTicketSVG(datos);
         expect(svg).toContain('<svg');
-        expect(svg).toContain('DELIVERY');
+        expect(svg).toContain('Delivery');
         expect(svg).toContain('arroz con pato');
         expect(svg).toContain('43.00');
         expect(width).toBe(640);
@@ -124,6 +124,30 @@ describe('construirTicketSVG', () => {
     it('el canal no se pierde: aparece como "Entrega: {canal}" en el bloque de datos', () => {
         const { svg } = construirTicketSVG(datos);
         expect(svg).toContain('Entrega: ');
-        expect(svg).toContain('DELIVERY');
+        expect(svg).toContain('Delivery');
+        expect(svg).not.toContain('>DELIVERY<');
+    });
+});
+
+describe('legibilidad: minusculas y capitalizacion (pedido del dueño 04-08)', () => {
+    it('platos de BD en MAYUSCULAS salen en minusculas', () => {
+        const { svg } = construirTicketSVG({
+            ...datos,
+            secciones: [{ des: 'PLATOS', items: [{ cantidad_seleccionada: 1, des: 'ESTOFADO DE GALLINA', precio_print: '18.00', indicaciones: '' }] }]
+        });
+        expect(svg).toContain('1 estofado de gallina');
+        expect(svg).not.toContain('ESTOFADO');
+    });
+
+    it('cliente y canal en Capitalizado ("SEÑORA ROSALINDA" → "Señora Rosalinda")', () => {
+        const { svg } = construirTicketSVG({ ...datos, canal: 'PARA LLEVAR', cliente: 'SEÑORA ROSALINDA' });
+        expect(svg).toContain('Para Llevar');
+        expect(svg).toContain('Señora Rosalinda');
+        expect(svg).not.toContain('ROSALINDA');
+    });
+
+    it('papaya.com.pe va mas notoria que la hora (23px, #555555)', () => {
+        const { svg } = construirTicketSVG(datos);
+        expect(svg).toMatch(/font-size="23" font-weight="bold" fill="#555555">papaya\.com\.pe/);
     });
 });

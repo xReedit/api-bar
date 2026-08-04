@@ -27,6 +27,11 @@ const esc = (s: any): string =>
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 
+// Capitaliza para lectura fácil: "ZARE" → "Zare", "PARA LLEVAR" → "Para
+// Llevar". Los datos llegan de BD en mayúsculas y en bloque cansan la vista.
+const capitalizar = (s: any): string =>
+    String(s ?? '').toLowerCase().replace(/(^|\s)\p{L}/gu, (m) => m.toUpperCase());
+
 // Parte una descripción larga en líneas de máximo n caracteres (por palabra).
 const wrap = (texto: string, n: number): string[] => {
     const palabras = String(texto).split(/\s+/);
@@ -83,10 +88,10 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
     // Canal (delivery/para llevar/local): ya no aparece en el badge (ahora
     // fijo "PEDIDO POR CONFIRMAR"), así que va como primera línea aquí —
     // por eso este bloque siempre pinta al menos una línea.
-    partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">Entrega: </tspan>${esc(d.canal.toUpperCase())}</text>`);
+    partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">Entrega: </tspan>${esc(capitalizar(d.canal))}</text>`);
     y += LH_DATOS;
     if (d.cliente) {
-        partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">Cliente: </tspan>${esc(d.cliente)}</text>`);
+        partes.push(`<text x="${PAD}" y="${y}" font-size="${FS_DATOS}" fill="#1a1a1a" xml:space="preserve"><tspan font-weight="bold">Cliente: </tspan>${esc(capitalizar(d.cliente))}</text>`);
         y += LH_DATOS;
     }
     if (d.direccion) {
@@ -109,7 +114,8 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
         partes.push(`<text x="${PAD}" y="${y}" font-size="${FS}" font-weight="bold" fill="#0b7a3e">${esc(String(seccion.des || '').toUpperCase())}</text>`);
         y += LH;
         for (const item of seccion.items || []) {
-            const nombre = `${item.cantidad_seleccionada} ${item.des}`;
+            // Platos en minúsculas: en BD suelen venir EN BLOQUE y cansan la vista.
+            const nombre = `${item.cantidad_seleccionada} ${String(item.des ?? '').toLowerCase()}`;
             const precio = parseFloat(item.precio_print).toFixed(2);
             const lineas = wrap(nombre, 30); // monoespaciada: caracteres más anchos, deja sitio a la columna precio
             lineas.forEach((linea, i) => {
@@ -149,7 +155,9 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
         partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" font-weight="bold" fill="#999999">${esc(d.hora)}</text>`);
         y += 26;
     }
-    partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="20" font-weight="bold" fill="#999999">papaya.com.pe</text>`);
+    // Publicidad: un punto más grande y más oscura que la hora para que se
+    // note, sin robarle protagonismo al ticket.
+    partes.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-size="23" font-weight="bold" fill="#555555">papaya.com.pe</text>`);
 
     y += 10;
     const height = y + 20;

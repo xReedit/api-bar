@@ -141,6 +141,25 @@ export const decidirDireccionTexto = (
 };
 
 /**
+ * Costo de delivery en modo VARIABLE, siempre "cobrable" (sin S/ 5.78):
+ * los km adicionales se cobran por km ENTERO — la fracción solo cuenta como
+ * km extra si PASA de 0.5 (regla del dueño: 5.5 km con base 4 → 1 km extra;
+ * 5.78 km → 2 km extra). Con tarifas enteras el resultado es siempre entero.
+ */
+export const costoVariable = (
+    distanciaKm: number,
+    kmBase: number,
+    costoBase: number,
+    costoKmAdicional: number
+): number => {
+    const exceso = Math.max(0, Number(distanciaKm) - Number(kmBase));
+    const entero = Math.floor(exceso);
+    const fraccion = exceso - entero;
+    const kmExtras = fraccion > 0.5 ? entero + 1 : entero;
+    return Number((Number(costoBase) + kmExtras * Number(costoKmAdicional)).toFixed(2));
+};
+
+/**
  * Modo de cobro de la sede. Si `parametros.modo` falta (configs anteriores a
  * este campo), se infiere con el MISMO criterio del panel Piter
  * (obtener_coordenadas_del_cliente === 'NO' → fijo, cualquier otra cosa →

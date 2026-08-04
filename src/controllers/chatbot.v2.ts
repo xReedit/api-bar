@@ -1,7 +1,7 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { GeocodingService, estimarKmRuta } from "../services/geocoding.service";
-import { decidirDireccionTexto, describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
+import { costoVariable, decidirDireccionTexto, describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
@@ -637,10 +637,12 @@ router.post("/calcular-delivery", async (req, res) => {
         } else {
             // BUG C: antes un costo_fijo residual (> 0) anulaba el cálculo por
             // distancia en modo variable; aquí se ignora por completo.
+            // Km adicionales por km ENTERO (fracción cuenta solo si pasa de
+            // 0.5) — el costo sale cobrable, nunca un S/ 5.78.
             const kmBase = Number(parametros.km_base || 2);
             const costoAdicional = Number(parametros.km_adicional_costo || 0);
             const costoBase = Number(parametros.km_base_costo || 0);
-            costo = costoBase + (distanciaKm > kmBase ? (distanciaKm - kmBase) * costoAdicional : 0);
+            costo = costoVariable(distanciaKm, kmBase, costoBase, costoAdicional);
         }
 
         await persistirDireccion({

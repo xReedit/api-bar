@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    costoVariable,
     decidirDireccionTexto,
     describirDelivery,
     haversineKm,
@@ -191,5 +192,29 @@ describe('resolverResumenFormato', () => {
     it('imagen solo cuando esta explicito', () => {
         expect(resolverResumenFormato({ resumen_formato: 'imagen' })).toBe('imagen');
         expect(resolverResumenFormato({ resumen_formato: 'otro' })).toBe('texto');
+    });
+});
+
+describe('costoVariable: km adicionales por km entero (config real: base 4km/S/4, S/1 x km extra)', () => {
+    it('dentro del radio base cobra el costo basico', () => {
+        expect(costoVariable(2.0, 4, 4, 1)).toBe(4);
+        expect(costoVariable(4.0, 4, 4, 1)).toBe(4);
+    });
+
+    it('ejemplo del dueño: 5.5 km → 1 km extra (la fraccion 0.5 NO pasa de 0.5) → S/5', () => {
+        expect(costoVariable(5.5, 4, 4, 1)).toBe(5);
+    });
+
+    it('caso real del ticket: 5.78 km → fraccion 0.78 pasa de 0.5 → 2 km extra → S/6 (antes S/5.78)', () => {
+        expect(costoVariable(5.78, 4, 4, 1)).toBe(6);
+    });
+
+    it('fraccion chica no cobra km extra: 4.3 km → S/4; 4.6 km → S/5', () => {
+        expect(costoVariable(4.3, 4, 4, 1)).toBe(4);
+        expect(costoVariable(4.6, 4, 4, 1)).toBe(5);
+    });
+
+    it('tarifa adicional distinta: 7.2 km, base 4, S/1.5 x km → 3 extras → 4 + 4.5 = 8.5', () => {
+        expect(costoVariable(7.2, 4, 4, 1.5)).toBe(8.5);
     });
 });

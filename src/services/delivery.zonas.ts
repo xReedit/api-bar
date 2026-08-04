@@ -105,13 +105,60 @@ export const validarZonas = (raw: unknown): ZonaDelivery[] => {
 };
 
 export type ResultadoZona =
-    | { cubierto: true; zona: ZonaDelivery; indice: number }
+    | { cubierto: true; zona: ZonaDelivery; indice: number; porMargen?: boolean }
     | { cubierto: false };
 
-/** Primera zona del array que contiene el punto (menor índice gana en solape). */
-export const resolverZona = (zonas: ZonaDelivery[], p: LatLng): ResultadoZona => {
+// Distancia punto→segmento en km (proyección equirectangular local: exacta de
+// sobra para márgenes de ~1 km en una ciudad).
+const distanciaASegmentoKm = (p: LatLng, a: LatLng, b: LatLng): number => {
+    const kmLat = 111.32;
+    const kmLng = 111.32 * Math.cos((p.lat * Math.PI) / 180);
+    const ax = (a.lng - p.lng) * kmLng, ay = (a.lat - p.lat) * kmLat;
+    const bx = (b.lng - p.lng) * kmLng, by = (b.lat - p.lat) * kmLat;
+    const dx = bx - ax, dy = by - ay;
+    const largo2 = dx * dx + dy * dy;
+    const t = largo2 === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / largo2));
+    const cx = ax + t * dx, cy = ay + t * dy;
+    return Math.sqrt(cx * cx + cy * cy);
+};
+
+/** Distancia en km desde el punto al BORDE de la zona (0 si está dentro). */
+export const distanciaAZonaKm = (p: LatLng, z: ZonaDelivery): number => {
+    if (puntoEnZona(p, z)) return 0;
+    if (z.tipo === 'circulo') {
+        return Math.max(0, haversineKm(p, z.centro as LatLng) - Number(z.radio_km));
+    }
+    const puntos = z.puntos || [];
+    let min = Number.POSITIVE_INFINITY;
+    for (let i = 0, j = puntos.length - 1; i < puntos.length; j = i++) {
+        min = Math.min(min, distanciaASegmentoKm(p, puntos[j], puntos[i]));
+    }
+    return min;
+};
+
+/**
+ * Primera zona del array que contiene el punto (menor índice gana en solape).
+ * `margenKm` > 0: si ninguna zona lo contiene pero la más cercana está a ese
+ * margen o menos de su borde, se cobra esa — cubre las "rendijas" que quedan
+ * entre polígonos dibujados a mano y los pulsos de GPS en los límites.
+ */
+export const resolverZona = (zonas: ZonaDelivery[], p: LatLng, margenKm = 0): ResultadoZona => {
     for (let i = 0; i < zonas.length; i++) {
         if (puntoEnZona(p, zonas[i])) return { cubierto: true, zona: zonas[i], indice: i };
+    }
+    if (margenKm > 0) {
+        let mejor = -1;
+        let mejorDist = Number.POSITIVE_INFINITY;
+        for (let i = 0; i < zonas.length; i++) {
+            const d = distanciaAZonaKm(p, zonas[i]);
+            if (d < mejorDist) {
+                mejorDist = d;
+                mejor = i;
+            }
+        }
+        if (mejor >= 0 && mejorDist <= margenKm) {
+            return { cubierto: true, zona: zonas[mejor], indice: mejor, porMargen: true };
+        }
     }
     return { cubierto: false };
 };

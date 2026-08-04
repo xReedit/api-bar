@@ -592,10 +592,15 @@ router.post("/calcular-delivery", async (req, res) => {
         let zonaNombre: string | undefined;
 
         if (modo === 'zonas') {
+            // Margen anti-rendijas: los polígonos dibujados a mano dejan
+            // grietas entre zonas; un punto a ≤1 km del borde de la zona más
+            // cercana se cobra como esa zona. Ajustable por sede sin UI:
+            // parametros.zonas_margen_km en el JSON.
+            const margenZonasKm = Number(parametros.zonas_margen_km) > 0 ? Number(parametros.zonas_margen_km) : 1;
             const r = resolverZona(zonas, {
                 lat: Number(resultadoDistancia.lat),
                 lng: Number(resultadoDistancia.lng)
-            });
+            }, margenZonasKm);
             if (!r.cubierto) {
                 // Punto de TEXTO fuera de zonas: probable geocode erróneo — la
                 // venta sigue con la zona más barata (dirección sin verificar,

@@ -3,6 +3,7 @@ import {
     costoVariable,
     decidirDireccionTexto,
     describirDelivery,
+    distanciaAZonaKm,
     haversineKm,
     puntoEnCirculo,
     puntoEnPoligono,
@@ -216,5 +217,65 @@ describe('costoVariable: km adicionales por km entero (config real: base 4km/S/4
 
     it('tarifa adicional distinta: 7.2 km, base 4, S/1.5 x km → 3 extras → 4 + 4.5 = 8.5', () => {
         expect(costoVariable(7.2, 4, 4, 1.5)).toBe(8.5);
+    });
+});
+
+describe('resolverZona con margen anti-rendijas (1 km)', () => {
+    // Dos cuadrados de ~2km separados por una rendija de ~300m (como quedan
+    // al dibujar zonas a mano en el mapa).
+    const oeste: ZonaDelivery = {
+        nombre: 'Oeste', costo: 4, tipo: 'poligono',
+        puntos: [
+            { lat: -6.50, lng: -76.40 }, { lat: -6.50, lng: -76.38 },
+            { lat: -6.48, lng: -76.38 }, { lat: -6.48, lng: -76.40 },
+        ]
+    };
+    const este: ZonaDelivery = {
+        nombre: 'Este', costo: 6, tipo: 'poligono',
+        puntos: [
+            { lat: -6.50, lng: -76.377 }, { lat: -6.50, lng: -76.357 },
+            { lat: -6.48, lng: -76.357 }, { lat: -6.48, lng: -76.377 },
+        ]
+    };
+    // Punto EN la rendija (lng -76.3785: fuera de ambas, a ~50-100m de cada borde)
+    const enLaRendija = { lat: -6.49, lng: -76.3785 };
+
+    it('sin margen, la rendija queda descubierta (comportamiento viejo)', () => {
+        expect(resolverZona([oeste, este], enLaRendija).cubierto).toBe(false);
+    });
+
+    it('con margen 1km, la rendija se cubre con la zona mas cercana', () => {
+        const r = resolverZona([oeste, este], enLaRendija, 1);
+        expect(r.cubierto).toBe(true);
+        expect(r.cubierto && r.porMargen).toBe(true);
+    });
+
+    it('dentro de una zona el margen no cambia nada (prioridad normal)', () => {
+        const r = resolverZona([oeste, este], { lat: -6.49, lng: -76.39 }, 1);
+        expect(r.cubierto && r.zona.nombre).toBe('Oeste');
+        expect(r.cubierto && r.porMargen).toBeUndefined();
+    });
+
+    it('un punto realmente lejos (>1km de todo) sigue sin cobertura', () => {
+        expect(resolverZona([oeste, este], { lat: -6.60, lng: -76.50 }, 1).cubierto).toBe(false);
+    });
+
+    it('funciona tambien con zonas circulo', () => {
+        const circulo: ZonaDelivery = { nombre: 'C', costo: 5, tipo: 'circulo', centro: { lat: -6.49, lng: -76.39 }, radio_km: 1 };
+        // ~1.5km del centro = 0.5km fuera del borde → cubierto por margen
+        const afuerita = { lat: -6.49 + 1.5 / 111.32, lng: -76.39 };
+        expect(resolverZona([circulo], afuerita, 1).cubierto).toBe(true);
+        expect(resolverZona([circulo], afuerita, 0.2).cubierto).toBe(false);
+    });
+});
+
+describe('distanciaAZonaKm', () => {
+    const circulo: ZonaDelivery = { nombre: 'C', costo: 5, tipo: 'circulo', centro: { lat: -6.49, lng: -76.39 }, radio_km: 1 };
+    it('dentro = 0; fuera = distancia al borde', () => {
+        expect(distanciaAZonaKm({ lat: -6.49, lng: -76.39 }, circulo)).toBe(0);
+        const a2km = { lat: -6.49 + 2 / 111.32, lng: -76.39 };
+        const d = distanciaAZonaKm(a2km, circulo);
+        expect(d).toBeGreaterThan(0.9);
+        expect(d).toBeLessThan(1.1);
     });
 });

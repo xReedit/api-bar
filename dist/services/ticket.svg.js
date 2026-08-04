@@ -15,6 +15,11 @@ var esc = function (s) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 };
+// Capitaliza para lectura fácil: "ZARE" → "Zare", "PARA LLEVAR" → "Para
+// Llevar". Los datos llegan de BD en mayúsculas y en bloque cansan la vista.
+var capitalizar = function (s) {
+    return String(s !== null && s !== void 0 ? s : '').toLowerCase().replace(/(^|\s)\p{L}/gu, function (m) { return m.toUpperCase(); });
+};
 // Parte una descripción larga en líneas de máximo n caracteres (por palabra).
 var wrap = function (texto, n) {
     var palabras = String(texto).split(/\s+/);
@@ -36,6 +41,7 @@ var wrap = function (texto, n) {
     return lineas.length ? lineas : [''];
 };
 var construirTicketSVG = function (d) {
+    var _a;
     var partes = [];
     var y = 64; // margen superior (antes 40; +24 de aire antes del logo)
     // ── Header: logo + nombre + canal ────────────────────────────────────
@@ -73,10 +79,10 @@ var construirTicketSVG = function (d) {
     // Canal (delivery/para llevar/local): ya no aparece en el badge (ahora
     // fijo "PEDIDO POR CONFIRMAR"), así que va como primera línea aquí —
     // por eso este bloque siempre pinta al menos una línea.
-    partes.push("<text x=\"".concat(PAD, "\" y=\"").concat(y, "\" font-size=\"").concat(FS_DATOS, "\" fill=\"#1a1a1a\" xml:space=\"preserve\"><tspan font-weight=\"bold\">Entrega: </tspan>").concat(esc(d.canal.toUpperCase()), "</text>"));
+    partes.push("<text x=\"".concat(PAD, "\" y=\"").concat(y, "\" font-size=\"").concat(FS_DATOS, "\" fill=\"#1a1a1a\" xml:space=\"preserve\"><tspan font-weight=\"bold\">Entrega: </tspan>").concat(esc(capitalizar(d.canal)), "</text>"));
     y += LH_DATOS;
     if (d.cliente) {
-        partes.push("<text x=\"".concat(PAD, "\" y=\"").concat(y, "\" font-size=\"").concat(FS_DATOS, "\" fill=\"#1a1a1a\" xml:space=\"preserve\"><tspan font-weight=\"bold\">Cliente: </tspan>").concat(esc(d.cliente), "</text>"));
+        partes.push("<text x=\"".concat(PAD, "\" y=\"").concat(y, "\" font-size=\"").concat(FS_DATOS, "\" fill=\"#1a1a1a\" xml:space=\"preserve\"><tspan font-weight=\"bold\">Cliente: </tspan>").concat(esc(capitalizar(d.cliente)), "</text>"));
         y += LH_DATOS;
     }
     if (d.direccion) {
@@ -94,12 +100,13 @@ var construirTicketSVG = function (d) {
     partes.push("<line x1=\"".concat(PAD, "\" y1=\"").concat(y, "\" x2=\"").concat(W - PAD, "\" y2=\"").concat(y, "\" stroke=\"#cccccc\" stroke-width=\"2\" stroke-dasharray=\"6 6\"/>"));
     y += 34;
     // ── Items por sección ────────────────────────────────────────────────
-    for (var _i = 0, _a = d.secciones || []; _i < _a.length; _i++) {
-        var seccion = _a[_i];
+    for (var _i = 0, _b = d.secciones || []; _i < _b.length; _i++) {
+        var seccion = _b[_i];
         partes.push("<text x=\"".concat(PAD, "\" y=\"").concat(y, "\" font-size=\"").concat(FS, "\" font-weight=\"bold\" fill=\"#0b7a3e\">").concat(esc(String(seccion.des || '').toUpperCase()), "</text>"));
         y += LH;
         var _loop_1 = function (item) {
-            var nombre = "".concat(item.cantidad_seleccionada, " ").concat(item.des);
+            // Platos en minúsculas: en BD suelen venir EN BLOQUE y cansan la vista.
+            var nombre = "".concat(item.cantidad_seleccionada, " ").concat(String((_a = item.des) !== null && _a !== void 0 ? _a : '').toLowerCase());
             var precio = parseFloat(item.precio_print).toFixed(2);
             var lineas = wrap(nombre, 30); // monoespaciada: caracteres más anchos, deja sitio a la columna precio
             lineas.forEach(function (linea, i) {
@@ -113,8 +120,8 @@ var construirTicketSVG = function (d) {
                 y += LH - 4;
             }
         };
-        for (var _b = 0, _c = seccion.items || []; _b < _c.length; _b++) {
-            var item = _c[_b];
+        for (var _c = 0, _d = seccion.items || []; _c < _d.length; _c++) {
+            var item = _d[_c];
             _loop_1(item);
         }
         y += 8;
@@ -142,7 +149,9 @@ var construirTicketSVG = function (d) {
         partes.push("<text x=\"".concat(W / 2, "\" y=\"").concat(y, "\" text-anchor=\"middle\" font-size=\"20\" font-weight=\"bold\" fill=\"#999999\">").concat(esc(d.hora), "</text>"));
         y += 26;
     }
-    partes.push("<text x=\"".concat(W / 2, "\" y=\"").concat(y, "\" text-anchor=\"middle\" font-size=\"20\" font-weight=\"bold\" fill=\"#999999\">papaya.com.pe</text>"));
+    // Publicidad: un punto más grande y más oscura que la hora para que se
+    // note, sin robarle protagonismo al ticket.
+    partes.push("<text x=\"".concat(W / 2, "\" y=\"").concat(y, "\" text-anchor=\"middle\" font-size=\"23\" font-weight=\"bold\" fill=\"#555555\">papaya.com.pe</text>"));
     y += 10;
     var height = y + 20;
     // Comillas simples dentro del valor del atributo: como el atributo usa

@@ -1,7 +1,17 @@
 // Renderiza el ticket SVG a PNG (sharp) y lo sube a S3 con key FIJA por
 // sesión (se sobreescribe: no acumula espacio). Cualquier fallo devuelve
 // null y el resumen sale como texto — la imagen nunca rompe el pedido.
+import path from 'path';
 import axios from 'axios';
+
+// Las fuentes del ticket (DejaVu Sans Mono) viven en fonts/ del repo:
+// FONTCONFIG_PATH le dice a librsvg (dentro de sharp) que las use directo,
+// sin instalar nada en el sistema. Debe setearse ANTES del primer render.
+// __dirname funciona igual en dev (src/services) y prod (dist/services).
+if (!process.env.FONTCONFIG_PATH) {
+    process.env.FONTCONFIG_PATH = path.join(__dirname, '..', '..', 'fonts');
+}
+
 import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { construirTicketSVG, DatosTicket } from './ticket.svg';

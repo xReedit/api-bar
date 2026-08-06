@@ -2,6 +2,7 @@ import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { GeocodingService, estimarKmRuta } from "../services/geocoding.service";
 import { costoVariable, decidirDireccionTexto, describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
+import { mapearEstructuraAComprobante, validarDocumento } from "../services/comprobante.helpers";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
@@ -119,16 +120,171 @@ router.get('/comprobante/:idsede/:documento/:fecha/:importe', async (req: any, r
             return res.status(200).json({ success: false });
         }
 
+        // El SP devuelve columnas `external_id` y `numero` (f0/f1 era un
+        // desalineo histórico que dejaba la consulta siempre en "no encontrado").
+        const externalId = match.external_id ?? match.f0;
+        const numeroComprobante = match.numero ?? match.f1;
+
+        // Link de descarga del PDF (mismo patrón que el envío de caja).
+        let urlPdf: string | undefined;
+        if (externalId) {
+            try {
+                const sedeApi: any = await prisma.sede.findUnique({
+                    where: { idsede: Number(idsede) }, select: { id_api_comprobante: true }
+                });
+                const userId = sedeApi?.id_api_comprobante ? `/${sedeApi.id_api_comprobante}` : '';
+                urlPdf = `https://apifac.papaya.com.pe/downloads/document/pdf/${externalId}${userId}`;
+            } catch { /* sin url, igual se entrega el número */ }
+        }
+
         return res.status(200).json({
             success: true,
-            numero_comprobante: match.f1,
-            external_id: match.f0,
+            numero_comprobante: numeroComprobante,
+            external_id: externalId,
+            ...(urlPdf ? { url_pdf: urlPdf } : {})
         });
     } catch (error) {
         console.error('Error en /comprobante:', error);
         return res.status(500).json({ success: false, error: 'No se pudo consultar el comprobante' });
     } finally {
         prisma.$disconnect();
+    }
+});
+
+// Genera el comprobante (boleta/factura) del pedido CONFIRMADO de esta
+// conversación — solo si el cliente lo solicita. Reusa la maquinaria de
+// emisión de backend-pedidos (/bot/generar-comprobante). Idempotente por
+// sesión: repetir la solicitud devuelve el mismo comprobante.
+router.post('/generar-comprobante', async (req, res) => {
+    try {
+        const { session_id, idorg, idsede, tipo, num_doc } = req.body || {};
+        const val = validarDocumento(String(tipo || ''), String(num_doc || ''));
+        if (!session_id || !idsede || !val.ok) {
+            return res.status(200).json({ success: false, error: val.error || 'faltan datos' });
+        }
+        const numDoc = String(num_doc).replace(/\D/g, '');
+
+        const rows: any = await prisma.$queryRawUnsafe(
+            `SELECT estructura, estado, idpedido, DATE(created_at) = CURDATE() AS es_hoy
+             FROM pedido_preview WHERE id = ? LIMIT 1`, String(session_id)
+        );
+        const prev = rows?.[0];
+        if (!prev || prev.estado !== 'confirmed' || !prev.idpedido || !Number(prev.es_hoy)) {
+            return res.status(200).json({
+                success: false,
+                error: 'no hay un pedido confirmado hoy en esta conversación; para consumos anteriores usa la consulta de comprobantes'
+            });
+        }
+
+        const estructura = typeof prev.estructura === 'string' ? JSON.parse(prev.estructura) : prev.estructura;
+
+        // Estado previo: emitido → idempotente; bloqueado/en curso → no reintentar.
+        const previo = estructura?._comprobante;
+        if (previo?.numero) {
+            if (String(previo.num_doc) === numDoc) {
+                return res.status(200).json({ success: true, numero: previo.numero, url_pdf: previo.url_pdf, ya_emitido: true });
+            }
+            return res.status(200).json({ success: false, error: `ya se emitió el comprobante ${previo.numero} para este pedido; para cambios acércate a caja` });
+        }
+        if (previo?.estado === 'emitiendo') {
+            // TTL del claim: si quedó colgado (crash a mitad de emisión), tras
+            // 5 min se responde definitivo hacia caja — nunca se auto-reintenta
+            // (el CPE pudo haberse emitido; duplicar es peor que derivar).
+            const antiguedadMs = Date.now() - Number(previo.ts || 0);
+            if (!previo.ts || antiguedadMs > 5 * 60 * 1000) {
+                return res.status(200).json({ success: false, error: 'el comprobante quedó en proceso; solicítalo en caja' });
+            }
+            return res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' });
+        }
+        if (previo?.estado === 'bloqueado') {
+            return res.status(200).json({ success: false, error: previo.error || 'el comprobante quedó en proceso; solicítalo en caja' });
+        }
+
+        const { items, subtotales } = mapearEstructuraAComprobante(estructura);
+        if (!items[0].items.length || !subtotales.length) {
+            return res.status(200).json({ success: false, error: 'no se pudo leer el detalle del pedido; solicítalo en caja' });
+        }
+
+        const botKey = process.env.CHATBOT_BOT_KEY || '';
+        if (!botKey) {
+            return res.status(200).json({ success: false, error: 'la emisión de comprobantes no está habilitada todavía; solicítalo en caja' });
+        }
+
+        // CLAIM atómico anti doble-emisión: solo un request de la sesión puede
+        // pasar (los duplicados de WhatsApp llegan en paralelo). Documentos
+        // tributarios: mejor pedir "un segundo" que emitir dos veces.
+        const claimed: number = await prisma.$executeRawUnsafe(
+            `UPDATE pedido_preview
+             SET estructura = JSON_SET(estructura, '$._comprobante', CAST(? AS JSON))
+             WHERE id = ? AND JSON_EXTRACT(estructura, '$._comprobante') IS NULL`,
+            JSON.stringify({ estado: 'emitiendo', ts: Date.now() }),
+            String(session_id)
+        );
+        if (Number(claimed) === 0) {
+            return res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' });
+        }
+
+        const marcar = async (obj: any) => {
+            await prisma.$queryRawUnsafe(
+                `UPDATE pedido_preview SET estructura = JSON_SET(estructura, '$._comprobante', CAST(? AS JSON)) WHERE id = ?`,
+                JSON.stringify(obj), String(session_id)
+            );
+        };
+        const liberar = async () => {
+            await prisma.$queryRawUnsafe(
+                `UPDATE pedido_preview SET estructura = JSON_REMOVE(estructura, '$._comprobante') WHERE id = ?`,
+                String(session_id)
+            );
+        };
+
+        try {
+            const URL_RESTOBAR = process.env.URL_RESTOBAR || 'http://localhost:3000';
+            const resp = await axios.post(`${URL_RESTOBAR}/bot/generar-comprobante`, {
+                idorg: Number(idorg), idsede: Number(idsede), idpedido: Number(prev.idpedido),
+                tipo, num_doc: numDoc, items, subtotales
+            }, { timeout: 40000, headers: { 'x-bot-key': botKey } });
+            const d: any = resp.data;
+
+            if (!d?.success) {
+                if (d?.reintentable === false) {
+                    // Estado incierto o definitivo (apifac caído, montos, sede):
+                    // bloquear reintentos del bot para no duplicar documentos.
+                    await marcar({ estado: 'bloqueado', error: d?.error || 'el comprobante quedó en proceso; solicítalo en caja' });
+                } else {
+                    // Error corregible (ej. RUC mal escrito): liberar para reintento.
+                    await liberar();
+                }
+                return res.status(200).json({ success: false, error: d?.error || 'no se pudo emitir el comprobante en este momento' });
+            }
+
+            // El CPE YA está emitido: pase lo que pase con la persistencia,
+            // el número y el link se entregan al cliente (perderlos = doble
+            // emisión en caja). El fallo de persistencia solo se loguea fuerte.
+            try {
+                await marcar({ numero: d.numero, url_pdf: d.url_pdf, num_doc: numDoc, external_id: d.external_id });
+            } catch (e: any) {
+                console.error(`generar-comprobante: EMITIDO ${d.numero} (${d.external_id}) pero NO persistido para sesión ${session_id}:`, e?.message);
+            }
+            return res.status(200).json({ success: true, numero: d.numero, url_pdf: d.url_pdf });
+        } catch (e: any) {
+            // Autorización mal configurada (CHATBOT_BOT_KEY desincronizada):
+            // no se llegó a emitir — liberar para que un reintento funcione
+            // cuando se corrija la config.
+            const status = e?.response?.status;
+            if (status === 401 || status === 403) {
+                console.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
+                try { await liberar(); } catch { /* queda emitiendo con TTL */ }
+                return res.status(200).json({ success: false, error: 'la emisión de comprobantes no está disponible en este momento; solicítalo en caja' });
+            }
+            // Red caída a mitad de camino = estado incierto: NO liberar (el CPE
+            // pudo emitirse); que lo resuelva caja antes que duplicar.
+            console.error('generar-comprobante: fallo llamando a backend-pedidos:', e?.message);
+            try { await marcar({ estado: 'bloqueado', error: 'el comprobante quedó en proceso; solicítalo en caja' }); } catch { /* claim queda como emitiendo, expira por TTL */ }
+            return res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' });
+        }
+    } catch (error: any) {
+        console.error('Error en /generar-comprobante:', error?.message);
+        return res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; puedes pedirlo en caja' });
     }
 });
 

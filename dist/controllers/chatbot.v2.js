@@ -90,6 +90,7 @@ var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var geocoding_service_1 = require("../services/geocoding.service");
 var delivery_zonas_1 = require("../services/delivery.zonas");
+var comprobante_helpers_1 = require("../services/comprobante.helpers");
 var cocinar_pedido_1 = require("../services/cocinar.pedido");
 var pedido_services_1 = __importDefault(require("../services/pedido.services"));
 var json_print_services_1 = require("../services/json.print.services");
@@ -178,11 +179,12 @@ var extraerTotalComprobante = function (row) {
 // declara el cliente: el importe es un dato que solo el titular conoce, así se
 // evita que un tercero pida un comprobante ajeno.
 router.get('/comprobante/:idsede/:documento/:fecha/:importe', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, documento, fecha, importe, importeDeclarado_1, _dataSend, rpt, match, error_1;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    var _a, idsede, documento, fecha, importe, importeDeclarado_1, _dataSend, rpt, match, externalId, numeroComprobante, urlPdf, sedeApi, userId, _b, error_1;
+    var _c, _d;
+    return __generator(this, function (_e) {
+        switch (_e.label) {
             case 0:
-                _b.trys.push([0, 2, 3, 4]);
+                _e.trys.push([0, 6, 7, 8]);
                 _a = req.params, idsede = _a.idsede, documento = _a.documento, fecha = _a.fecha, importe = _a.importe;
                 importeDeclarado_1 = Number(String(importe).replace(',', '.'));
                 if (!documento || !fecha || !Number.isFinite(importeDeclarado_1) || importeDeclarado_1 <= 0) {
@@ -198,7 +200,7 @@ router.get('/comprobante/:idsede/:documento/:fecha/:importe', function (req, res
                 };
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["call procedure_chatbot_getidexternal_comprobante(", ")"], ["call procedure_chatbot_getidexternal_comprobante(", ")"])), JSON.stringify(_dataSend))];
             case 1:
-                rpt = _b.sent();
+                rpt = _e.sent();
                 if (!rpt || rpt.length === 0) {
                     return [2 /*return*/, res.status(200).json({ success: false })];
                 }
@@ -209,24 +211,200 @@ router.get('/comprobante/:idsede/:documento/:fecha/:importe', function (req, res
                 if (!match) {
                     return [2 /*return*/, res.status(200).json({ success: false })];
                 }
-                return [2 /*return*/, res.status(200).json({
-                        success: true,
-                        numero_comprobante: match.f1,
-                        external_id: match.f0
-                    })];
+                externalId = (_c = match.external_id) !== null && _c !== void 0 ? _c : match.f0;
+                numeroComprobante = (_d = match.numero) !== null && _d !== void 0 ? _d : match.f1;
+                urlPdf = void 0;
+                if (!externalId) return [3 /*break*/, 5];
+                _e.label = 2;
             case 2:
-                error_1 = _b.sent();
+                _e.trys.push([2, 4, , 5]);
+                return [4 /*yield*/, prisma.sede.findUnique({
+                        where: { idsede: Number(idsede) }, select: { id_api_comprobante: true }
+                    })];
+            case 3:
+                sedeApi = _e.sent();
+                userId = (sedeApi === null || sedeApi === void 0 ? void 0 : sedeApi.id_api_comprobante) ? "/".concat(sedeApi.id_api_comprobante) : '';
+                urlPdf = "https://apifac.papaya.com.pe/downloads/document/pdf/".concat(externalId).concat(userId);
+                return [3 /*break*/, 5];
+            case 4:
+                _b = _e.sent();
+                return [3 /*break*/, 5];
+            case 5: return [2 /*return*/, res.status(200).json(__assign({ success: true, numero_comprobante: numeroComprobante, external_id: externalId }, (urlPdf ? { url_pdf: urlPdf } : {})))];
+            case 6:
+                error_1 = _e.sent();
                 console.error('Error en /comprobante:', error_1);
                 return [2 /*return*/, res.status(500).json({ success: false, error: 'No se pudo consultar el comprobante' })];
-            case 3:
+            case 7:
                 prisma.$disconnect();
                 return [7 /*endfinally*/];
-            case 4: return [2 /*return*/];
+            case 8: return [2 /*return*/];
+        }
+    });
+}); });
+// Genera el comprobante (boleta/factura) del pedido CONFIRMADO de esta
+// conversación — solo si el cliente lo solicita. Reusa la maquinaria de
+// emisión de backend-pedidos (/bot/generar-comprobante). Idempotente por
+// sesión: repetir la solicitud devuelve el mismo comprobante.
+router.post('/generar-comprobante', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, session_id_1, idorg, idsede, tipo, num_doc, val, numDoc, rows, prev, estructura, previo, antiguedadMs, _b, items, subtotales, botKey, claimed, marcar, liberar, URL_RESTOBAR, resp, d, e_1, e_2, status, _c, _d, error_2;
+    var _e;
+    return __generator(this, function (_f) {
+        switch (_f.label) {
+            case 0:
+                _f.trys.push([0, 24, , 25]);
+                _a = req.body || {}, session_id_1 = _a.session_id, idorg = _a.idorg, idsede = _a.idsede, tipo = _a.tipo, num_doc = _a.num_doc;
+                val = (0, comprobante_helpers_1.validarDocumento)(String(tipo || ''), String(num_doc || ''));
+                if (!session_id_1 || !idsede || !val.ok) {
+                    return [2 /*return*/, res.status(200).json({ success: false, error: val.error || 'faltan datos' })];
+                }
+                numDoc = String(num_doc).replace(/\D/g, '');
+                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT estructura, estado, idpedido, DATE(created_at) = CURDATE() AS es_hoy\n             FROM pedido_preview WHERE id = ? LIMIT 1", String(session_id_1))];
+            case 1:
+                rows = _f.sent();
+                prev = rows === null || rows === void 0 ? void 0 : rows[0];
+                if (!prev || prev.estado !== 'confirmed' || !prev.idpedido || !Number(prev.es_hoy)) {
+                    return [2 /*return*/, res.status(200).json({
+                            success: false,
+                            error: 'no hay un pedido confirmado hoy en esta conversación; para consumos anteriores usa la consulta de comprobantes'
+                        })];
+                }
+                estructura = typeof prev.estructura === 'string' ? JSON.parse(prev.estructura) : prev.estructura;
+                previo = estructura === null || estructura === void 0 ? void 0 : estructura._comprobante;
+                if (previo === null || previo === void 0 ? void 0 : previo.numero) {
+                    if (String(previo.num_doc) === numDoc) {
+                        return [2 /*return*/, res.status(200).json({ success: true, numero: previo.numero, url_pdf: previo.url_pdf, ya_emitido: true })];
+                    }
+                    return [2 /*return*/, res.status(200).json({ success: false, error: "ya se emiti\u00F3 el comprobante ".concat(previo.numero, " para este pedido; para cambios ac\u00E9rcate a caja") })];
+                }
+                if ((previo === null || previo === void 0 ? void 0 : previo.estado) === 'emitiendo') {
+                    antiguedadMs = Date.now() - Number(previo.ts || 0);
+                    if (!previo.ts || antiguedadMs > 5 * 60 * 1000) {
+                        return [2 /*return*/, res.status(200).json({ success: false, error: 'el comprobante quedó en proceso; solicítalo en caja' })];
+                    }
+                    return [2 /*return*/, res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' })];
+                }
+                if ((previo === null || previo === void 0 ? void 0 : previo.estado) === 'bloqueado') {
+                    return [2 /*return*/, res.status(200).json({ success: false, error: previo.error || 'el comprobante quedó en proceso; solicítalo en caja' })];
+                }
+                _b = (0, comprobante_helpers_1.mapearEstructuraAComprobante)(estructura), items = _b.items, subtotales = _b.subtotales;
+                if (!items[0].items.length || !subtotales.length) {
+                    return [2 /*return*/, res.status(200).json({ success: false, error: 'no se pudo leer el detalle del pedido; solicítalo en caja' })];
+                }
+                botKey = process.env.CHATBOT_BOT_KEY || '';
+                if (!botKey) {
+                    return [2 /*return*/, res.status(200).json({ success: false, error: 'la emisión de comprobantes no está habilitada todavía; solicítalo en caja' })];
+                }
+                return [4 /*yield*/, prisma.$executeRawUnsafe("UPDATE pedido_preview\n             SET estructura = JSON_SET(estructura, '$._comprobante', CAST(? AS JSON))\n             WHERE id = ? AND JSON_EXTRACT(estructura, '$._comprobante') IS NULL", JSON.stringify({ estado: 'emitiendo', ts: Date.now() }), String(session_id_1))];
+            case 2:
+                claimed = _f.sent();
+                if (Number(claimed) === 0) {
+                    return [2 /*return*/, res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' })];
+                }
+                marcar = function (obj) { return __awaiter(void 0, void 0, void 0, function () {
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0: return [4 /*yield*/, prisma.$queryRawUnsafe("UPDATE pedido_preview SET estructura = JSON_SET(estructura, '$._comprobante', CAST(? AS JSON)) WHERE id = ?", JSON.stringify(obj), String(session_id_1))];
+                            case 1:
+                                _a.sent();
+                                return [2 /*return*/];
+                        }
+                    });
+                }); };
+                liberar = function () { return __awaiter(void 0, void 0, void 0, function () {
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0: return [4 /*yield*/, prisma.$queryRawUnsafe("UPDATE pedido_preview SET estructura = JSON_REMOVE(estructura, '$._comprobante') WHERE id = ?", String(session_id_1))];
+                            case 1:
+                                _a.sent();
+                                return [2 /*return*/];
+                        }
+                    });
+                }); };
+                _f.label = 3;
+            case 3:
+                _f.trys.push([3, 13, , 23]);
+                URL_RESTOBAR = process.env.URL_RESTOBAR || 'http://localhost:3000';
+                return [4 /*yield*/, axios_1["default"].post("".concat(URL_RESTOBAR, "/bot/generar-comprobante"), {
+                        idorg: Number(idorg), idsede: Number(idsede), idpedido: Number(prev.idpedido),
+                        tipo: tipo,
+                        num_doc: numDoc,
+                        items: items,
+                        subtotales: subtotales
+                    }, { timeout: 40000, headers: { 'x-bot-key': botKey } })];
+            case 4:
+                resp = _f.sent();
+                d = resp.data;
+                if (!!(d === null || d === void 0 ? void 0 : d.success)) return [3 /*break*/, 9];
+                if (!((d === null || d === void 0 ? void 0 : d.reintentable) === false)) return [3 /*break*/, 6];
+                // Estado incierto o definitivo (apifac caído, montos, sede):
+                // bloquear reintentos del bot para no duplicar documentos.
+                return [4 /*yield*/, marcar({ estado: 'bloqueado', error: (d === null || d === void 0 ? void 0 : d.error) || 'el comprobante quedó en proceso; solicítalo en caja' })];
+            case 5:
+                // Estado incierto o definitivo (apifac caído, montos, sede):
+                // bloquear reintentos del bot para no duplicar documentos.
+                _f.sent();
+                return [3 /*break*/, 8];
+            case 6: 
+            // Error corregible (ej. RUC mal escrito): liberar para reintento.
+            return [4 /*yield*/, liberar()];
+            case 7:
+                // Error corregible (ej. RUC mal escrito): liberar para reintento.
+                _f.sent();
+                _f.label = 8;
+            case 8: return [2 /*return*/, res.status(200).json({ success: false, error: (d === null || d === void 0 ? void 0 : d.error) || 'no se pudo emitir el comprobante en este momento' })];
+            case 9:
+                _f.trys.push([9, 11, , 12]);
+                return [4 /*yield*/, marcar({ numero: d.numero, url_pdf: d.url_pdf, num_doc: numDoc, external_id: d.external_id })];
+            case 10:
+                _f.sent();
+                return [3 /*break*/, 12];
+            case 11:
+                e_1 = _f.sent();
+                console.error("generar-comprobante: EMITIDO ".concat(d.numero, " (").concat(d.external_id, ") pero NO persistido para sesi\u00F3n ").concat(session_id_1, ":"), e_1 === null || e_1 === void 0 ? void 0 : e_1.message);
+                return [3 /*break*/, 12];
+            case 12: return [2 /*return*/, res.status(200).json({ success: true, numero: d.numero, url_pdf: d.url_pdf })];
+            case 13:
+                e_2 = _f.sent();
+                status = (_e = e_2 === null || e_2 === void 0 ? void 0 : e_2.response) === null || _e === void 0 ? void 0 : _e.status;
+                if (!(status === 401 || status === 403)) return [3 /*break*/, 18];
+                console.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
+                _f.label = 14;
+            case 14:
+                _f.trys.push([14, 16, , 17]);
+                return [4 /*yield*/, liberar()];
+            case 15:
+                _f.sent();
+                return [3 /*break*/, 17];
+            case 16:
+                _c = _f.sent();
+                return [3 /*break*/, 17];
+            case 17: return [2 /*return*/, res.status(200).json({ success: false, error: 'la emisión de comprobantes no está disponible en este momento; solicítalo en caja' })];
+            case 18:
+                // Red caída a mitad de camino = estado incierto: NO liberar (el CPE
+                // pudo emitirse); que lo resuelva caja antes que duplicar.
+                console.error('generar-comprobante: fallo llamando a backend-pedidos:', e_2 === null || e_2 === void 0 ? void 0 : e_2.message);
+                _f.label = 19;
+            case 19:
+                _f.trys.push([19, 21, , 22]);
+                return [4 /*yield*/, marcar({ estado: 'bloqueado', error: 'el comprobante quedó en proceso; solicítalo en caja' })];
+            case 20:
+                _f.sent();
+                return [3 /*break*/, 22];
+            case 21:
+                _d = _f.sent();
+                return [3 /*break*/, 22];
+            case 22: return [2 /*return*/, res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' })];
+            case 23: return [3 /*break*/, 25];
+            case 24:
+                error_2 = _f.sent();
+                console.error('Error en /generar-comprobante:', error_2 === null || error_2 === void 0 ? void 0 : error_2.message);
+                return [2 /*return*/, res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; puedes pedirlo en caja' })];
+            case 25: return [2 /*return*/];
         }
     });
 }); });
 router.get("/cliente/:idorg/:idsede/:telefono", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, telefono, telefonoSinCodigo, cliente, totalPedidos, ultimoPedido, direccionPwa, direccionCliente, error_2;
+    var _a, idorg, idsede, telefono, telefonoSinCodigo, cliente, totalPedidos, ultimoPedido, direccionPwa, direccionCliente, error_3;
     var _b, _c;
     return __generator(this, function (_d) {
         switch (_d.label) {
@@ -287,7 +465,7 @@ router.get("/cliente/:idorg/:idsede/:telefono", function (req, res) { return __a
                 });
                 return [3 /*break*/, 6];
             case 5:
-                error_2 = _d.sent();
+                error_3 = _d.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al buscar cliente'
@@ -298,7 +476,7 @@ router.get("/cliente/:idorg/:idsede/:telefono", function (req, res) { return __a
     });
 }); });
 router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, rpt, carta, menuPlano, productos_1, itemsVistos_1, error_3;
+    var _a, idorg, idsede, rpt, carta, menuPlano, productos_1, itemsVistos_1, error_4;
     var _b;
     return __generator(this, function (_c) {
         switch (_c.label) {
@@ -339,8 +517,8 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
                 });
                 return [3 /*break*/, 3];
             case 2:
-                error_3 = _c.sent();
-                console.error('Error en consultar_menu:', error_3);
+                error_4 = _c.sent();
+                console.error('Error en consultar_menu:', error_4);
                 res.status(500).json({
                     success: false,
                     error: 'Error al consultar menu'
@@ -351,12 +529,12 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
     });
 }); });
 router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, direccion, referencia, session_id_1, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, modo, tiempoGlobal, persistirDireccion, costo_1, direccionLegible_1, rev, zonas, sede, sedeTieneCoords, distanciaMaxima, ciudades, resultadoDistancia, desdeGuardada, direccionLegible, distancia, rev, coordsGuardadas, telefonoSesion, normalizar, dirPedida, guardadas, _i, _b, g, dirGuardada, lat_1, lng, error_4, distanciaGuardada, decision, costoEstimado, yaSugerida, prevPreview, prevDir, _c, distanciaKm, costo, tiempoMin, zonaNombre, r, costoEstimadoZona, kmBase, costoAdicional, costoBase, pedirReferencia, partesMensaje, error_5;
+    var _a, idorg, idsede, direccion, referencia, session_id_2, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, modo, tiempoGlobal, persistirDireccion, costo_1, direccionLegible_1, rev, zonas, sede, sedeTieneCoords, distanciaMaxima, ciudades, resultadoDistancia, desdeGuardada, direccionLegible, distancia, rev, coordsGuardadas, telefonoSesion, normalizar, dirPedida, guardadas, _i, _b, g, dirGuardada, lat_1, lng, error_5, distanciaGuardada, decision, costoEstimado, yaSugerida, prevPreview, prevDir, _c, distanciaKm, costo, tiempoMin, zonaNombre, margenZonasKm, r, costoEstimadoZona, kmBase, costoAdicional, costoBase, pedirReferencia, partesMensaje, error_6;
     return __generator(this, function (_d) {
         switch (_d.label) {
             case 0:
                 _d.trys.push([0, 30, , 31]);
-                _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, referencia = _a.referencia, session_id_1 = _a.session_id, lat = _a.lat, lon = _a.lon;
+                _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, referencia = _a.referencia, session_id_2 = _a.session_id, lat = _a.lat, lon = _a.lon;
                 latCliente = Number(lat);
                 lonCliente = Number(lon);
                 tieneGPS = Number.isFinite(latCliente) && Number.isFinite(lonCliente)
@@ -389,16 +567,16 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
-                                if (!session_id_1)
+                                if (!session_id_2)
                                     return [2 /*return*/];
                                 return [4 /*yield*/, prisma.pedido_preview.findFirst({
-                                        where: { id: session_id_1 }
+                                        where: { id: session_id_2 }
                                     })];
                             case 1:
                                 existingPreview = _a.sent();
                                 if (!existingPreview) return [3 /*break*/, 3];
                                 return [4 /*yield*/, prisma.pedido_preview.update({
-                                        where: { id: session_id_1 },
+                                        where: { id: session_id_2 },
                                         data: { direccion_cliente: direccionData }
                                     })];
                             case 2:
@@ -406,7 +584,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                                 return [3 /*break*/, 5];
                             case 3: return [4 /*yield*/, prisma.pedido_preview.create({
                                     data: {
-                                        id: session_id_1,
+                                        id: session_id_2,
                                         estructura: JSON.stringify({}),
                                         ticket_formateado: '',
                                         estado: 'pending',
@@ -536,7 +714,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 _d.label = 10;
             case 10:
                 _d.trys.push([10, 13, , 14]);
-                telefonoSesion = String(session_id_1 || '').split('_')[0].replace(/\D/g, '');
+                telefonoSesion = String(session_id_2 || '').split('_')[0].replace(/\D/g, '');
                 if (!(telefonoSesion.length >= 6 && direccion)) return [3 /*break*/, 12];
                 normalizar = function (s) { return String(s || '')
                     .toLowerCase()
@@ -561,8 +739,8 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 _d.label = 12;
             case 12: return [3 /*break*/, 14];
             case 13:
-                error_4 = _d.sent();
-                console.error('calcular-delivery: fallo buscando direccion guardada, sigue geocoding:', error_4.message);
+                error_5 = _d.sent();
+                console.error('calcular-delivery: fallo buscando direccion guardada, sigue geocoding:', error_5.message);
                 return [3 /*break*/, 14];
             case 14:
                 if (!coordsGuardadas) return [3 /*break*/, 15];
@@ -603,7 +781,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
             case 18:
                 _d.trys.push([18, 20, , 21]);
                 return [4 /*yield*/, prisma.pedido_preview.findFirst({
-                        where: { id: session_id_1 }, select: { direccion_cliente: true }
+                        where: { id: session_id_2 }, select: { direccion_cliente: true }
                     })];
             case 19:
                 prevPreview = _d.sent();
@@ -646,10 +824,11 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 tiempoMin = tiempoGlobal;
                 zonaNombre = void 0;
                 if (!(modo === 'zonas')) return [3 /*break*/, 27];
+                margenZonasKm = Number(parametros.zonas_margen_km) > 0 ? Number(parametros.zonas_margen_km) : 1;
                 r = (0, delivery_zonas_1.resolverZona)(zonas, {
                     lat: Number(resultadoDistancia.lat),
                     lng: Number(resultadoDistancia.lng)
-                });
+                }, margenZonasKm);
                 if (!!r.cubierto) return [3 /*break*/, 26];
                 if (!!tieneGPS) return [3 /*break*/, 25];
                 costoEstimadoZona = Math.min.apply(Math, zonas.map(function (z) { return z.costo; }));
@@ -692,7 +871,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 kmBase = Number(parametros.km_base || 2);
                 costoAdicional = Number(parametros.km_adicional_costo || 0);
                 costoBase = Number(parametros.km_base_costo || 0);
-                costo = costoBase + (distanciaKm > kmBase ? (distanciaKm - kmBase) * costoAdicional : 0);
+                costo = (0, delivery_zonas_1.costoVariable)(distanciaKm, kmBase, costoBase, costoAdicional);
                 _d.label = 28;
             case 28: return [4 /*yield*/, persistirDireccion(__assign({ direccion: direccionLegible, referencia: referencia || '', latitude: resultadoDistancia.lat, longitude: resultadoDistancia.lng, ciudad: resultadoDistancia.ciudad || '', provincia: resultadoDistancia.provincia || '', departamento: resultadoDistancia.departamento || '', pais: resultadoDistancia.pais || '', codigo: resultadoDistancia.codigo || '', distancia_km: distanciaKm, costo_delivery: Number(costo.toFixed(2)), verificada: true }, (zonaNombre ? { zona: zonaNombre } : {})))];
             case 29:
@@ -705,8 +884,8 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     direccion: direccionLegible }));
                 return [3 /*break*/, 31];
             case 30:
-                error_5 = _d.sent();
-                console.error('Error en calcular_delivery:', error_5);
+                error_6 = _d.sent();
+                console.error('Error en calcular_delivery:', error_6);
                 res.status(500).json({
                     success: false,
                     error: 'Error al calcular delivery'
@@ -717,7 +896,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
     });
 }); });
 router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, sede, sedeConfig, tiposEntrega, metodosPago, idsAceptados_1, horariosDB, horaActual, diaActual, mapaDias_1, horarioAtencion_1, horarioPrincipal_1, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, error_6;
+    var idsede, sede, sedeConfig, tiposEntrega, metodosPago, idsAceptados_1, horariosDB, horaActual, diaActual, mapaDias_1, horarioAtencion_1, horarioPrincipal_1, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, error_7;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -878,8 +1057,8 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
                 });
                 return [3 /*break*/, 7];
             case 6:
-                error_6 = _a.sent();
-                console.error('Error en obtener_config_negocio:', error_6);
+                error_7 = _a.sent();
+                console.error('Error en obtener_config_negocio:', error_7);
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener configuracion'
@@ -890,7 +1069,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
     });
 }); });
 router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, cliente_nombre, hora_programada, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, numeroResumen, direccionPreview, prevRow, direccionData, error_7, estructuraJson, imagenUrl, resumenRespuesta, numeroResumenRespuesta, configDelivery, sedeInfo, confPrint, ahoraLima, direccionTicket, descripcionCanal, horaEntrega, total, error_8, error_9, msg;
+    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, cliente_nombre, hora_programada, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, numeroResumen, direccionPreview, prevRow, direccionData, error_8, estructuraJson, imagenUrl, resumenRespuesta, numeroResumenRespuesta, configDelivery, sedeInfo, confPrint, ahoraLima, direccionTicket, descripcionCanal, horaEntrega, total, error_9, error_10, msg;
     var _b, _c, _d, _e, _f;
     return __generator(this, function (_g) {
         switch (_g.label) {
@@ -968,8 +1147,8 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 }
                 return [3 /*break*/, 5];
             case 4:
-                error_7 = _g.sent();
-                console.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error_7.message);
+                error_8 = _g.sent();
+                console.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error_8.message);
                 numeroResumen = 1;
                 return [3 /*break*/, 5];
             case 5:
@@ -1047,8 +1226,8 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 _g.label = 12;
             case 12: return [3 /*break*/, 14];
             case 13:
-                error_8 = _g.sent();
-                console.error('resumen-pedido: fallo modo imagen, usando texto:', error_8.message);
+                error_9 = _g.sent();
+                console.error('resumen-pedido: fallo modo imagen, usando texto:', error_9.message);
                 imagenUrl = null;
                 numeroResumenRespuesta = null;
                 resumenRespuesta = ticketFormateado;
@@ -1057,9 +1236,9 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 res.status(200).json(__assign({ success: true, resumen: resumenRespuesta }, (imagenUrl ? { imagen_url: imagenUrl, numero_resumen: numeroResumenRespuesta } : {})));
                 return [3 /*break*/, 16];
             case 15:
-                error_9 = _g.sent();
-                console.error('Error en resumen-pedido:', error_9);
-                msg = ((error_9 === null || error_9 === void 0 ? void 0 : error_9.message) || '').toLowerCase();
+                error_10 = _g.sent();
+                console.error('Error en resumen-pedido:', error_10);
+                msg = ((error_10 === null || error_10 === void 0 ? void 0 : error_10.message) || '').toLowerCase();
                 if (msg.includes('canal de consumo no encontrado')) {
                     return [2 /*return*/, res.status(200).json({
                             success: false,
@@ -1080,7 +1259,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
     // Reserva (consumo en el local): hora de llegada y cantidad de personas.
     reserva_hora, reserva_personas, 
     // Pedido programado (recojo/delivery a una hora): "13:00"
-    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_10;
+    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_11;
     var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     return __generator(this, function (_p) {
         switch (_p.label) {
@@ -1479,7 +1658,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 });
                 return [3 /*break*/, 22];
             case 21:
-                error_10 = _p.sent();
+                error_11 = _p.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al crear pedido'
@@ -1491,7 +1670,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
 }); });
 // consultar pedido por session_id
 router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var session_id, pedidoPreview, pedido, infoPedido, pedidoSerializable, resultado, error_11;
+    var session_id, pedidoPreview, pedido, infoPedido, pedidoSerializable, resultado, error_12;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -1539,7 +1718,7 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
                 });
                 return [3 /*break*/, 5];
             case 4:
-                error_11 = _a.sent();
+                error_12 = _a.sent();
                 res.status(500).json({
                     success: false,
                     error: 'Error al consultar pedido'
@@ -1550,7 +1729,7 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
     });
 }); });
 router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, idsAceptados_2, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, idclienteDB, totalPedidos, direccionPwa, historialDB, historial, rpt, carta, productos_2, itemsVistos_2, referenciaDB, referencia_chatbot, error_12;
+    var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, idsAceptados_2, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, idclienteDB, totalPedidos, direccionPwa, historialDB, historial, rpt, carta, productos_2, itemsVistos_2, referenciaDB, referencia_chatbot, error_13;
     var _b, _c, _d, _e, _f, _g, _h, _j;
     return __generator(this, function (_k) {
         switch (_k.label) {
@@ -1787,10 +1966,10 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 });
                 return [3 /*break*/, 15];
             case 14:
-                error_12 = _k.sent();
+                error_13 = _k.sent();
                 // Log del error real: antes era mudo y un fallo aquí dejaba al bot
                 // sin carta/menú sin pista alguna en los logs.
-                console.error('Error en /chatbot/contexto:', error_12);
+                console.error('Error en /chatbot/contexto:', error_13);
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener contexto'

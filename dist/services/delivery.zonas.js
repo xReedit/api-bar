@@ -22,7 +22,7 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 exports.__esModule = true;
-exports.resolverResumenFormato = exports.describirDelivery = exports.resolverModo = exports.decidirDireccionTexto = exports.resolverZona = exports.validarZonas = exports.puntoEnZona = exports.puntoEnCirculo = exports.puntoEnPoligono = exports.haversineKm = void 0;
+exports.resolverResumenFormato = exports.describirDelivery = exports.resolverModo = exports.costoVariable = exports.decidirDireccionTexto = exports.resolverZona = exports.distanciaAZonaKm = exports.validarZonas = exports.puntoEnZona = exports.puntoEnCirculo = exports.puntoEnPoligono = exports.haversineKm = void 0;
 var R_KM = 6371;
 /** Distancia en km entre dos puntos (fórmula del haversine). */
 var haversineKm = function (a, b) {
@@ -110,11 +110,59 @@ var validarZonas = function (raw) {
     return zonas;
 };
 exports.validarZonas = validarZonas;
-/** Primera zona del array que contiene el punto (menor índice gana en solape). */
-var resolverZona = function (zonas, p) {
+// Distancia punto→segmento en km (proyección equirectangular local: exacta de
+// sobra para márgenes de ~1 km en una ciudad).
+var distanciaASegmentoKm = function (p, a, b) {
+    var kmLat = 111.32;
+    var kmLng = 111.32 * Math.cos((p.lat * Math.PI) / 180);
+    var ax = (a.lng - p.lng) * kmLng, ay = (a.lat - p.lat) * kmLat;
+    var bx = (b.lng - p.lng) * kmLng, by = (b.lat - p.lat) * kmLat;
+    var dx = bx - ax, dy = by - ay;
+    var largo2 = dx * dx + dy * dy;
+    var t = largo2 === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / largo2));
+    var cx = ax + t * dx, cy = ay + t * dy;
+    return Math.sqrt(cx * cx + cy * cy);
+};
+/** Distancia en km desde el punto al BORDE de la zona (0 si está dentro). */
+var distanciaAZonaKm = function (p, z) {
+    if ((0, exports.puntoEnZona)(p, z))
+        return 0;
+    if (z.tipo === 'circulo') {
+        return Math.max(0, (0, exports.haversineKm)(p, z.centro) - Number(z.radio_km));
+    }
+    var puntos = z.puntos || [];
+    var min = Number.POSITIVE_INFINITY;
+    for (var i = 0, j = puntos.length - 1; i < puntos.length; j = i++) {
+        min = Math.min(min, distanciaASegmentoKm(p, puntos[j], puntos[i]));
+    }
+    return min;
+};
+exports.distanciaAZonaKm = distanciaAZonaKm;
+/**
+ * Primera zona del array que contiene el punto (menor índice gana en solape).
+ * `margenKm` > 0: si ninguna zona lo contiene pero la más cercana está a ese
+ * margen o menos de su borde, se cobra esa — cubre las "rendijas" que quedan
+ * entre polígonos dibujados a mano y los pulsos de GPS en los límites.
+ */
+var resolverZona = function (zonas, p, margenKm) {
+    if (margenKm === void 0) { margenKm = 0; }
     for (var i = 0; i < zonas.length; i++) {
         if ((0, exports.puntoEnZona)(p, zonas[i]))
             return { cubierto: true, zona: zonas[i], indice: i };
+    }
+    if (margenKm > 0) {
+        var mejor = -1;
+        var mejorDist = Number.POSITIVE_INFINITY;
+        for (var i = 0; i < zonas.length; i++) {
+            var d = (0, exports.distanciaAZonaKm)(p, zonas[i]);
+            if (d < mejorDist) {
+                mejorDist = d;
+                mejor = i;
+            }
+        }
+        if (mejor >= 0 && mejorDist <= margenKm) {
+            return { cubierto: true, zona: zonas[mejor], indice: mejor, porMargen: true };
+        }
     }
     return { cubierto: false };
 };
@@ -128,6 +176,20 @@ var decidirDireccionTexto = function (resultado, modo, kmLimite) {
     return 'costo_base';
 };
 exports.decidirDireccionTexto = decidirDireccionTexto;
+/**
+ * Costo de delivery en modo VARIABLE, siempre "cobrable" (sin S/ 5.78):
+ * los km adicionales se cobran por km ENTERO — la fracción solo cuenta como
+ * km extra si PASA de 0.5 (regla del dueño: 5.5 km con base 4 → 1 km extra;
+ * 5.78 km → 2 km extra). Con tarifas enteras el resultado es siempre entero.
+ */
+var costoVariable = function (distanciaKm, kmBase, costoBase, costoKmAdicional) {
+    var exceso = Math.max(0, Number(distanciaKm) - Number(kmBase));
+    var entero = Math.floor(exceso);
+    var fraccion = exceso - entero;
+    var kmExtras = fraccion > 0.5 ? entero + 1 : entero;
+    return Number((Number(costoBase) + kmExtras * Number(costoKmAdicional)).toFixed(2));
+};
+exports.costoVariable = costoVariable;
 /**
  * Modo de cobro de la sede. Si `parametros.modo` falta (configs anteriores a
  * este campo), se infiere con el MISMO criterio del panel Piter

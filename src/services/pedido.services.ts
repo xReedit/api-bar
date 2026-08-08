@@ -9,6 +9,25 @@ export interface Subtotal {
     "visible_cpe": true
 }
 
+/**
+ * ¿Esta descripción de subtotal ES el costo de envío del pedido?
+ * Estricto por primera palabra: "DELIVERY", "COSTO DELIVERY", "Costo de
+ * entrega", "ENVÍO A DOMICILIO" → sí. "TAPER DELIVERY", "SET DELIVERY" → NO
+ * (son cobros aparte que solo contienen la palabra; caso real: la sede Bacs
+ * Burguer perdía el cobro del taper porque el includes() lo confundía con la
+ * fila de delivery y la lógica lo eliminaba/renombraba).
+ */
+export const esFilaCostoDelivery = (descripcion: any): boolean => {
+    const norm = String(descripcion || '').toLowerCase()
+        .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
+        .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u').trim();
+    const palabras = norm.split(/\s+/);
+    const conceptos = ['delivery', 'envio', 'entrega'];
+    if (conceptos.includes(palabras[0])) return true;             // "delivery", "envio a domicilio"
+    if (palabras[0] === 'costo' && conceptos.some((c) => norm.includes(c))) return true; // "costo delivery", "costo de entrega"
+    return false;
+};
+
 class PedidoServices {
     private arrReglasCarta: any = [];
     private arrSeccionesPedido: any = [];
@@ -222,10 +241,10 @@ class PedidoServices {
             const _costoXcantidad = parseFloat(c.monto)
             const _subtotal: any = arrSubtotales.find((s: Subtotal) => s.descripcion.toLowerCase().trim() === c.descripcion.toLowerCase().trim())
 
-            // si en la reglas incluye delivery, costo de entrega, entrega, envio ya no lo ponemos en el subtotal
-            const exclusiones = ['delivery', 'entrega', 'envio'];
-
-            if (exclusiones.some(exclusion => c.descripcion.toLowerCase().trim().includes(exclusion))) {
+            // Si la regla ES el costo de delivery, no se agrega aquí (lo pone
+            // el costo calculado). OJO: predicado ESTRICTO — "TAPER DELIVERY"
+            // es un cobro aparte y no debe excluirse (caso real Bacs Burguer).
+            if (esFilaCostoDelivery(c.descripcion)) {
                 // continuar
                 return
             }
@@ -302,14 +321,11 @@ class PedidoServices {
 
         // array delivery calculado segun la distancia
         if (arrSubtotalCostoEntega) {
-            // Evitar delivery duplicado: el costo calculado es la unica fuente.
-            // Quitamos cualquier subtotal de delivery/entrega/envio ya agregado por
-            // las reglas de la carta. Mismo norm (sin acentos) que setCanalConsumo.
-            const norm = (s: any) => (s || '').toString().toLowerCase()
-                .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
-                .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u').trim();
-            const esDelivery = (d: any) => ['delivery', 'entrega', 'envio'].some(k => norm(d).includes(k));
-            arrSubtotales = arrSubtotales.filter((s: any) => !esDelivery(s.descripcion));
+            // Evitar delivery duplicado: el costo calculado es la unica fuente
+            // de la fila de envío. Predicado ESTRICTO: solo se quitan filas que
+            // SON el costo de envío — "TAPER DELIVERY" y similares son cobros
+            // aparte y se conservan (antes se borraban y la sede perdía plata).
+            arrSubtotales = arrSubtotales.filter((s: any) => !esFilaCostoDelivery(s.descripcion));
             arrSubtotales.splice(1, 0, arrSubtotalCostoEntega)
         }
 
@@ -466,11 +482,11 @@ class PedidoServices {
         let deliveryCost = datosEntrega.delivery_cost || datosEntrega.costo_entrega || 0;
         let distance = datosEntrega.distance || datosEntrega.distancia || 0;
 
-        // Buscar el subtotal de delivery en las reglas de carta para obtener su ID
-        const subtotalDeliveryRegla = this.arrReglasCarta.subtotales.find((item: any) => 
-            item.descripcion.toLowerCase().includes('delivery') || 
-            item.descripcion.toLowerCase().includes('entrega') ||
-            item.descripcion.toLowerCase().includes('envio')
+        // Buscar el subtotal de delivery en las reglas de carta para obtener su
+        // ID — SOLO si la fila realmente ES el costo de envío (predicado
+        // estricto: "TAPER DELIVERY" no debe heredar aquí su nombre/id).
+        const subtotalDeliveryRegla = this.arrReglasCarta.subtotales.find((item: any) =>
+            esFilaCostoDelivery(item.descripcion)
         );
 
         const idSubtotal = subtotalDeliveryRegla ? `${subtotalDeliveryRegla.tipo}${subtotalDeliveryRegla.id}` : 'a48';

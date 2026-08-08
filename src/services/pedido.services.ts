@@ -319,14 +319,18 @@ class PedidoServices {
 
         arrSubtotales.unshift(rowSubtotalProductos)
 
-        // array delivery calculado segun la distancia
+        // array delivery calculado segun la config del panel (fijo/variable/zonas)
         if (arrSubtotalCostoEntega) {
-            // Evitar delivery duplicado: el costo calculado es la unica fuente
-            // de la fila de envío. Predicado ESTRICTO: solo se quitan filas que
-            // SON el costo de envío — "TAPER DELIVERY" y similares son cobros
-            // aparte y se conservan (antes se borraban y la sede perdía plata).
+            // El costo CALCULADO es la única fuente de la fila de envío: las
+            // filas de delivery configuradas en las reglas de la sede se anulan
+            // SIEMPRE (predicado estricto: "TAPER DELIVERY" y similares son
+            // cobros aparte y se conservan — antes se borraban y la sede perdía
+            // plata). Si el calculado es 0 (delivery gratis), solo se anula la
+            // fila de la sede sin mostrar una línea en 0.00.
             arrSubtotales = arrSubtotales.filter((s: any) => !esFilaCostoDelivery(s.descripcion));
-            arrSubtotales.splice(1, 0, arrSubtotalCostoEntega)
+            if (parseFloat(arrSubtotalCostoEntega.importe) > 0) {
+                arrSubtotales.splice(1, 0, arrSubtotalCostoEntega)
+            }
         }
 
         

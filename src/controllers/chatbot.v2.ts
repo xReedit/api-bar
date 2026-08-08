@@ -1075,9 +1075,43 @@ router.post("/resumen-pedido", async (req, res) => {
             observaciones: item.indicaciones || ''
         }));
 
+        // ── Costo de delivery AUTORITATIVO (config de Piter, no el eco del LLM) ──
+        // Prioridad: 1) lo que calculó calcular_delivery para ESTA sesión
+        // (persistido en pedido_preview.direccion_cliente.costo_delivery según
+        // el modo fijo/variable/zonas del panel); 2) si no hay cálculo previo y
+        // la sede es modo FIJO, su costo fijo directo; 3) último recurso, el
+        // argumento que mandó el bot. Falla-abierto: cualquier error usa el arg.
+        let costoDeliveryAutoritativo = Number(costo_delivery) || 0;
+        if (tipo_entrega?.toLowerCase() === 'delivery' && session_id) {
+            try {
+                const prevDelivery: any = await prisma.pedido_preview.findFirst({
+                    where: { id: String(session_id) }, select: { direccion_cliente: true }
+                });
+                const dc = typeof prevDelivery?.direccion_cliente === 'string'
+                    ? JSON.parse(prevDelivery.direccion_cliente)
+                    : prevDelivery?.direccion_cliente;
+                const costoCalculado = Number(dc?.costo_delivery);
+                if (Number.isFinite(costoCalculado) && costoCalculado >= 0 && dc?.costo_delivery !== undefined && dc?.costo_delivery !== null) {
+                    costoDeliveryAutoritativo = costoCalculado;
+                } else {
+                    // Sin cálculo previo: en modo FIJO el costo sale directo de
+                    // la config del panel (el bot pudo saltarse calcular_delivery).
+                    const cfgDelivery: any = await prisma.sede_costo_delivery.findFirst({
+                        where: { idsede: Number(idsede), estado: '0' }, select: { parametros: true }
+                    });
+                    const params: any = cfgDelivery?.parametros || {};
+                    if (resolverModo(params) === 'fijo') {
+                        costoDeliveryAutoritativo = Number(params.costo_fijo || 0) || Number(params.km_base_costo || 0);
+                    }
+                }
+            } catch (e: any) {
+                console.error('resumen-pedido: fallo resolviendo costo delivery autoritativo, se usa el del bot:', e?.message);
+            }
+        }
+
         const datosEntrega = {
             direccion: direccion || '',
-            costo_entrega: tipo_entrega?.toLowerCase() === 'delivery' ? (costo_delivery || 0) : 0
+            costo_entrega: tipo_entrega?.toLowerCase() === 'delivery' ? costoDeliveryAutoritativo : 0
         };
         
         // Mapear tipo_entrega a los canales de consumo disponibles

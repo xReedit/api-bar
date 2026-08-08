@@ -51,6 +51,28 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
+exports.esFilaCostoDelivery = void 0;
+/**
+ * ¿Esta descripción de subtotal ES el costo de envío del pedido?
+ * Estricto por primera palabra: "DELIVERY", "COSTO DELIVERY", "Costo de
+ * entrega", "ENVÍO A DOMICILIO" → sí. "TAPER DELIVERY", "SET DELIVERY" → NO
+ * (son cobros aparte que solo contienen la palabra; caso real: la sede Bacs
+ * Burguer perdía el cobro del taper porque el includes() lo confundía con la
+ * fila de delivery y la lógica lo eliminaba/renombraba).
+ */
+var esFilaCostoDelivery = function (descripcion) {
+    var norm = String(descripcion || '').toLowerCase()
+        .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
+        .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u').trim();
+    var palabras = norm.split(/\s+/);
+    var conceptos = ['delivery', 'envio', 'entrega'];
+    if (conceptos.includes(palabras[0]))
+        return true; // "delivery", "envio a domicilio"
+    if (palabras[0] === 'costo' && conceptos.some(function (c) { return norm.includes(c); }))
+        return true; // "costo delivery", "costo de entrega"
+    return false;
+};
+exports.esFilaCostoDelivery = esFilaCostoDelivery;
 var PedidoServices = /** @class */ (function () {
     // private apiMaps = new ApiMaps();
     function PedidoServices() {
@@ -233,9 +255,10 @@ var PedidoServices = /** @class */ (function () {
             var _idSubtotal = "".concat(c.tipo).concat(c.id);
             var _costoXcantidad = parseFloat(c.monto);
             var _subtotal = arrSubtotales.find(function (s) { return s.descripcion.toLowerCase().trim() === c.descripcion.toLowerCase().trim(); });
-            // si en la reglas incluye delivery, costo de entrega, entrega, envio ya no lo ponemos en el subtotal
-            var exclusiones = ['delivery', 'entrega', 'envio'];
-            if (exclusiones.some(function (exclusion) { return c.descripcion.toLowerCase().trim().includes(exclusion); })) {
+            // Si la regla ES el costo de delivery, no se agrega aquí (lo pone
+            // el costo calculado). OJO: predicado ESTRICTO — "TAPER DELIVERY"
+            // es un cobro aparte y no debe excluirse (caso real Bacs Burguer).
+            if ((0, exports.esFilaCostoDelivery)(c.descripcion)) {
                 // continuar
                 return;
             }
@@ -297,17 +320,18 @@ var PedidoServices = /** @class */ (function () {
         };
         // console.log('rowSubtotalProductos',rowSubtotalProductos);
         arrSubtotales.unshift(rowSubtotalProductos);
-        // array delivery calculado segun la distancia
+        // array delivery calculado segun la config del panel (fijo/variable/zonas)
         if (arrSubtotalCostoEntega) {
-            // Evitar delivery duplicado: el costo calculado es la unica fuente.
-            // Quitamos cualquier subtotal de delivery/entrega/envio ya agregado por
-            // las reglas de la carta. Mismo norm (sin acentos) que setCanalConsumo.
-            var norm_1 = function (s) { return (s || '').toString().toLowerCase()
-                .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
-                .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u').trim(); };
-            var esDelivery_1 = function (d) { return ['delivery', 'entrega', 'envio'].some(function (k) { return norm_1(d).includes(k); }); };
-            arrSubtotales = arrSubtotales.filter(function (s) { return !esDelivery_1(s.descripcion); });
-            arrSubtotales.splice(1, 0, arrSubtotalCostoEntega);
+            // El costo CALCULADO es la única fuente de la fila de envío: las
+            // filas de delivery configuradas en las reglas de la sede se anulan
+            // SIEMPRE (predicado estricto: "TAPER DELIVERY" y similares son
+            // cobros aparte y se conservan — antes se borraban y la sede perdía
+            // plata). Si el calculado es 0 (delivery gratis), solo se anula la
+            // fila de la sede sin mostrar una línea en 0.00.
+            arrSubtotales = arrSubtotales.filter(function (s) { return !(0, exports.esFilaCostoDelivery)(s.descripcion); });
+            if (parseFloat(arrSubtotalCostoEntega.importe) > 0) {
+                arrSubtotales.splice(1, 0, arrSubtotalCostoEntega);
+            }
         }
         // totoal arrSubtotales antes de impuestos
         // console.log('arrSubtotales', arrSubtotales);
@@ -426,11 +450,11 @@ var PedidoServices = /** @class */ (function () {
     PedidoServices.prototype.getSubtotalCostoEntrega = function (datosEntrega) {
         var deliveryCost = datosEntrega.delivery_cost || datosEntrega.costo_entrega || 0;
         var distance = datosEntrega.distance || datosEntrega.distancia || 0;
-        // Buscar el subtotal de delivery en las reglas de carta para obtener su ID
+        // Buscar el subtotal de delivery en las reglas de carta para obtener su
+        // ID — SOLO si la fila realmente ES el costo de envío (predicado
+        // estricto: "TAPER DELIVERY" no debe heredar aquí su nombre/id).
         var subtotalDeliveryRegla = this.arrReglasCarta.subtotales.find(function (item) {
-            return item.descripcion.toLowerCase().includes('delivery') ||
-                item.descripcion.toLowerCase().includes('entrega') ||
-                item.descripcion.toLowerCase().includes('envio');
+            return (0, exports.esFilaCostoDelivery)(item.descripcion);
         });
         var idSubtotal = subtotalDeliveryRegla ? "".concat(subtotalDeliveryRegla.tipo).concat(subtotalDeliveryRegla.id) : 'a48';
         var subtotalCostoEntrega = {

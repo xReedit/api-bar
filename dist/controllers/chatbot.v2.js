@@ -1069,12 +1069,12 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
     });
 }); });
 router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, cliente_nombre, hora_programada, itemsParaCocinar, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, numeroResumen, direccionPreview, prevRow, direccionData, error_8, estructuraJson, imagenUrl, resumenRespuesta, numeroResumenRespuesta, configDelivery, sedeInfo, confPrint, ahoraLima, direccionTicket, descripcionCanal, horaEntrega, total, error_9, error_10, msg;
+    var _a, session_id, idsede, items, tipo_entrega, direccion, costo_delivery, cliente_nombre, hora_programada, itemsParaCocinar, costoDeliveryAutoritativo, prevDelivery, dc, costoCalculado, cfgDelivery, params, e_3, datosEntrega, tipoEntregaMapeado, tipoLower, tipoEntregaObj, estructuraPedidoCocinada, tipoConsumo, secciones, subtotales, pedidoService, ticketFormateado, previewId, numeroResumen, direccionPreview, prevRow, direccionData, error_8, estructuraJson, imagenUrl, resumenRespuesta, numeroResumenRespuesta, configDelivery, sedeInfo, confPrint, ahoraLima, direccionTicket, descripcionCanal, horaEntrega, total, error_9, error_10, msg;
     var _b, _c, _d, _e, _f;
     return __generator(this, function (_g) {
         switch (_g.label) {
             case 0:
-                _g.trys.push([0, 15, , 16]);
+                _g.trys.push([0, 22, , 23]);
                 _a = req.body, session_id = _a.session_id, idsede = _a.idsede, items = _a.items, tipo_entrega = _a.tipo_entrega, direccion = _a.direccion, costo_delivery = _a.costo_delivery, cliente_nombre = _a.cliente_nombre, hora_programada = _a.hora_programada;
                 if (!items || items.length === 0) {
                     return [2 /*return*/, res.status(400).json({
@@ -1096,9 +1096,42 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                     indicaciones: item.indicaciones || '',
                     observaciones: item.indicaciones || ''
                 }); });
+                costoDeliveryAutoritativo = Number(costo_delivery) || 0;
+                if (!((tipo_entrega === null || tipo_entrega === void 0 ? void 0 : tipo_entrega.toLowerCase()) === 'delivery' && session_id)) return [3 /*break*/, 7];
+                _g.label = 1;
+            case 1:
+                _g.trys.push([1, 6, , 7]);
+                return [4 /*yield*/, prisma.pedido_preview.findFirst({
+                        where: { id: String(session_id) }, select: { direccion_cliente: true }
+                    })];
+            case 2:
+                prevDelivery = _g.sent();
+                dc = typeof (prevDelivery === null || prevDelivery === void 0 ? void 0 : prevDelivery.direccion_cliente) === 'string'
+                    ? JSON.parse(prevDelivery.direccion_cliente)
+                    : prevDelivery === null || prevDelivery === void 0 ? void 0 : prevDelivery.direccion_cliente;
+                costoCalculado = Number(dc === null || dc === void 0 ? void 0 : dc.costo_delivery);
+                if (!(Number.isFinite(costoCalculado) && costoCalculado >= 0 && (dc === null || dc === void 0 ? void 0 : dc.costo_delivery) !== undefined && (dc === null || dc === void 0 ? void 0 : dc.costo_delivery) !== null)) return [3 /*break*/, 3];
+                costoDeliveryAutoritativo = costoCalculado;
+                return [3 /*break*/, 5];
+            case 3: return [4 /*yield*/, prisma.sede_costo_delivery.findFirst({
+                    where: { idsede: Number(idsede), estado: '0' }, select: { parametros: true }
+                })];
+            case 4:
+                cfgDelivery = _g.sent();
+                params = (cfgDelivery === null || cfgDelivery === void 0 ? void 0 : cfgDelivery.parametros) || {};
+                if ((0, delivery_zonas_1.resolverModo)(params) === 'fijo') {
+                    costoDeliveryAutoritativo = Number(params.costo_fijo || 0) || Number(params.km_base_costo || 0);
+                }
+                _g.label = 5;
+            case 5: return [3 /*break*/, 7];
+            case 6:
+                e_3 = _g.sent();
+                console.error('resumen-pedido: fallo resolviendo costo delivery autoritativo, se usa el del bot:', e_3 === null || e_3 === void 0 ? void 0 : e_3.message);
+                return [3 /*break*/, 7];
+            case 7:
                 datosEntrega = {
                     direccion: direccion || '',
-                    costo_entrega: (tipo_entrega === null || tipo_entrega === void 0 ? void 0 : tipo_entrega.toLowerCase()) === 'delivery' ? (costo_delivery || 0) : 0
+                    costo_entrega: (tipo_entrega === null || tipo_entrega === void 0 ? void 0 : tipo_entrega.toLowerCase()) === 'delivery' ? costoDeliveryAutoritativo : 0
                 };
                 tipoEntregaMapeado = tipo_entrega;
                 tipoLower = tipo_entrega === null || tipo_entrega === void 0 ? void 0 : tipo_entrega.toLowerCase();
@@ -1113,7 +1146,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                     descripcion: tipoEntregaMapeado
                 };
                 return [4 /*yield*/, (0, cocinar_pedido_1.getEstructuraPedido)(itemsParaCocinar, tipoEntregaObj, datosEntrega, Number(idsede))];
-            case 1:
+            case 8:
                 estructuraPedidoCocinada = _g.sent();
                 tipoConsumo = (_c = (_b = estructuraPedidoCocinada.p_body) === null || _b === void 0 ? void 0 : _b.tipoconsumo) === null || _c === void 0 ? void 0 : _c[0];
                 secciones = (tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.secciones) || [];
@@ -1123,11 +1156,11 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 previewId = session_id;
                 numeroResumen = 1;
                 direccionPreview = null;
-                _g.label = 2;
-            case 2:
-                _g.trys.push([2, 4, , 5]);
+                _g.label = 9;
+            case 9:
+                _g.trys.push([9, 11, , 12]);
                 return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT estado, JSON_EXTRACT(estructura, '$._resumen_num') AS num, direccion_cliente FROM pedido_preview WHERE id = ? LIMIT 1", previewId)];
-            case 3:
+            case 10:
                 prevRow = _g.sent();
                 numeroResumen = (((_d = prevRow === null || prevRow === void 0 ? void 0 : prevRow[0]) === null || _d === void 0 ? void 0 : _d.estado) === 'pending' && Number(prevRow[0].num) > 0)
                     ? Number(prevRow[0].num) + 1
@@ -1145,43 +1178,43 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 catch (errorDireccion) {
                     console.error('resumen-pedido: fallo parseando direccion_cliente del preview:', errorDireccion.message);
                 }
-                return [3 /*break*/, 5];
-            case 4:
+                return [3 /*break*/, 12];
+            case 11:
                 error_8 = _g.sent();
                 console.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error_8.message);
                 numeroResumen = 1;
-                return [3 /*break*/, 5];
-            case 5:
+                return [3 /*break*/, 12];
+            case 12:
                 // Clave aditiva top-level: los consumidores de esta estructura leen
                 // claves específicas (p_body, p_subtotales, p_header), no iteran
                 // sobre todas las keys, así que no les afecta.
                 estructuraPedidoCocinada._resumen_num = numeroResumen;
                 estructuraJson = JSON.stringify(estructuraPedidoCocinada);
                 return [4 /*yield*/, prisma.$queryRawUnsafe("INSERT INTO pedido_preview (id, estructura, ticket_formateado, estado)\n             VALUES (?, ?, ?, ?)\n             ON DUPLICATE KEY UPDATE\n             estructura = VALUES(estructura),\n             ticket_formateado = VALUES(ticket_formateado),\n             estado = 'pending',\n             recordatorios = 0,\n             last_recordatorio_at = NULL,\n             created_at = CURRENT_TIMESTAMP", previewId, estructuraJson, ticketFormateado, 'pending')];
-            case 6:
+            case 13:
                 _g.sent();
                 imagenUrl = null;
                 resumenRespuesta = ticketFormateado;
                 numeroResumenRespuesta = null;
-                _g.label = 7;
-            case 7:
-                _g.trys.push([7, 13, , 14]);
-                if (!session_id) return [3 /*break*/, 12];
+                _g.label = 14;
+            case 14:
+                _g.trys.push([14, 20, , 21]);
+                if (!session_id) return [3 /*break*/, 19];
                 return [4 /*yield*/, prisma.sede_costo_delivery.findFirst({
                         where: { idsede: Number(idsede), estado: '0' },
                         select: { parametros: true }
                     })];
-            case 8:
+            case 15:
                 configDelivery = _g.sent();
-                if (!((0, delivery_zonas_1.resolverResumenFormato)(configDelivery === null || configDelivery === void 0 ? void 0 : configDelivery.parametros) === 'imagen')) return [3 /*break*/, 12];
+                if (!((0, delivery_zonas_1.resolverResumenFormato)(configDelivery === null || configDelivery === void 0 ? void 0 : configDelivery.parametros) === 'imagen')) return [3 /*break*/, 19];
                 return [4 /*yield*/, prisma.sede.findUnique({
                         where: { idsede: Number(idsede) },
                         select: { nombre: true, logo64: true }
                     })];
-            case 9:
+            case 16:
                 sedeInfo = _g.sent();
                 return [4 /*yield*/, prisma.$queryRawUnsafe('SELECT logo FROM conf_print WHERE idsede = ? LIMIT 1', Number(idsede))];
-            case 10:
+            case 17:
                 confPrint = _g.sent();
                 ahoraLima = new Date().toLocaleString('es-PE', {
                     timeZone: 'America/Lima',
@@ -1214,7 +1247,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                         direccion: direccionTicket,
                         horaEntrega: horaEntrega
                     })];
-            case 11:
+            case 18:
                 imagenUrl = _g.sent();
                 if (imagenUrl) {
                     total = subtotales.length
@@ -1223,19 +1256,19 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                     numeroResumenRespuesta = String(numeroResumen);
                     resumenRespuesta = "Resumen #".concat(numeroResumen, " \u2014 Pedido *").concat((tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.descripcion) || '', "* \u2014 Total *S/ ").concat(total, "* \uD83E\uDDFE (detalle en el ticket adjunto)");
                 }
-                _g.label = 12;
-            case 12: return [3 /*break*/, 14];
-            case 13:
+                _g.label = 19;
+            case 19: return [3 /*break*/, 21];
+            case 20:
                 error_9 = _g.sent();
                 console.error('resumen-pedido: fallo modo imagen, usando texto:', error_9.message);
                 imagenUrl = null;
                 numeroResumenRespuesta = null;
                 resumenRespuesta = ticketFormateado;
-                return [3 /*break*/, 14];
-            case 14:
+                return [3 /*break*/, 21];
+            case 21:
                 res.status(200).json(__assign({ success: true, resumen: resumenRespuesta }, (imagenUrl ? { imagen_url: imagenUrl, numero_resumen: numeroResumenRespuesta } : {})));
-                return [3 /*break*/, 16];
-            case 15:
+                return [3 /*break*/, 23];
+            case 22:
                 error_10 = _g.sent();
                 console.error('Error en resumen-pedido:', error_10);
                 msg = ((error_10 === null || error_10 === void 0 ? void 0 : error_10.message) || '').toLowerCase();
@@ -1249,8 +1282,8 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                     success: false,
                     error: 'Error al generar resumen del pedido'
                 });
-                return [3 /*break*/, 16];
-            case 16: return [2 /*return*/];
+                return [3 /*break*/, 23];
+            case 23: return [2 /*return*/];
         }
     });
 }); });

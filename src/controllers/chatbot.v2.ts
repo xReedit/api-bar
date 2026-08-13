@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { GeocodingService, estimarKmRuta } from "../services/geocoding.service";
 import { costoVariable, decidirDireccionTexto, describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { mapearEstructuraAComprobante, validarDocumento } from "../services/comprobante.helpers";
+import { resolverPersonalidad } from "../services/personalidad";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
@@ -2054,6 +2055,9 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
             // Número de Yape/Plin de la sede: el bot lo da cuando el cliente
             // pregunta a dónde yapear/plinear.
             numero_billetera: sede.numero_billetera_chatbot || null,
+            // Voz del bot elegida en el panel Piter. Siempre viaja resuelta (el
+            // default incluido) para que chatbot-go no tenga que adivinar.
+            personalidad_chatbot: resolverPersonalidad((parametros as any).personalidad_chatbot),
             mensaje_bienvenida: "Bienvenido! En que puedo ayudarte?",
             activo: true,
             link_carta: categoria?.url_carta ? `https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/${categoria?.url_carta}` : null

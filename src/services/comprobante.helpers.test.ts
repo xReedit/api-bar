@@ -30,7 +30,61 @@ const estructuraDelivery = {
     ]
 };
 
+// Caso real SAN CARLOS 12-08 (pedido 13530505): la "crema de ocopa" es
+// cortesía de la regla de carta — precio_print 0 pero precio_total 8 (lista).
+// Sumar precio_total daba 32 != 29 y backend-pedidos rebotaba la boleta.
+const estructuraConCortesia = {
+    p_body: {
+        tipoconsumo: [{
+            descripcion: 'DELIVERY',
+            secciones: [
+                {
+                    des: 'ENTRADAS', items: [
+                        { iditem: 200, des: 'CREMA DE OCOPA', cantidad_seleccionada: 1, precio_unitario: 8, precio: 8, precio_total: 8, precio_total_calc: 0, precio_print: 0 },
+                        { iditem: 201, des: 'GELATINA', cantidad_seleccionada: 1, precio_unitario: 3, precio: 3, precio_total: 3, precio_total_calc: 3, precio_print: 3 }
+                    ]
+                },
+                {
+                    des: 'PLATOS DE FONDO', items: [
+                        { iditem: 202, des: 'TRUCHA FRITA CON PATACONES', cantidad_seleccionada: 1, precio_unitario: 18, precio: 18, precio_total: 18, precio_total_calc: 18, precio_print: 18 }
+                    ]
+                },
+                {
+                    des: 'GASEOSAS', items: [
+                        { iditem: 203, des: 'AGUA MINERAL SAN LUIS 750ML', cantidad_seleccionada: 1, precio_unitario: 3, precio: 3, precio_total: 3, precio_total_calc: 3, precio_print: 3 }
+                    ]
+                }
+            ]
+        }]
+    },
+    p_subtotales: [
+        { descripcion: 'Sub Total', importe: '24.00' },
+        { descripcion: 'Costo Delivery', importe: '4.00' },
+        { descripcion: 'Set Descartables', importe: '1.00' },
+        { descripcion: 'Total', importe: '29.00' }
+    ]
+};
+
 describe('mapearEstructuraAComprobante', () => {
+    it('un item de cortesía (regla de carta) no infla la suma: cuadra con el TOTAL', () => {
+        const { items, subtotales } = mapearEstructuraAComprobante(estructuraConCortesia);
+        const lista = items[0].items;
+        expect(lista.find((i) => i.des.includes('OCOPA'))).toBeUndefined();
+        const suma = lista.reduce((acc, i) => acc + i.precio_total, 0);
+        expect(suma).toBeCloseTo(Number(subtotales[subtotales.length - 1].importe), 2);
+    });
+
+    it('una regla que rebaja (no anula) la línea ajusta también el unitario', () => {
+        const rebajado = {
+            p_body: { tipoconsumo: [{ secciones: [{ items: [
+                { iditem: 300, des: 'COMBO', cantidad_seleccionada: 2, precio_unitario: 10, precio_total: 20, precio_print: 15 }
+            ] }] }] },
+            p_subtotales: [{ descripcion: 'Total', importe: '15.00' }]
+        };
+        expect(mapearEstructuraAComprobante(rebajado).items[0].items[0])
+            .toEqual({ id: 300, des: 'COMBO', cantidad: 2, punitario: 7.5, precio_total: 15 });
+    });
+
     it('aplana items de todas las secciones con {id, des, cantidad, punitario, precio_total}', () => {
         const { items } = mapearEstructuraAComprobante(estructuraDelivery);
         const lista = items[0].items;

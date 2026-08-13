@@ -5,6 +5,14 @@
 // Regla clave: los subtotales "extra" (costo delivery, set descartables, etc.)
 // se convierten en ITEMS del comprobante — si no, la suma de items no cuadra
 // con el total y SUNAT/apifac rechaza el documento.
+//
+// Regla clave 2: el importe de cada línea es `precio_print`, NO `precio_total`.
+// Las reglas de carta (combos, plato de cortesía) rebajan el precio en
+// `precio_print`/`precio_total_calc` y dejan `precio_total` con el precio de
+// lista. El "Sub Total" del ticket se calcula con precio_print, así que leer
+// precio_total inflaba la suma y el cuadre de backend-pedidos rebotaba con
+// "el detalle del pedido no cuadra con el total" (caso real 12-08: entrada de
+// cortesía en 0.00 dentro de un pedido de S/ 29.00).
 
 export type ItemComprobante = {
     id: number;
@@ -33,9 +41,17 @@ export const mapearEstructuraAComprobante = (estructura: any): {
     for (const seccion of secciones) {
         for (const it of seccion?.items || []) {
             const cantidad = Number(it?.cantidad_seleccionada) || 0;
-            const precioTotal = Number(it?.precio_total) || 0;
+            // Orden de preferencia = el mismo que usa el ticket y el Sub Total.
+            const cobrado = [it?.precio_print, it?.precio_total_calc, it?.precio_total]
+                .map(Number).find((n) => Number.isFinite(n));
+            const precioTotal = Number(cobrado) || 0;
             if (cantidad <= 0 || precioTotal <= 0) continue;
-            const punitario = Number(it?.precio_unitario) || Number(it?.precio) || (precioTotal / cantidad);
+            // Unitario de lista solo si cuadra con lo cobrado (evita perder
+            // centavos al dividir); si la regla rebajó la línea, se deriva.
+            const deLista = Number(it?.precio_unitario) || Number(it?.precio) || 0;
+            const punitario = Math.abs(deLista * cantidad - precioTotal) < 0.01
+                ? deLista
+                : precioTotal / cantidad;
             items.push({
                 id: Number(it?.iditem) || 0,
                 des: String(it?.des || it?.descripcion || 'CONSUMO'),

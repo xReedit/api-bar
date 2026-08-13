@@ -91,6 +91,7 @@ var client_1 = require("@prisma/client");
 var geocoding_service_1 = require("../services/geocoding.service");
 var delivery_zonas_1 = require("../services/delivery.zonas");
 var comprobante_helpers_1 = require("../services/comprobante.helpers");
+var personalidad_1 = require("../services/personalidad");
 var cocinar_pedido_1 = require("../services/cocinar.pedido");
 var pedido_services_1 = __importDefault(require("../services/pedido.services"));
 var json_print_services_1 = require("../services/json.print.services");
@@ -1917,6 +1918,9 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                     // Número de Yape/Plin de la sede: el bot lo da cuando el cliente
                     // pregunta a dónde yapear/plinear.
                     numero_billetera: sede.numero_billetera_chatbot || null,
+                    // Voz del bot elegida en el panel Piter. Siempre viaja resuelta (el
+                    // default incluido) para que chatbot-go no tenga que adivinar.
+                    personalidad_chatbot: (0, personalidad_1.resolverPersonalidad)(parametros.personalidad_chatbot),
                     mensaje_bienvenida: "Bienvenido! En que puedo ayudarte?",
                     activo: true,
                     link_carta: (categoria === null || categoria === void 0 ? void 0 : categoria.url_carta) ? "https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/".concat(categoria === null || categoria === void 0 ? void 0 : categoria.url_carta) : null

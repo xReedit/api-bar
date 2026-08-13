@@ -6,6 +6,14 @@
 // Regla clave: los subtotales "extra" (costo delivery, set descartables, etc.)
 // se convierten en ITEMS del comprobante — si no, la suma de items no cuadra
 // con el total y SUNAT/apifac rechaza el documento.
+//
+// Regla clave 2: el importe de cada línea es `precio_print`, NO `precio_total`.
+// Las reglas de carta (combos, plato de cortesía) rebajan el precio en
+// `precio_print`/`precio_total_calc` y dejan `precio_total` con el precio de
+// lista. El "Sub Total" del ticket se calcula con precio_print, así que leer
+// precio_total inflaba la suma y el cuadre de backend-pedidos rebotaba con
+// "el detalle del pedido no cuadra con el total" (caso real 12-08: entrada de
+// cortesía en 0.00 dentro de un pedido de S/ 29.00).
 exports.__esModule = true;
 exports.validarDocumento = exports.mapearEstructuraAComprobante = void 0;
 var esFilaEstandar = function (descripcion) {
@@ -23,10 +31,18 @@ var mapearEstructuraAComprobante = function (estructura) {
         for (var _d = 0, _e = (seccion === null || seccion === void 0 ? void 0 : seccion.items) || []; _d < _e.length; _d++) {
             var it = _e[_d];
             var cantidad = Number(it === null || it === void 0 ? void 0 : it.cantidad_seleccionada) || 0;
-            var precioTotal = Number(it === null || it === void 0 ? void 0 : it.precio_total) || 0;
+            // Orden de preferencia = el mismo que usa el ticket y el Sub Total.
+            var cobrado = [it === null || it === void 0 ? void 0 : it.precio_print, it === null || it === void 0 ? void 0 : it.precio_total_calc, it === null || it === void 0 ? void 0 : it.precio_total]
+                .map(Number).find(function (n) { return Number.isFinite(n); });
+            var precioTotal = Number(cobrado) || 0;
             if (cantidad <= 0 || precioTotal <= 0)
                 continue;
-            var punitario = Number(it === null || it === void 0 ? void 0 : it.precio_unitario) || Number(it === null || it === void 0 ? void 0 : it.precio) || (precioTotal / cantidad);
+            // Unitario de lista solo si cuadra con lo cobrado (evita perder
+            // centavos al dividir); si la regla rebajó la línea, se deriva.
+            var deLista = Number(it === null || it === void 0 ? void 0 : it.precio_unitario) || Number(it === null || it === void 0 ? void 0 : it.precio) || 0;
+            var punitario = Math.abs(deLista * cantidad - precioTotal) < 0.01
+                ? deLista
+                : precioTotal / cantidad;
             items.push({
                 id: Number(it === null || it === void 0 ? void 0 : it.iditem) || 0,
                 des: String((it === null || it === void 0 ? void 0 : it.des) || (it === null || it === void 0 ? void 0 : it.descripcion) || 'CONSUMO'),

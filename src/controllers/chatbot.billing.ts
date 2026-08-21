@@ -3,6 +3,7 @@
 // server-side (authorization) y la acreditación al chatbot-go es idempotente
 // por tx_id — reintentar confirmar nunca duplica saldo.
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 import express, { Request, Response } from 'express';
 import { AuthResult, buildRecargaPayload, validarConfirmar, validarIniciar } from '../services/billing.helpers';
 import * as chatbotgo from '../services/chatbotgo.service';
@@ -19,6 +20,16 @@ interface PagoRow {
     estado: 'pendiente' | 'procesando' | 'pagado' | 'fallido';
     niubiz_tx: string | null;
 }
+
+/**
+ * Un error de axios impreso crudo llena el log con el request entero y esconde
+ * lo único que importa (status + body de Niubiz). Los errores de Prisma pasan
+ * tal cual.
+ */
+const detalle = (error: unknown): unknown =>
+    axios.isAxiosError(error)
+        ? { niubiz: error.config?.url, status: error.response?.status, data: error.response?.data, code: error.code }
+        : error;
 
 /** Saldo actual de la sede (proxy del chatbot-go). */
 router.get('/saldo/:idsede', async (req: Request, res: Response) => {
@@ -94,7 +105,7 @@ router.post('/pago/iniciar', async (req: Request, res: Response) => {
             logoUrl: niubiz.niubizLogoUrl(),
         });
     } catch (error) {
-        console.error('billing iniciar:', error);
+        console.error('billing iniciar:', detalle(error));
         res.status(500).json({ success: false, error: 'no se pudo iniciar el pago' });
     }
 });
@@ -203,7 +214,7 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
             });
         }
     } catch (error) {
-        console.error('billing confirmar:', error);
+        console.error('billing confirmar:', detalle(error));
         res.status(500).json({ success: false, error: 'no se pudo confirmar el pago' });
     }
 });

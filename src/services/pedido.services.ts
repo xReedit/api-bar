@@ -83,13 +83,32 @@ class PedidoServices {
         return canalSeleted;
     }
 
-    private setDescripcionCantidadItems(seccionMasItems: any, itemsFromBot: any) {        
+    private setDescripcionCantidadItems(seccionMasItems: any, itemsFromBot: any) {
         try {
-            
+
             seccionMasItems.map((seccion: any) => {
                 seccion.items.map((item: any) => {
-                    const itemFromBot = itemsFromBot.find((item_: any) => item_.iditem === item.iditem)
-                    const _precionTotal = item.precio_unitario * itemFromBot.cantidad;
+                    // Number(): el iditem viaja como string por un lado (bot / JSON) y
+                    // como number por el otro (get-seccion-items). Con === estricto el
+                    // find devolvía undefined, el `.cantidad` lanzaba y el catch vacío
+                    // se lo tragaba: TODOS los items siguientes se quedaban sin precio
+                    // en silencio. Ahora un item sin match se salta y los demás siguen.
+                    const itemFromBot = itemsFromBot.find((item_: any) => Number(item_.iditem) === Number(item.iditem))
+                    if (!itemFromBot) return;
+                    // Sobreprecio de las opciones/seleccionables (pizza mediana, extra
+                    // queso...). Entra ACÁ, antes de validarReglasCarta, para que las
+                    // reglas de carta descuenten sobre la base correcta y para que
+                    // precio_total / precio_total_calc / precio_print (ticket, resumen,
+                    // comprobante) y getTotalItemsPedido queden cuadrados solos.
+                    // Carta plana: el campo no viene → 0 → resultado idéntico al de hoy.
+                    //
+                    // Cuadre con procedure_pwa_pedido_guardar: el SP emite una fila por
+                    // elemento de subitems_view con punitario = elemento.precio /
+                    // cantidad_seleccionada + precio_plato, así que
+                    //   Σ(elemento.precio + precio_plato*cant_sel) + remanente*precio_plato
+                    //   = sobreprecio_total + precio_plato*cantidad_total = _precionTotal.
+                    const _sobreprecio = Number(itemFromBot.sobreprecio_total) || 0;
+                    const _precionTotal = item.precio_unitario * itemFromBot.cantidad + _sobreprecio;
                     item.descripcion = itemFromBot.descripcion
                     item.descripcion = itemFromBot.indicaciones ? itemFromBot.indicaciones !== '' ? `${itemFromBot.descripcion} (${itemFromBot.indicaciones})` : itemFromBot.descripcion : itemFromBot.descripcion;
                     item.indicaciones = itemFromBot?.indicaciones || '';
@@ -97,12 +116,15 @@ class PedidoServices {
                     item.precio_total = _precionTotal
                     item.precio_total_calc = _precionTotal
                     item.precio_print = _precionTotal
+                    // Solo se agrega la clave cuando hay opciones: sin ella el item
+                    // cocinado queda byte-idéntico al de las cartas planas de hoy.
+                    if (itemFromBot.subitems_view?.length) item.subitems_view = itemFromBot.subitems_view;
                 })
             })
         } catch (error) {
 
-        }     
-        
+        }
+
         return seccionMasItems;
     }
 
@@ -416,7 +438,16 @@ class PedidoServices {
             seccion.items.map((item: any) => {
                 const _newItem = { descripcion: `${item.cantidad_seleccionada} ${item.des}`, importe: parseFloat(item.precio_print).toFixed(2).toString() } 
                 listItemSesccion.push(_newItem)
-                
+
+                // Opciones elegidas (seleccionables): una línea sangrada por elemento
+                // de subitems_view. El importe solo se imprime si la opción cuesta
+                // (extra > 0); las gratuitas van sin columna de precio. Sin el campo
+                // (carta plana) no se emite nada y la salida es idéntica a la de hoy.
+                ;(item.subitems_view || []).forEach((el: any) => {
+                    const _importeEl = Number(el.precio) > 0 ? Number(el.precio).toFixed(2) : ''
+                    listItemSesccion.push({ descripcion: `     + ${el.cantidad_seleccionada}x ${el.des}`, importe: _importeEl })
+                })
+
                 // Agregar indicaciones en línea separada si existen
                 if (item.indicaciones) {
                     const _indicaciones = { descripcion: `     (${item.indicaciones})`, importe: '' }

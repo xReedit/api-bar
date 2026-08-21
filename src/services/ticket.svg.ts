@@ -20,6 +20,15 @@ const PAD = 36;            // margen lateral
 const LH = 34;             // alto de línea items
 const FS = 24;             // font-size base
 
+// Líneas de opciones (subitems_view): más chicas y sangradas que el plato.
+const FS_OPC = FS - 5;     // font-size
+const X_OPC = PAD + 28;    // sangría
+// En Courier New el glifo mide ~0.6 × el font-size, así que entre la sangría y
+// el margen derecho entran (W - PAD - X_OPC) / (FS_OPC * 0.6) caracteres. Sin
+// esto, un `des` largo (hasta 60 chars: MAX_DES en subitems.pedido.ts) se sale
+// del papel.
+const CHARS_OPC = Math.floor((W - PAD - X_OPC) / (FS_OPC * 0.6));
+
 const esc = (s: any): string =>
     String(s ?? '')
         .replace(/&/g, '&amp;')
@@ -123,6 +132,20 @@ export const construirTicketSVG = (d: DatosTicket): { svg: string; width: number
                 if (i === 0) partes.push(`<text x="${W - PAD}" y="${y}" text-anchor="end" font-size="${FS}" fill="#1a1a1a">${esc(precio)}</text>`);
                 y += LH;
             });
+            // Opciones elegidas (seleccionables): una línea por elemento de
+            // subitems_view, más sangrada / más chica / más clara que el plato
+            // para que se lean como detalle suyo y no como platos aparte.
+            // Carta plana (sin el campo): no se pinta nada y el SVG queda igual.
+            for (const el of item.subitems_view || []) {
+                // Mismo wrap que el nombre del plato: el texto de la opción puede
+                // ser largo ("MEDIANA, EXTRA QUESO, SIN CEBOLLA | bien cocido")
+                // y sin partirlo se salía del ticket.
+                const textoOpc = `+ ${el.cantidad_seleccionada}x ${String(el.des ?? '').toLowerCase()}`;
+                for (const linea of wrap(textoOpc, CHARS_OPC)) {
+                    partes.push(`<text x="${X_OPC}" y="${y}" font-size="${FS_OPC}" fill="#777777">${esc(linea)}</text>`);
+                    y += LH - 6;
+                }
+            }
             if (item.indicaciones) {
                 partes.push(`<text x="${PAD + 20}" y="${y}" font-size="${FS - 4}" font-style="italic" fill="#666666">(${esc(item.indicaciones)})</text>`);
                 y += LH - 4;

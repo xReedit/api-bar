@@ -78,6 +78,7 @@ var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var utils_1 = require("../utils/utils");
 var cocinar_pedido_1 = require("../services/cocinar.pedido");
+var reglas_negocio_1 = require("../services/reglas-negocio");
 var client_s3_1 = require("@aws-sdk/client-s3");
 var s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 var prisma = new client_1.PrismaClient();
@@ -640,15 +641,24 @@ router.put('/update-tipo-pago-sede/:id', function (req, res, next) { return __aw
 }); });
 // guardar datos del delivery update-config-delivery
 router.put('/update-config-delivery/:id', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var id, dataBody, rpt, error_5;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var id, dataBody, _a, texto, error, rpt, error_5;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
                 id = req.params.id;
                 dataBody = req.body;
-                _a.label = 1;
+                // Las reglas del local son texto libre que termina dentro del system prompt
+                // del bot: se validan aquí y no solo en el panel, porque este endpoint no
+                // tiene auth y el frontend no es una barrera.
+                if ((dataBody === null || dataBody === void 0 ? void 0 : dataBody.parametros) && 'reglas_negocio' in dataBody.parametros) {
+                    _a = (0, reglas_negocio_1.validarReglas)(dataBody.parametros.reglas_negocio), texto = _a.texto, error = _a.error;
+                    if (error)
+                        return [2 /*return*/, res.status(400).send({ error: error })];
+                    dataBody.parametros = __assign(__assign({}, dataBody.parametros), { reglas_negocio: texto });
+                }
+                _b.label = 1;
             case 1:
-                _a.trys.push([1, 3, 4, 5]);
+                _b.trys.push([1, 3, 4, 5]);
                 return [4 /*yield*/, prisma.sede_costo_delivery.updateMany({
                         data: dataBody,
                         where: {
@@ -656,11 +666,11 @@ router.put('/update-config-delivery/:id', function (req, res, next) { return __a
                         }
                     })];
             case 2:
-                rpt = _a.sent();
+                rpt = _b.sent();
                 res.status(200).send(rpt);
                 return [3 /*break*/, 5];
             case 3:
-                error_5 = _a.sent();
+                error_5 = _b.sent();
                 res.status(500).send({ error: 'error al actualizar update-config-delivery.' });
                 return [3 /*break*/, 5];
             case 4:

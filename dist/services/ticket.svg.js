@@ -8,6 +8,14 @@ var W = 640;
 var PAD = 36; // margen lateral
 var LH = 34; // alto de línea items
 var FS = 24; // font-size base
+// Líneas de opciones (subitems_view): más chicas y sangradas que el plato.
+var FS_OPC = FS - 5; // font-size
+var X_OPC = PAD + 28; // sangría
+// En Courier New el glifo mide ~0.6 × el font-size, así que entre la sangría y
+// el margen derecho entran (W - PAD - X_OPC) / (FS_OPC * 0.6) caracteres. Sin
+// esto, un `des` largo (hasta 60 chars: MAX_DES en subitems.pedido.ts) se sale
+// del papel.
+var CHARS_OPC = Math.floor((W - PAD - X_OPC) / (FS_OPC * 0.6));
 var esc = function (s) {
     return String(s !== null && s !== void 0 ? s : '')
         .replace(/&/g, '&amp;')
@@ -41,7 +49,7 @@ var wrap = function (texto, n) {
     return lineas.length ? lineas : [''];
 };
 var construirTicketSVG = function (d) {
-    var _a;
+    var _a, _b;
     var partes = [];
     var y = 64; // margen superior (antes 40; +24 de aire antes del logo)
     // ── Header: logo + nombre + canal ────────────────────────────────────
@@ -100,8 +108,8 @@ var construirTicketSVG = function (d) {
     partes.push("<line x1=\"".concat(PAD, "\" y1=\"").concat(y, "\" x2=\"").concat(W - PAD, "\" y2=\"").concat(y, "\" stroke=\"#cccccc\" stroke-width=\"2\" stroke-dasharray=\"6 6\"/>"));
     y += 34;
     // ── Items por sección ────────────────────────────────────────────────
-    for (var _i = 0, _b = d.secciones || []; _i < _b.length; _i++) {
-        var seccion = _b[_i];
+    for (var _i = 0, _c = d.secciones || []; _i < _c.length; _i++) {
+        var seccion = _c[_i];
         partes.push("<text x=\"".concat(PAD, "\" y=\"").concat(y, "\" font-size=\"").concat(FS, "\" font-weight=\"bold\" fill=\"#0b7a3e\">").concat(esc(String(seccion.des || '').toUpperCase()), "</text>"));
         y += LH;
         var _loop_1 = function (item) {
@@ -115,13 +123,29 @@ var construirTicketSVG = function (d) {
                     partes.push("<text x=\"".concat(W - PAD, "\" y=\"").concat(y, "\" text-anchor=\"end\" font-size=\"").concat(FS, "\" fill=\"#1a1a1a\">").concat(esc(precio), "</text>"));
                 y += LH;
             });
+            // Opciones elegidas (seleccionables): una línea por elemento de
+            // subitems_view, más sangrada / más chica / más clara que el plato
+            // para que se lean como detalle suyo y no como platos aparte.
+            // Carta plana (sin el campo): no se pinta nada y el SVG queda igual.
+            for (var _f = 0, _g = item.subitems_view || []; _f < _g.length; _f++) {
+                var el = _g[_f];
+                // Mismo wrap que el nombre del plato: el texto de la opción puede
+                // ser largo ("MEDIANA, EXTRA QUESO, SIN CEBOLLA | bien cocido")
+                // y sin partirlo se salía del ticket.
+                var textoOpc = "+ ".concat(el.cantidad_seleccionada, "x ").concat(String((_b = el.des) !== null && _b !== void 0 ? _b : '').toLowerCase());
+                for (var _h = 0, _j = wrap(textoOpc, CHARS_OPC); _h < _j.length; _h++) {
+                    var linea = _j[_h];
+                    partes.push("<text x=\"".concat(X_OPC, "\" y=\"").concat(y, "\" font-size=\"").concat(FS_OPC, "\" fill=\"#777777\">").concat(esc(linea), "</text>"));
+                    y += LH - 6;
+                }
+            }
             if (item.indicaciones) {
                 partes.push("<text x=\"".concat(PAD + 20, "\" y=\"").concat(y, "\" font-size=\"").concat(FS - 4, "\" font-style=\"italic\" fill=\"#666666\">(").concat(esc(item.indicaciones), ")</text>"));
                 y += LH - 4;
             }
         };
-        for (var _c = 0, _d = seccion.items || []; _c < _d.length; _c++) {
-            var item = _d[_c];
+        for (var _d = 0, _e = seccion.items || []; _d < _e.length; _d++) {
+            var item = _e[_d];
             _loop_1(item);
         }
         y += 8;

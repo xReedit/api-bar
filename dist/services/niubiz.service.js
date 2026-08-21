@@ -47,7 +47,17 @@ exports.authorize = exports.createSession = exports.getAccessToken = exports.niu
 // checkout.js sin ?qa=true).
 var axios_1 = __importDefault(require("axios"));
 var billing_helpers_1 = require("./billing.helpers");
-var BASE = function () { return process.env.NIUBIZ_BASE_URL || 'https://apisandbox.vnforappstest.com'; };
+// Solo el host: pegar la URL completa de un endpoint en NIUBIZ_BASE_URL es el
+// error fácil de cometer y produce un 404 con la ruta duplicada.
+var BASE = function () {
+    var crudo = process.env.NIUBIZ_BASE_URL || 'https://apisandbox.vnforappstest.com';
+    try {
+        return new URL(crudo).origin;
+    }
+    catch (_a) {
+        return crudo.replace(/\/+$/, '');
+    }
+};
 var TIMEOUT_MS = 15000;
 var niubizMerchantId = function () { return process.env.NIUBIZ_MERCHANT_ID || ''; };
 exports.niubizMerchantId = niubizMerchantId;

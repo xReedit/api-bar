@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { createHash } from 'crypto';
 import { construirTicketSVG } from './ticket.svg';
 
 const datos = {
@@ -149,5 +150,93 @@ describe('legibilidad: minusculas y capitalizacion (pedido del dueño 04-08)', (
     it('papaya.com.pe va mas notoria que la hora (23px, #555555)', () => {
         const { svg } = construirTicketSVG(datos);
         expect(svg).toMatch(/font-size="23" font-weight="bold" fill="#555555">papaya\.com\.pe/);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Opciones / seleccionables (subitems_view)
+// ─────────────────────────────────────────────────────────────────────────
+describe('opciones del plato (subitems_view)', () => {
+    const conOpciones = {
+        ...datos,
+        secciones: [
+            {
+                des: 'pizzas', items: [{
+                    cantidad_seleccionada: 2, des: 'PIZZA AMERICANA', precio_print: '72.00', indicaciones: '',
+                    subitems_view: [
+                        { des: 'MEDIANA', precio: 12, cantidad_seleccionada: 2 },
+                        { des: 'SIN CEBOLLA', precio: 0, cantidad_seleccionada: 2 },
+                    ],
+                }]
+            }
+        ],
+    };
+
+    it('pinta una línea "+ Nx opcion" por cada elemento de subitems_view', () => {
+        const { svg } = construirTicketSVG(conOpciones);
+        expect(svg).toContain('+ 2x mediana');
+        expect(svg).toContain('+ 2x sin cebolla');
+    });
+
+    it('las opciones van más sangradas, más chicas y más claras que el plato', () => {
+        const { svg } = construirTicketSVG(conOpciones);
+        expect(svg).toMatch(/<text x="64" y="\d+" font-size="19" fill="#777777">\+ 2x mediana<\/text>/);
+    });
+
+    it('escapa XML en la descripción de la opción', () => {
+        const { svg } = construirTicketSVG({
+            ...datos,
+            secciones: [{ des: 'pizzas', items: [{ cantidad_seleccionada: 1, des: 'pizza', precio_print: '30.00', indicaciones: '', subitems_view: [{ des: 'JAMON & QUESO', precio: 0, cantidad_seleccionada: 1 }] }] }],
+        });
+        expect(svg).toContain('+ 1x jamon &amp; queso');
+        expect(svg).not.toContain('+ 1x jamon & queso');
+    });
+
+    it('la altura crece con las opciones (el SVG es acumulativo)', () => {
+        const sin = construirTicketSVG({ ...conOpciones, secciones: [{ ...conOpciones.secciones[0], items: [{ ...conOpciones.secciones[0].items[0], subitems_view: [] }] }] }).height;
+        const con = construirTicketSVG(conOpciones).height;
+        expect(con).toBeGreaterThan(sin);
+        expect(con - sin).toBe(2 * (34 - 6)); // 2 opciones × (LH - 6)
+    });
+
+    it('una opción larga se parte en varias líneas (no se sale del ticket) y la altura crece', () => {
+        // 57 chars: cabe en MAX_DES (60) de subitems.pedido.ts y no entra en el
+        // ancho útil de la línea sangrada (~47 chars a font-size 19).
+        const desLargo = 'MEDIANA, EXTRA QUESO, SIN CEBOLLA | bien cocido, poco sal';
+        const largo = {
+            ...datos,
+            secciones: [{ des: 'pizzas', items: [{
+                cantidad_seleccionada: 1, des: 'pizza', precio_print: '30.00', indicaciones: '',
+                subitems_view: [{ des: desLargo, precio: 0, cantidad_seleccionada: 1 }],
+            }] }],
+        };
+        const corto = {
+            ...largo,
+            secciones: [{ ...largo.secciones[0], items: [{ ...largo.secciones[0].items[0],
+                subitems_view: [{ des: 'MEDIANA', precio: 0, cantidad_seleccionada: 1 }] }] }],
+        };
+
+        const { svg, height } = construirTicketSVG(largo);
+        const lineas = svg.match(/<text x="64" y="\d+" font-size="19" fill="#777777">[^<]*<\/text>/g) || [];
+        expect(lineas.length).toBeGreaterThan(1);
+        // Ninguna línea pintada supera el ancho útil de la sangría.
+        for (const l of lineas) {
+            const texto = l.replace(/<[^>]*>/g, '');
+            expect(texto.length).toBeLessThanOrEqual(47);
+        }
+        // Y el texto completo sigue estando (repartido entre las líneas).
+        expect(lineas.map((l) => l.replace(/<[^>]*>/g, '')).join(' '))
+            .toBe(`+ 1x ${desLargo.toLowerCase()}`);
+        // La altura acompaña: una línea extra = LH - 6.
+        expect(height - construirTicketSVG(corto).height).toBe((lineas.length - 1) * (34 - 6));
+    });
+
+    it('carta plana (sin subitems_view): el SVG es byte-idéntico al de antes del cambio', () => {
+        // Huella tomada ANTES de tocar ticket.svg.ts. Si esto falla, lo nuevo dejó
+        // de ser inerte para las cartas planas, que hoy funcionan perfecto.
+        const { svg, height } = construirTicketSVG(datos);
+        expect(height).toBe(686);
+        expect(createHash('sha256').update(svg).digest('hex'))
+            .toBe('77453a3c5cd316c61054e49a6bb4917c503e4f3946df23dc272d0d729a4b9947');
     });
 });

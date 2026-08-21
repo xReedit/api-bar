@@ -124,8 +124,29 @@ var PedidoServices = /** @class */ (function () {
         try {
             seccionMasItems.map(function (seccion) {
                 seccion.items.map(function (item) {
-                    var itemFromBot = itemsFromBot.find(function (item_) { return item_.iditem === item.iditem; });
-                    var _precionTotal = item.precio_unitario * itemFromBot.cantidad;
+                    var _a;
+                    // Number(): el iditem viaja como string por un lado (bot / JSON) y
+                    // como number por el otro (get-seccion-items). Con === estricto el
+                    // find devolvía undefined, el `.cantidad` lanzaba y el catch vacío
+                    // se lo tragaba: TODOS los items siguientes se quedaban sin precio
+                    // en silencio. Ahora un item sin match se salta y los demás siguen.
+                    var itemFromBot = itemsFromBot.find(function (item_) { return Number(item_.iditem) === Number(item.iditem); });
+                    if (!itemFromBot)
+                        return;
+                    // Sobreprecio de las opciones/seleccionables (pizza mediana, extra
+                    // queso...). Entra ACÁ, antes de validarReglasCarta, para que las
+                    // reglas de carta descuenten sobre la base correcta y para que
+                    // precio_total / precio_total_calc / precio_print (ticket, resumen,
+                    // comprobante) y getTotalItemsPedido queden cuadrados solos.
+                    // Carta plana: el campo no viene → 0 → resultado idéntico al de hoy.
+                    //
+                    // Cuadre con procedure_pwa_pedido_guardar: el SP emite una fila por
+                    // elemento de subitems_view con punitario = elemento.precio /
+                    // cantidad_seleccionada + precio_plato, así que
+                    //   Σ(elemento.precio + precio_plato*cant_sel) + remanente*precio_plato
+                    //   = sobreprecio_total + precio_plato*cantidad_total = _precionTotal.
+                    var _sobreprecio = Number(itemFromBot.sobreprecio_total) || 0;
+                    var _precionTotal = item.precio_unitario * itemFromBot.cantidad + _sobreprecio;
                     item.descripcion = itemFromBot.descripcion;
                     item.descripcion = itemFromBot.indicaciones ? itemFromBot.indicaciones !== '' ? "".concat(itemFromBot.descripcion, " (").concat(itemFromBot.indicaciones, ")") : itemFromBot.descripcion : itemFromBot.descripcion;
                     item.indicaciones = (itemFromBot === null || itemFromBot === void 0 ? void 0 : itemFromBot.indicaciones) || '';
@@ -133,6 +154,10 @@ var PedidoServices = /** @class */ (function () {
                     item.precio_total = _precionTotal;
                     item.precio_total_calc = _precionTotal;
                     item.precio_print = _precionTotal;
+                    // Solo se agrega la clave cuando hay opciones: sin ella el item
+                    // cocinado queda byte-idéntico al de las cartas planas de hoy.
+                    if ((_a = itemFromBot.subitems_view) === null || _a === void 0 ? void 0 : _a.length)
+                        item.subitems_view = itemFromBot.subitems_view;
                 });
             });
         }
@@ -394,6 +419,10 @@ var PedidoServices = /** @class */ (function () {
             seccion.items.map(function (item) {
                 var _newItem = { descripcion: "".concat(item.cantidad_seleccionada, " ").concat(item.des), importe: parseFloat(item.precio_print).toFixed(2).toString() };
                 listItemSesccion.push(_newItem);
+                (item.subitems_view || []).forEach(function (el) {
+                    var _importeEl = Number(el.precio) > 0 ? Number(el.precio).toFixed(2) : '';
+                    listItemSesccion.push({ descripcion: "     + ".concat(el.cantidad_seleccionada, "x ").concat(el.des), importe: _importeEl });
+                });
                 // Agregar indicaciones en línea separada si existen
                 if (item.indicaciones) {
                     var _indicaciones = { descripcion: "     (".concat(item.indicaciones, ")"), importe: '' };

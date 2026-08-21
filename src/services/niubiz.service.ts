@@ -6,7 +6,16 @@
 import axios from 'axios';
 import { AuthResult, parseAuthorizationResponse } from './billing.helpers';
 
-const BASE = () => process.env.NIUBIZ_BASE_URL || 'https://apisandbox.vnforappstest.com';
+// Solo el host: pegar la URL completa de un endpoint en NIUBIZ_BASE_URL es el
+// error fácil de cometer y produce un 404 con la ruta duplicada.
+const BASE = () => {
+    const crudo = process.env.NIUBIZ_BASE_URL || 'https://apisandbox.vnforappstest.com';
+    try {
+        return new URL(crudo).origin;
+    } catch {
+        return crudo.replace(/\/+$/, '');
+    }
+};
 const TIMEOUT_MS = 15000;
 
 export const niubizMerchantId = (): string => process.env.NIUBIZ_MERCHANT_ID || '';

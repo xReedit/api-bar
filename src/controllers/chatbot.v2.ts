@@ -4,6 +4,8 @@ import { GeocodingService, estimarKmRuta } from "../services/geocoding.service";
 import { costoVariable, decidirDireccionTexto, describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { mapearEstructuraAComprobante, validarDocumento } from "../services/comprobante.helpers";
 import { resolverPersonalidad } from "../services/personalidad";
+import { resolverReglas } from "../services/reglas-negocio";
+import { agruparItemsBot, aRespuestaTool, normalizarGruposSP, resolverOpciones } from "../services/subitems.pedido";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
@@ -374,6 +376,63 @@ router.get("/cliente/:idorg/:idsede/:telefono", async (req, res) => {
     }
 });
 
+// ── Marcador de seleccionables en el menú del prompt ────────────────────────
+// Por cada iditem de la carta de la sede: cuántos grupos de opciones OBLIGATORIOS
+// tiene y cuántos en total. El bot solo dispara la tool de opciones cuando hay
+// obligatorios; `count_subitems` del procedure no sirve como marcador porque
+// mezcla obligatorios con opcionales (3 grupos opcionales dispararían la tool
+// para nada).
+//   - La subconsulta agrupa por (iditem, grupo) ANTES de contar: `carta_lista`
+//     repite el mismo iditem en cada carta/sección de la sede y sin eso el
+//     COUNT saldría multiplicado.
+//   - El EXISTS descarta grupos que quedaron sin opciones activas: si no, el
+//     bot preguntaría algo que no tiene respuestas posibles y se trabaría.
+// Falla-abierto: cualquier error devuelve el mapa vacío. El menú NUNCA se cae
+// por esto (peor que un plato sin marcador es una carta que no carga).
+// Grupos de opciones de UN plato, con el SP que ya existe. El SP devuelve una
+// sola columna `respuesta` con un JSON string, o NULL si el plato no tiene
+// grupos. normalizarGruposSP nunca lanza: devuelve [] ante NULL o JSON roto.
+const leerGruposDePlato = async (iditem: number) => {
+    const rpt: any = await prisma.$queryRaw`call porcedure_pwa_pedido_carta_get_subitens(${iditem})`;
+    return normalizarGruposSP(rpt?.[0]?.respuesta ?? rpt);
+};
+
+const mapaOpcionesPorItem = async (idsede: number): Promise<Map<number, { req: number; tot: number }>> => {
+    const mapa = new Map<number, { req: number; tot: number }>();
+    if (!Number.isFinite(idsede) || idsede <= 0) return mapa;
+    try {
+        const filas: any = await prisma.$queryRaw`
+            SELECT g.iditem AS iditem,
+                   SUM(g.req = 1) AS req,
+                   COUNT(*) AS tot
+            FROM (
+                SELECT itcd.iditem AS iditem,
+                       itcd.iditem_subitem_content AS grupo,
+                       MAX(itcd.subitem_required_select) AS req
+                FROM item_subitem_content_detalle itcd
+                JOIN item_subitem_content ic
+                  ON ic.iditem_subitem_content = itcd.iditem_subitem_content AND ic.estado = 0
+                JOIN carta_lista cl ON cl.iditem = itcd.iditem
+                JOIN carta c ON c.idcarta = cl.idcarta AND c.idsede = ${idsede} AND c.estado = 0
+                WHERE itcd.estado = 0
+                  AND EXISTS (SELECT 1 FROM item_subitem s
+                              WHERE s.iditem_subitem_content = ic.iditem_subitem_content AND s.estado = 0)
+                GROUP BY itcd.iditem, itcd.iditem_subitem_content
+            ) g
+            GROUP BY g.iditem`;
+        for (const f of (filas || [])) {
+            // COUNT/SUM llegan como BigInt desde Prisma: sin Number() revientan
+            // el JSON.stringify de la respuesta.
+            const iditem = Number(f?.iditem) || 0;
+            if (iditem <= 0) continue;
+            mapa.set(iditem, { req: Number(f?.req || 0), tot: Number(f?.tot || 0) });
+        }
+    } catch (e: any) {
+        console.error('mapaOpcionesPorItem: no se pudo leer los grupos de opciones, el menú va sin marcador:', e?.message);
+    }
+    return mapa;
+};
+
 router.get("/menu/:idorg/:idsede", async (req, res) => {
     try {
         const { idorg, idsede } = req.params;
@@ -381,6 +440,7 @@ router.get("/menu/:idorg/:idsede", async (req, res) => {
         const rpt: any = await prisma.$queryRaw`call porcedure_pwa_pedido_carta(${idorg},${idsede},1)`
         
         const carta = rpt[0]?.f0 || [];
+        const opcionesPorItem = await mapaOpcionesPorItem(Number(idsede));
         const menuPlano: any[] = [];
 
         const productos: any[] = [];
@@ -399,12 +459,16 @@ router.get("/menu/:idorg/:idsede", async (req, res) => {
                     
                     const stockNumerico = item.cantidad === 'ND' ? 1000 : Number(item.cantidad) || 0;
                     
+                    const marcador = opcionesPorItem.get(Number(item.iditem));
+
                     productos.push({
                         iditem: item.iditem,
                         idseccion: seccion.idseccion,
                         descripcion: item.des,
                         precio: Number(item.precio),
-                        stock: stockNumerico
+                        stock: stockNumerico,
+                        opciones_req: Number(marcador?.req || 0),
+                        opciones_tot: Number(marcador?.tot || 0)
                     });
                 });
             });
@@ -421,6 +485,110 @@ router.get("/menu/:idorg/:idsede", async (req, res) => {
             success: false,
             error: 'Error al consultar menu'
         });
+    }
+});
+
+// Opciones (tamaños, toppings, acompañamientos) de los platos que el cliente
+// está pidiendo. Carga BAJO DEMANDA: en el menú del prompt solo va el marcador
+// (opciones_req/opciones_tot) y el bot llama aquí cuando lo necesita.
+// Nunca responde 404 ni 500: si algo falla el bot tiene que poder seguir
+// atendiendo (un pedido sin la opción es mejor que ningún pedido).
+export const MAX_ITEMS_OPCIONES = 10;
+
+/**
+ * Normaliza la lista de iditem que pide la tool: entero, > 0, sin repetidos y
+ * con tope. El recorte NO es silencioso: los que quedan fuera se devuelven en
+ * `omitidos` para que el bot pueda volver a pedirlos (antes desaparecían y el
+ * modelo se quedaba esperando opciones que nunca llegaban).
+ */
+export const limitarIdsOpciones = (iditems: any): { ids: number[]; omitidos: number[] } => {
+    const unicos = Array.from(new Set(
+        (Array.isArray(iditems) ? iditems : [])
+            .map((v: any) => Math.floor(Number(v)))
+            .filter((n: number) => Number.isFinite(n) && n > 0)
+    ));
+    return { ids: unicos.slice(0, MAX_ITEMS_OPCIONES), omitidos: unicos.slice(MAX_ITEMS_OPCIONES) };
+};
+
+/**
+ * Grupos de varios platos: un CALL por iditem, en tandas de MAX_ITEMS_OPCIONES.
+ * El try/catch va POR PLATO: un CALL caído o lento no puede dejar sin opciones
+ * a los demás (un `Promise.all` con catch global borraba el mapa completo,
+ * incluidos los grupos OBLIGATORIOS de otros platos, y el pedido se guardaba
+ * sin tamaño y sin sobreprecio).
+ * SIEMPRE devuelve una entrada por iditem pedido (`[]` si no tiene grupos o si
+ * el CALL falló): salida determinista para quien llama.
+ * `leer` es inyectable solo para las pruebas.
+ */
+export const leerGruposDeItems = async (
+    ids: number[],
+    leer: (iditem: number) => Promise<any[]> = leerGruposDePlato,
+): Promise<Map<number, any[]>> => {
+    const mapa = new Map<number, any[]>();
+    const unicos = Array.from(new Set(
+        (Array.isArray(ids) ? ids : [])
+            .map((v: any) => Math.floor(Number(v)))
+            .filter((n: number) => Number.isFinite(n) && n > 0)
+    ));
+    for (let i = 0; i < unicos.length; i += MAX_ITEMS_OPCIONES) {
+        const tanda = unicos.slice(i, i + MAX_ITEMS_OPCIONES);
+        const leidos = await Promise.all(tanda.map(async (iditem: number) => {
+            try {
+                const grupos = await leer(iditem);
+                return { iditem, grupos: Array.isArray(grupos) ? grupos : [] };
+            } catch (e: any) {
+                console.error(`opciones: falló el CALL del iditem ${iditem}, ese plato va sin opciones:`, e?.message);
+                return { iditem, grupos: [] as any[] };
+            }
+        }));
+        for (const l of leidos) mapa.set(l.iditem, l.grupos);
+    }
+    return mapa;
+};
+
+router.post("/opciones-items", async (req, res) => {
+    try {
+        const { iditems } = req.body || {};
+
+        if (!Array.isArray(iditems) || iditems.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'iditems es requerido (array de iditem)'
+            });
+        }
+
+        // Dedup + tope: un modelo desbocado no debe disparar 50 CALLs.
+        const { ids, omitidos } = limitarIdsOpciones(iditems);
+
+        if (ids.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'iditems no contiene ids válidos'
+            });
+        }
+
+        if (omitidos.length > 0) {
+            console.warn(`/opciones-items: se pidieron ${ids.length + omitidos.length} platos, tope ${MAX_ITEMS_OPCIONES}; omitidos: ${omitidos.join(', ')}`);
+        }
+
+        const gruposPorItem = await leerGruposDeItems(ids);
+
+        // Una entrada POR CADA iditem pedido, aunque no tenga grupos o el CALL
+        // haya fallado: si el plato desaparece de la respuesta, el modelo que
+        // preguntó por él recibe silencio y se traba. `grupos: []` es la
+        // respuesta honesta ("no hay nada que preguntar").
+        return res.status(200).json({
+            success: true,
+            platos: ids.map((iditem: number) => ({
+                iditem,
+                grupos: aRespuestaTool(gruposPorItem.get(iditem) ?? [])
+            })),
+            ...(omitidos.length > 0 ? { omitidos } : {})
+        });
+
+    } catch (error) {
+        console.error('Error en /opciones-items:', error);
+        return res.status(200).json({ success: true, platos: [] });
     }
 });
 
@@ -1036,8 +1204,50 @@ router.get("/config/:idsede", async (req, res) => {
 });
 
 
+/**
+ * Mapeo HISTÓRICO de items -> cocina, el que corre hoy en producción para las
+ * cartas planas. Es intencionalmente "tonto": no agrupa, no normaliza y no
+ * descarta nada. NO unificar con el camino de opciones ni "limpiarlo": agrupar
+ * cambiaría en silencio pedidos que hoy salen bien (dos líneas del mismo plato
+ * se fusionarían cobrando de más, `cantidad: 2.5` se volvería 2, un `iditem`
+ * inválido desaparecería). El camino nuevo solo entra cuando el pedido
+ * realmente tiene opciones o grupos obligatorios.
+ */
+export const itemsParaCocinarPlano = (items: any[]): any[] =>
+    (Array.isArray(items) ? items : []).map((item: any) => ({
+        iditem: item.iditem,
+        descripcion: item.descripcion,
+        cantidad: item.cantidad,
+        precio: item.precio,
+        indicaciones: item.indicaciones || '',
+        observaciones: item.indicaciones || ''
+    }));
+
+/**
+ * Qué platos del pedido hay que recotizar contra BD:
+ *   a) los que el bot mandó CON `opciones`, y
+ *   b) los que tienen grupos OBLIGATORIOS aunque el modelo haya omitido
+ *      `opciones` (pizza "+ELIGE" sin tamaño). Sin (b) ni se consultaba la BD y
+ *      la red de seguridad server-side quedaba inalcanzable: el pedido se
+ *      guardaba sin tamaño y sin sobreprecio, con el prompt como única defensa.
+ * Un plato sin grupos obligatorios y sin opciones NO se consulta: esa es la
+ * carta plana y debe seguir sin costar una sola query.
+ */
+export const idsQueNecesitanOpciones = (
+    agrupados: any[],
+    marcador: Map<number, { req: number; tot: number }>,
+): number[] => (Array.isArray(agrupados) ? agrupados : [])
+    .filter((a: any) => {
+        const eligio = Array.isArray(a?.lineas)
+            && a.lineas.some((l: any) => Array.isArray(l?.opciones) && l.opciones.length > 0);
+        const obligatorios = Number(marcador?.get?.(Number(a?.iditem))?.req || 0) > 0;
+        return eligio || obligatorios;
+    })
+    .map((a: any) => Number(a?.iditem))
+    .filter((n: number) => Number.isFinite(n) && n > 0);
+
 router.post("/resumen-pedido", async (req, res) => {
-    
+
     try {
         const {
             session_id,
@@ -1067,14 +1277,57 @@ router.post("/resumen-pedido", async (req, res) => {
             });
         }
 
-        const itemsParaCocinar = items.map((item: any) => ({
-            iditem: item.iditem,
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precio: item.precio,
-            indicaciones: item.indicaciones || '',
-            observaciones: item.indicaciones || ''
-        }));
+        // Agrupa por iditem: el bot puede repetir el mismo plato con distintas
+        // combinaciones de opciones (2 pollos con pecho + 2 con pierna) y cada
+        // repetición queda como una "línea". Solo se USA si el pedido entra al
+        // camino de opciones (ver más abajo).
+        const agrupados = agruparItemsBot(items);
+
+        // Una sola query agregada por request: qué iditem de ESTA sede tienen
+        // grupos obligatorios. Falla-abierto (mapa vacío) y se salta cuando no
+        // hay nada que clasificar.
+        const marcadorOpciones = agrupados.length > 0
+            ? await mapaOpcionesPorItem(Number(idsede))
+            : new Map<number, { req: number; tot: number }>();
+
+        const idsConOpciones = idsQueNecesitanOpciones(agrupados, marcadorOpciones);
+
+        const gruposPorItem = idsConOpciones.length > 0
+            ? await leerGruposDeItems(idsConOpciones)
+            : new Map<number, any[]>();
+
+        // CARTA PLANA: ni una opción elegida ni un grupo obligatorio en todo el
+        // pedido. No se consulta el SP y se usa el mapeo histórico TAL CUAL
+        // (ver itemsParaCocinarPlano): mismos campos, mismo orden, sin agrupar
+        // ni normalizar. Es lo que hoy funciona en producción y el
+        // agrupamiento no puede entrar de contrabando dentro de este feature.
+        const itemsParaCocinar = idsConOpciones.length === 0
+            ? itemsParaCocinarPlano(items)
+            : agrupados.map((a) => {
+                const base = {
+                    iditem: a.iditem,
+                    descripcion: a.descripcion,
+                    cantidad: a.cantidad,
+                    precio: a.precio,
+                    indicaciones: a.indicaciones || '',
+                    observaciones: a.indicaciones || ''
+                };
+
+                const grupos = gruposPorItem.get(a.iditem);
+                if (!grupos || grupos.length === 0) return base;
+
+                const { subitems_view, sobreprecio_total } = resolverOpciones(a, grupos);
+                if (subitems_view.length === 0) return base;
+
+                if (subitems_view.length >= 2) {
+                    // El POS infla el cierre de caja cuando un item se parte en
+                    // varias filas de detalle (defecto preexistente). Se loguea
+                    // para medir la frecuencia real durante el piloto.
+                    console.warn(`resumen-pedido: iditem ${a.iditem} genera ${subitems_view.length} elementos en subitems_view (cierre de caja inflado, defecto preexistente del POS)`);
+                }
+
+                return { ...base, sobreprecio_total, subitems_view };
+            });
 
         // ── Costo de delivery AUTORITATIVO (config de Piter, no el eco del LLM) ──
         // Prioridad: 1) lo que calculó calcular_delivery para ESTA sesión
@@ -2058,6 +2311,9 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
             // Voz del bot elegida en el panel Piter. Siempre viaja resuelta (el
             // default incluido) para que chatbot-go no tenga que adivinar.
             personalidad_chatbot: resolverPersonalidad((parametros as any).personalidad_chatbot),
+            // Reglas propias del local escritas en el panel (texto libre, ya
+            // saneado). Vacío = el bot no recibe ningún bloque extra.
+            reglas_negocio: resolverReglas((parametros as any).reglas_negocio),
             mensaje_bienvenida: "Bienvenido! En que puedo ayudarte?",
             activo: true,
             link_carta: categoria?.url_carta ? `https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/${categoria?.url_carta}` : null
@@ -2134,6 +2390,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
         const rpt: any = await prisma.$queryRaw`call porcedure_pwa_pedido_carta(${idorg},${idsede},1)`
         
         const carta = rpt[0]?.f0 || [];
+        const opcionesPorItem = await mapaOpcionesPorItem(Number(idsede));
         const productos: any[] = [];
         const itemsVistos = new Set<string>();
         
@@ -2150,12 +2407,16 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                     
                     const stockNumerico = item.cantidad === 'ND' ? 1000 : Number(item.cantidad) || 0;
                     
+                    const marcador = opcionesPorItem.get(Number(item.iditem));
+
                     productos.push({
                         iditem: Number(item.iditem),
                         idseccion: Number(seccion.idseccion),
                         descripcion: item.des,
                         precio: Number(item.precio),
-                        stock: stockNumerico
+                        stock: stockNumerico,
+                        opciones_req: Number(marcador?.req || 0),
+                        opciones_tot: Number(marcador?.tot || 0)
                     });
                 });
             });

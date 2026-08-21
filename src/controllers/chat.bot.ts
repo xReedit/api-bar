@@ -2,6 +2,7 @@ import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { fechaGuionASlash } from "../utils/utils";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
+import { validarReglas } from "../services/reglas-negocio";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -516,6 +517,15 @@ router.put('/update-tipo-pago-sede/:id', async (req: any, res, next) => {
 router.put('/update-config-delivery/:id', async (req: any, res, next) => {
     const { id } = req.params
     const dataBody = req.body
+
+    // Las reglas del local son texto libre que termina dentro del system prompt
+    // del bot: se validan aquí y no solo en el panel, porque este endpoint no
+    // tiene auth y el frontend no es una barrera.
+    if (dataBody?.parametros && 'reglas_negocio' in dataBody.parametros) {
+        const { texto, error } = validarReglas(dataBody.parametros.reglas_negocio)
+        if (error) return res.status(400).send({ error })
+        dataBody.parametros = { ...dataBody.parametros, reglas_negocio: texto }
+    }
 
     try {
         const rpt = await prisma.sede_costo_delivery.updateMany({

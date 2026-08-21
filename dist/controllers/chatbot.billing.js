@@ -82,12 +82,24 @@ exports.__esModule = true;
 // server-side (authorization) y la acreditación al chatbot-go es idempotente
 // por tx_id — reintentar confirmar nunca duplica saldo.
 var client_1 = require("@prisma/client");
+var axios_1 = __importDefault(require("axios"));
 var express_1 = __importDefault(require("express"));
 var billing_helpers_1 = require("../services/billing.helpers");
 var chatbotgo = __importStar(require("../services/chatbotgo.service"));
 var niubiz = __importStar(require("../services/niubiz.service"));
 var router = express_1["default"].Router();
 var prisma = new client_1.PrismaClient();
+/**
+ * Un error de axios impreso crudo llena el log con el request entero y esconde
+ * lo único que importa (status + body de Niubiz). Los errores de Prisma pasan
+ * tal cual.
+ */
+var detalle = function (error) {
+    var _a, _b, _c;
+    return axios_1["default"].isAxiosError(error)
+        ? { niubiz: (_a = error.config) === null || _a === void 0 ? void 0 : _a.url, status: (_b = error.response) === null || _b === void 0 ? void 0 : _b.status, data: (_c = error.response) === null || _c === void 0 ? void 0 : _c.data, code: error.code }
+        : error;
+};
 /** Saldo actual de la sede (proxy del chatbot-go). */
 router.get('/saldo/:idsede', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var saldo, error_1;
@@ -194,7 +206,7 @@ router.post('/pago/iniciar', function (req, res) { return __awaiter(void 0, void
                 return [3 /*break*/, 7];
             case 6:
                 error_3 = _a.sent();
-                console.error('billing iniciar:', error_3);
+                console.error('billing iniciar:', detalle(error_3));
                 res.status(500).json({ success: false, error: 'no se pudo iniciar el pago' });
                 return [3 /*break*/, 7];
             case 7: return [2 /*return*/];
@@ -316,7 +328,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
             case 19: return [3 /*break*/, 21];
             case 20:
                 error_4 = _a.sent();
-                console.error('billing confirmar:', error_4);
+                console.error('billing confirmar:', detalle(error_4));
                 res.status(500).json({ success: false, error: 'no se pudo confirmar el pago' });
                 return [3 /*break*/, 21];
             case 21: return [2 /*return*/];

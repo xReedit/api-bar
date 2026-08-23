@@ -2308,6 +2308,10 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
             // Número de Yape/Plin de la sede: el bot lo da cuando el cliente
             // pregunta a dónde yapear/plinear.
             numero_billetera: sede.numero_billetera_chatbot || null,
+            // Titular de la billetera (vive en parametros, sin columna nueva):
+            // el bot lo confirma cuando el cliente verifica antes de pagar, y
+            // NO debe confundirlo con el nombre del pedido.
+            titular_billetera: String((parametros as any).titular_billetera_chatbot || '').trim() || null,
             // Voz del bot elegida en el panel Piter. Siempre viaja resuelta (el
             // default incluido) para que chatbot-go no tenga que adivinar.
             personalidad_chatbot: resolverPersonalidad((parametros as any).personalidad_chatbot),

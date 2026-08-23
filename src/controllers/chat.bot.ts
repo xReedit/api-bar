@@ -527,6 +527,14 @@ router.put('/update-config-delivery/:id', async (req: any, res, next) => {
         dataBody.parametros = { ...dataBody.parametros, reglas_negocio: texto }
     }
 
+    // El titular de la billetera también termina dentro del system prompt del
+    // bot: solo letras/espacios/puntos/apóstrofes, máx 60. Endpoint sin auth.
+    if (dataBody?.parametros && 'titular_billetera_chatbot' in dataBody.parametros) {
+        const titular = String(dataBody.parametros.titular_billetera_chatbot || '')
+            .replace(/[^\p{L}\s.'-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60)
+        dataBody.parametros = { ...dataBody.parametros, titular_billetera_chatbot: titular }
+    }
+
     try {
         const rpt = await prisma.sede_costo_delivery.updateMany({
             data: dataBody,

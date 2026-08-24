@@ -869,22 +869,61 @@ router.post("/calcular-delivery", async (req, res) => {
         // referencia del cliente viaja al ticket del repartidor).
         const decision = decidirDireccionTexto(resultadoDistancia as any, modo, distanciaMaxima);
 
+        // ¿Ya se le pidió al cliente confirmar/mandar ubicación en esta sesión?
+        // Gobierna tanto la sugerencia de GPS como la confirmación en modo
+        // zonas: se pregunta UNA vez; a la segunda la venta sigue sí o sí.
+        let yaSugerida = false;
+        try {
+            const prevPreview = await prisma.pedido_preview.findFirst({
+                where: { id: session_id }, select: { direccion_cliente: true }
+            });
+            const prevDir: any = typeof (prevPreview as any)?.direccion_cliente === 'string'
+                ? JSON.parse((prevPreview as any).direccion_cliente)
+                : (prevPreview as any)?.direccion_cliente;
+            yaSugerida = prevDir?.ubicacion_sugerida === true;
+        } catch { /* sin historial: se sugiere */ }
+
+        // MODO ZONAS + dirección de TEXTO dudosa: en zonas el costo depende de
+        // DÓNDE cae el punto, así que un geocode dudoso cobra mal (caso 24/08:
+        // zona no marcada cobrada como la más barata). Primera vez: confirmar
+        // con el cliente / pedir GPS, sin dar costo. Segunda vez: la venta
+        // sigue como siempre (evita el bucle de abandonos Silvia/Adelma 03-08).
+        const confirmarDireccionZonas = async () => {
+            const sugerida = String((resultadoDistancia as any)?.direccionFormateada || '');
+            // Solo se muestra la sugerencia de Google si parece calle real
+            // (letras + número antes de la primera coma): nunca "22001, Peru"
+            // ni plus codes.
+            const seg = sugerida.split(',')[0] || '';
+            const esCalle = /[a-zA-Z]{3,}/.test(seg) && /\d/.test(seg) && !seg.includes('+');
+            await persistirDireccion({
+                direccion,
+                referencia: referencia || '',
+                latitude: null, longitude: null,
+                ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
+                distancia_km: 0,
+                costo_delivery: 0,
+                verificada: false,
+                ubicacion_sugerida: true
+            });
+            return res.status(200).json({
+                success: true,
+                disponible: true,
+                requiere_confirmacion: true,
+                direccion,
+                ...(esCalle ? { direccion_sugerida: sugerida } : {}),
+                accion: esCalle
+                    ? `No ubico con exactitud la dirección del cliente. Pregúntale si se refiere a "${sugerida}" y dile que si no es correcta te comparta su ubicación (clip 📎 → Ubicación). NO le des costo de delivery todavía ni confirmes el pedido: cuando responda, vuelve a llamar calcular_delivery con la dirección confirmada o con la ubicación GPS.`
+                    : `No encuentro la dirección que dio el cliente. Pídele en una línea que la confirme o la corrija (calle y número) y dile que también puede compartir su ubicación (clip 📎 → Ubicación) para ubicarlo exacto. NO le des costo de delivery todavía ni confirmes el pedido: cuando responda, vuelve a llamar calcular_delivery.`
+            });
+        };
+
         if (decision === 'costo_base') {
+            if (modo === 'zonas' && zonas.length > 0 && !yaSugerida) {
+                return confirmarDireccionZonas();
+            }
             const costoEstimado = modo === 'zonas' && zonas.length > 0
                 ? Math.min(...zonas.map((z) => z.costo))
                 : Number(parametros.km_base_costo || 0);
-            // Sugerir la ubicación GPS solo UNA vez por sesión (y sin bloquear:
-            // el pedido continúa aunque el cliente no la mande).
-            let yaSugerida = false;
-            try {
-                const prevPreview = await prisma.pedido_preview.findFirst({
-                    where: { id: session_id }, select: { direccion_cliente: true }
-                });
-                const prevDir: any = typeof (prevPreview as any)?.direccion_cliente === 'string'
-                    ? JSON.parse((prevPreview as any).direccion_cliente)
-                    : (prevPreview as any)?.direccion_cliente;
-                yaSugerida = prevDir?.ubicacion_sugerida === true;
-            } catch { /* sin historial: se sugiere */ }
             await persistirDireccion({
                 direccion,
                 referencia: referencia || '',
@@ -918,10 +957,12 @@ router.post("/calcular-delivery", async (req, res) => {
 
         if (modo === 'zonas') {
             // Margen anti-rendijas: los polígonos dibujados a mano dejan
-            // grietas entre zonas; un punto a ≤1 km del borde de la zona más
-            // cercana se cobra como esa zona. Ajustable por sede sin UI:
+            // grietas entre zonas; un punto a ≤200 m del borde de la zona más
+            // cercana se cobra como esa zona. Antes era 1 km, pero cobraba
+            // zonas que el dueño excluyó a propósito (caso 24/08: cliente a
+            // ~500 m de una zona no marcada). Ajustable por sede sin UI:
             // parametros.zonas_margen_km en el JSON.
-            const margenZonasKm = Number(parametros.zonas_margen_km) > 0 ? Number(parametros.zonas_margen_km) : 1;
+            const margenZonasKm = Number(parametros.zonas_margen_km) > 0 ? Number(parametros.zonas_margen_km) : 0.2;
             const r = resolverZona(zonas, {
                 lat: Number(resultadoDistancia.lat),
                 lng: Number(resultadoDistancia.lng)
@@ -931,6 +972,7 @@ router.post("/calcular-delivery", async (req, res) => {
                 // venta sigue con la zona más barata (dirección sin verificar,
                 // la referencia viaja al ticket del repartidor).
                 if (!tieneGPS) {
+                    if (!yaSugerida) return confirmarDireccionZonas();
                     const costoEstimadoZona = Math.min(...zonas.map((z) => z.costo));
                     await persistirDireccion({
                         direccion: direccionLegible,

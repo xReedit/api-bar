@@ -721,17 +721,17 @@ router.post("/opciones-items", function (req, res) { return __awaiter(void 0, vo
     });
 }); });
 router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idorg, idsede, direccion, referencia, session_id_2, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, modo, tiempoGlobal, persistirDireccion, costo_1, direccionLegible_1, rev, zonas, sede, sedeTieneCoords, distanciaMaxima, ciudades, resultadoDistancia, desdeGuardada, direccionLegible, distancia, rev, coordsGuardadas, telefonoSesion, normalizar, dirPedida, guardadas, _i, _b, g, dirGuardada, lat_1, lng, error_6, distanciaGuardada, decision, costoEstimado, yaSugerida, prevPreview, prevDir, _c, distanciaKm, costo, tiempoMin, zonaNombre, margenZonasKm, r, costoEstimadoZona, kmBase, costoAdicional, costoBase, pedirReferencia, partesMensaje, error_7;
+    var _a, idorg, idsede, direccion_1, referencia_1, session_id_2, lat, lon, latCliente, lonCliente, tieneGPS, sedeConfig, parametros, modo, tiempoGlobal, persistirDireccion_1, costo_1, direccionLegible_1, rev, zonas, sede, sedeTieneCoords, distanciaMaxima, ciudades, resultadoDistancia_1, desdeGuardada, direccionLegible, distancia, rev, coordsGuardadas, telefonoSesion, normalizar, dirPedida, guardadas, _i, _b, g, dirGuardada, lat_1, lng, error_6, distanciaGuardada, decision, yaSugerida, prevPreview, prevDir, _c, confirmarDireccionZonas, costoEstimado, distanciaKm, costo, tiempoMin, zonaNombre, margenZonasKm, r, costoEstimadoZona, kmBase, costoAdicional, costoBase, pedirReferencia, partesMensaje, error_7;
     return __generator(this, function (_d) {
         switch (_d.label) {
             case 0:
                 _d.trys.push([0, 30, , 31]);
-                _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion = _a.direccion, referencia = _a.referencia, session_id_2 = _a.session_id, lat = _a.lat, lon = _a.lon;
+                _a = req.body, idorg = _a.idorg, idsede = _a.idsede, direccion_1 = _a.direccion, referencia_1 = _a.referencia, session_id_2 = _a.session_id, lat = _a.lat, lon = _a.lon;
                 latCliente = Number(lat);
                 lonCliente = Number(lon);
                 tieneGPS = Number.isFinite(latCliente) && Number.isFinite(lonCliente)
                     && latCliente !== 0 && lonCliente !== 0;
-                if (!direccion && !tieneGPS) {
+                if (!direccion_1 && !tieneGPS) {
                     return [2 /*return*/, res.status(400).json({
                             success: false,
                             error: 'Direccion es requerida'
@@ -754,7 +754,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 parametros = sedeConfig.parametros || {};
                 modo = (0, delivery_zonas_1.resolverModo)(parametros);
                 tiempoGlobal = Number(parametros.tiempo_aprox_entrega || 30);
-                persistirDireccion = function (direccionData) { return __awaiter(void 0, void 0, void 0, function () {
+                persistirDireccion_1 = function (direccionData) { return __awaiter(void 0, void 0, void 0, function () {
                     var existingPreview;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
@@ -792,9 +792,9 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 }); };
                 if (!(modo === 'fijo')) return [3 /*break*/, 5];
                 costo_1 = Number(parametros.costo_fijo || 0) || Number(parametros.km_base_costo || 0);
-                direccionLegible_1 = direccion;
+                direccionLegible_1 = direccion_1;
                 rev = {};
-                if (!(tieneGPS && (!direccion || String(direccion).toUpperCase() === 'GPS'))) return [3 /*break*/, 3];
+                if (!(tieneGPS && (!direccion_1 || String(direccion_1).toUpperCase() === 'GPS'))) return [3 /*break*/, 3];
                 return [4 /*yield*/, geocoding_service_1.GeocodingService.obtenerDireccion(latCliente, lonCliente)];
             case 2:
                 rev = _d.sent();
@@ -802,9 +802,9 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     ? rev.direccion
                     : "Ubicaci\u00F3n GPS (".concat(latCliente.toFixed(5), ", ").concat(lonCliente.toFixed(5), ")");
                 _d.label = 3;
-            case 3: return [4 /*yield*/, persistirDireccion({
+            case 3: return [4 /*yield*/, persistirDireccion_1({
                     direccion: direccionLegible_1,
-                    referencia: referencia || '',
+                    referencia: referencia_1 || '',
                     latitude: tieneGPS ? latCliente : null,
                     longitude: tieneGPS ? lonCliente : null,
                     ciudad: rev.ciudad || '',
@@ -860,9 +860,8 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                         .split(',')
                         .filter(function (c) { return c.length > 0; });
                 }
-                resultadoDistancia = void 0;
                 desdeGuardada = false;
-                direccionLegible = direccion;
+                direccionLegible = direccion_1;
                 if (!tieneGPS) return [3 /*break*/, 9];
                 distancia = sedeTieneCoords
                     ? (0, geocoding_service_1.estimarKmRuta)(geocoding_service_1.GeocodingService.calcularDistanciaHaversine(Number(sede.latitude), Number(sede.longitude), latCliente, lonCliente))
@@ -880,7 +879,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                         })];
                 }
                 rev = {};
-                if (!(!direccion || direccion.toUpperCase() === 'GPS')) return [3 /*break*/, 8];
+                if (!(!direccion_1 || direccion_1.toUpperCase() === 'GPS')) return [3 /*break*/, 8];
                 return [4 /*yield*/, geocoding_service_1.GeocodingService.obtenerDireccion(latCliente, lonCliente)];
             case 7:
                 rev = _d.sent();
@@ -889,7 +888,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     : "Ubicaci\u00F3n GPS (".concat(latCliente.toFixed(5), ", ").concat(lonCliente.toFixed(5), ")");
                 _d.label = 8;
             case 8:
-                resultadoDistancia = {
+                resultadoDistancia_1 = {
                     success: true,
                     lat: latCliente,
                     lng: lonCliente,
@@ -907,12 +906,12 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
             case 10:
                 _d.trys.push([10, 13, , 14]);
                 telefonoSesion = String(session_id_2 || '').split('_')[0].replace(/\D/g, '');
-                if (!(telefonoSesion.length >= 6 && direccion)) return [3 /*break*/, 12];
+                if (!(telefonoSesion.length >= 6 && direccion_1)) return [3 /*break*/, 12];
                 normalizar = function (s) { return String(s || '')
                     .toLowerCase()
                     .normalize('NFD').replace(/[̀-ͯ]/g, '')
                     .replace(/[^a-z0-9]/g, ''); };
-                dirPedida = normalizar(direccion);
+                dirPedida = normalizar(direccion_1);
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["\n                        SELECT cpd.direccion, cpd.latitude, cpd.longitude\n                        FROM cliente_pwa_direccion cpd\n                        INNER JOIN cliente c ON c.idcliente = cpd.idcliente\n                        WHERE REPLACE(c.telefono, ' ', '') LIKE ", "\n                        ORDER BY cpd.idcliente_pwa_direccion DESC\n                        LIMIT 3"], ["\n                        SELECT cpd.direccion, cpd.latitude, cpd.longitude\n                        FROM cliente_pwa_direccion cpd\n                        INNER JOIN cliente c ON c.idcliente = cpd.idcliente\n                        WHERE REPLACE(c.telefono, ' ', '') LIKE ", "\n                        ORDER BY cpd.idcliente_pwa_direccion DESC\n                        LIMIT 3"])), '%' + telefonoSesion + '%')];
             case 11:
                 guardadas = _d.sent();
@@ -940,7 +939,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 console.log("calcular-delivery: direccion guardada reusada (\"".concat(coordsGuardadas.direccion, "\", ").concat(distanciaGuardada, " km) \u2014 sin geocoding"));
                 desdeGuardada = true;
                 direccionLegible = coordsGuardadas.direccion;
-                resultadoDistancia = {
+                resultadoDistancia_1 = {
                     success: true,
                     lat: coordsGuardadas.lat,
                     lng: coordsGuardadas.lng,
@@ -949,25 +948,22 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                     ciudad: '', provincia: '', departamento: '', pais: '', codigo: ''
                 };
                 if (modo === 'variable' && distanciaGuardada > distanciaMaxima) {
-                    resultadoDistancia = {
+                    resultadoDistancia_1 = {
                         success: false,
                         fueraDeCobertura: true,
                         error: "Direcci\u00F3n fuera del rango de cobertura (".concat(distanciaGuardada.toFixed(2), " km, m\u00E1ximo ").concat(distanciaMaxima, " km)")
                     };
                 }
                 return [3 /*break*/, 17];
-            case 15: return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion, Number(sede.latitude), Number(sede.longitude), 
+            case 15: return [4 /*yield*/, geocoding_service_1.GeocodingService.calcularDistanciaPorRango(direccion_1, Number(sede.latitude), Number(sede.longitude), 
                 // 999999 neutraliza el gate interno del servicio en modo zonas:
                 // ahí la cobertura la deciden las zonas, no km_limite.
                 modo === 'zonas' ? 999999 : distanciaMaxima, ciudades)];
             case 16:
-                resultadoDistancia = _d.sent();
+                resultadoDistancia_1 = _d.sent();
                 _d.label = 17;
             case 17:
-                decision = (0, delivery_zonas_1.decidirDireccionTexto)(resultadoDistancia, modo, distanciaMaxima);
-                if (!(decision === 'costo_base')) return [3 /*break*/, 23];
-                costoEstimado = modo === 'zonas' && zonas.length > 0
-                    ? Math.min.apply(Math, zonas.map(function (z) { return z.costo; })) : Number(parametros.km_base_costo || 0);
+                decision = (0, delivery_zonas_1.decidirDireccionTexto)(resultadoDistancia_1, modo, distanciaMaxima);
                 yaSugerida = false;
                 _d.label = 18;
             case 18:
@@ -985,17 +981,50 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
             case 20:
                 _c = _d.sent();
                 return [3 /*break*/, 21];
-            case 21: return [4 /*yield*/, persistirDireccion({
-                    direccion: direccion,
-                    referencia: referencia || '',
-                    latitude: null,
-                    longitude: null,
-                    ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
-                    distancia_km: 0,
-                    costo_delivery: Number(costoEstimado.toFixed(2)),
-                    verificada: false,
-                    ubicacion_sugerida: true
-                })];
+            case 21:
+                confirmarDireccionZonas = function () { return __awaiter(void 0, void 0, void 0, function () {
+                    var sugerida, seg, esCalle;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0:
+                                sugerida = String((resultadoDistancia_1 === null || resultadoDistancia_1 === void 0 ? void 0 : resultadoDistancia_1.direccionFormateada) || '');
+                                seg = sugerida.split(',')[0] || '';
+                                esCalle = /[a-zA-Z]{3,}/.test(seg) && /\d/.test(seg) && !seg.includes('+');
+                                return [4 /*yield*/, persistirDireccion_1({
+                                        direccion: direccion_1,
+                                        referencia: referencia_1 || '',
+                                        latitude: null, longitude: null,
+                                        ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
+                                        distancia_km: 0,
+                                        costo_delivery: 0,
+                                        verificada: false,
+                                        ubicacion_sugerida: true
+                                    })];
+                            case 1:
+                                _a.sent();
+                                return [2 /*return*/, res.status(200).json(__assign(__assign({ success: true, disponible: true, requiere_confirmacion: true, direccion: direccion_1 }, (esCalle ? { direccion_sugerida: sugerida } : {})), { accion: esCalle
+                                            ? "No ubico con exactitud la direcci\u00F3n del cliente. Preg\u00FAntale si se refiere a \"".concat(sugerida, "\" y dile que si no es correcta te comparta su ubicaci\u00F3n (clip \uD83D\uDCCE \u2192 Ubicaci\u00F3n). NO le des costo de delivery todav\u00EDa ni confirmes el pedido: cuando responda, vuelve a llamar calcular_delivery con la direcci\u00F3n confirmada o con la ubicaci\u00F3n GPS.")
+                                            : "No encuentro la direcci\u00F3n que dio el cliente. P\u00EDdele en una l\u00EDnea que la confirme o la corrija (calle y n\u00FAmero) y dile que tambi\u00E9n puede compartir su ubicaci\u00F3n (clip \uD83D\uDCCE \u2192 Ubicaci\u00F3n) para ubicarlo exacto. NO le des costo de delivery todav\u00EDa ni confirmes el pedido: cuando responda, vuelve a llamar calcular_delivery." }))];
+                        }
+                    });
+                }); };
+                if (!(decision === 'costo_base')) return [3 /*break*/, 23];
+                if (modo === 'zonas' && zonas.length > 0 && !yaSugerida) {
+                    return [2 /*return*/, confirmarDireccionZonas()];
+                }
+                costoEstimado = modo === 'zonas' && zonas.length > 0
+                    ? Math.min.apply(Math, zonas.map(function (z) { return z.costo; })) : Number(parametros.km_base_costo || 0);
+                return [4 /*yield*/, persistirDireccion_1({
+                        direccion: direccion_1,
+                        referencia: referencia_1 || '',
+                        latitude: null,
+                        longitude: null,
+                        ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
+                        distancia_km: 0,
+                        costo_delivery: Number(costoEstimado.toFixed(2)),
+                        verificada: false,
+                        ubicacion_sugerida: true
+                    })];
             case 22:
                 _d.sent();
                 return [2 /*return*/, res.status(200).json({
@@ -1004,29 +1033,31 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                         costo: Number(costoEstimado.toFixed(2)),
                         distancia_km: 0,
                         tiempo_estimado: calcularTiempoEstimado(tiempoGlobal),
-                        direccion: direccion,
+                        direccion: direccion_1,
                         direccion_no_verificada: true,
-                        mensaje: yaSugerida || referencia
+                        mensaje: yaSugerida || referencia_1
                             ? 'Costo de delivery aplicado. Continúa el pedido con normalidad; NO le digas al cliente que no encontraste su dirección.'
                             : 'Costo de delivery aplicado y el pedido CONTINÚA. NO le digas al cliente que no encontraste su dirección ni le exijas nada: solo pídele en una línea, junto con el siguiente paso del pedido, una referencia para que el repartidor llegue sin problemas, o que comparta su ubicación (clip 📎 → Ubicación). Si no responde eso, el pedido sigue igual.'
                     })];
             case 23:
-                distanciaKm = resultadoDistancia.distanciaKm;
+                distanciaKm = resultadoDistancia_1.distanciaKm;
                 costo = void 0;
                 tiempoMin = tiempoGlobal;
                 zonaNombre = void 0;
                 if (!(modo === 'zonas')) return [3 /*break*/, 27];
-                margenZonasKm = Number(parametros.zonas_margen_km) > 0 ? Number(parametros.zonas_margen_km) : 1;
+                margenZonasKm = Number(parametros.zonas_margen_km) > 0 ? Number(parametros.zonas_margen_km) : 0.2;
                 r = (0, delivery_zonas_1.resolverZona)(zonas, {
-                    lat: Number(resultadoDistancia.lat),
-                    lng: Number(resultadoDistancia.lng)
+                    lat: Number(resultadoDistancia_1.lat),
+                    lng: Number(resultadoDistancia_1.lng)
                 }, margenZonasKm);
                 if (!!r.cubierto) return [3 /*break*/, 26];
                 if (!!tieneGPS) return [3 /*break*/, 25];
+                if (!yaSugerida)
+                    return [2 /*return*/, confirmarDireccionZonas()];
                 costoEstimadoZona = Math.min.apply(Math, zonas.map(function (z) { return z.costo; }));
-                return [4 /*yield*/, persistirDireccion({
+                return [4 /*yield*/, persistirDireccion_1({
                         direccion: direccionLegible,
-                        referencia: referencia || '',
+                        referencia: referencia_1 || '',
                         latitude: null, longitude: null,
                         ciudad: '', provincia: '', departamento: '', pais: '', codigo: '',
                         distancia_km: 0,
@@ -1065,10 +1096,10 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 costoBase = Number(parametros.km_base_costo || 0);
                 costo = (0, delivery_zonas_1.costoVariable)(distanciaKm, kmBase, costoBase, costoAdicional);
                 _d.label = 28;
-            case 28: return [4 /*yield*/, persistirDireccion(__assign({ direccion: direccionLegible, referencia: referencia || '', latitude: resultadoDistancia.lat, longitude: resultadoDistancia.lng, ciudad: resultadoDistancia.ciudad || '', provincia: resultadoDistancia.provincia || '', departamento: resultadoDistancia.departamento || '', pais: resultadoDistancia.pais || '', codigo: resultadoDistancia.codigo || '', distancia_km: distanciaKm, costo_delivery: Number(costo.toFixed(2)), verificada: true }, (zonaNombre ? { zona: zonaNombre } : {})))];
+            case 28: return [4 /*yield*/, persistirDireccion_1(__assign({ direccion: direccionLegible, referencia: referencia_1 || '', latitude: resultadoDistancia_1.lat, longitude: resultadoDistancia_1.lng, ciudad: resultadoDistancia_1.ciudad || '', provincia: resultadoDistancia_1.provincia || '', departamento: resultadoDistancia_1.departamento || '', pais: resultadoDistancia_1.pais || '', codigo: resultadoDistancia_1.codigo || '', distancia_km: distanciaKm, costo_delivery: Number(costo.toFixed(2)), verificada: true }, (zonaNombre ? { zona: zonaNombre } : {})))];
             case 29:
                 _d.sent();
-                pedirReferencia = !tieneGPS && !referencia && !desdeGuardada;
+                pedirReferencia = !tieneGPS && !referencia_1 && !desdeGuardada;
                 partesMensaje = __spreadArray(__spreadArray([], (zonaNombre ? ["Zona de reparto: ".concat(zonaNombre, ".")] : []), true), (pedirReferencia ? ['Mientras continúas con el pedido, pídele en una línea una referencia para que el repartidor llegue sin problemas, o que comparta su ubicación (clip 📎 → Ubicación). NO bloquees el pedido esperando esa respuesta.'] : []), true);
                 res.status(200).json(__assign(__assign(__assign({ success: true, disponible: true, costo: Number(costo.toFixed(2)), distancia_km: distanciaKm, tiempo_estimado: calcularTiempoEstimado(tiempoMin) }, (zonaNombre ? { zona: zonaNombre } : {})), (partesMensaje.length ? { mensaje: partesMensaje.join(' ') } : {})), { 
                     // Dirección legible (reverse geocoding si vino GPS): el bot DEBE usarla
@@ -2189,6 +2220,10 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                     // Número de Yape/Plin de la sede: el bot lo da cuando el cliente
                     // pregunta a dónde yapear/plinear.
                     numero_billetera: sede.numero_billetera_chatbot || null,
+                    // Titular de la billetera (vive en parametros, sin columna nueva):
+                    // el bot lo confirma cuando el cliente verifica antes de pagar, y
+                    // NO debe confundirlo con el nombre del pedido.
+                    titular_billetera: String(parametros.titular_billetera_chatbot || '').trim() || null,
                     // Voz del bot elegida en el panel Piter. Siempre viaja resuelta (el
                     // default incluido) para que chatbot-go no tenga que adivinar.
                     personalidad_chatbot: (0, personalidad_1.resolverPersonalidad)(parametros.personalidad_chatbot),

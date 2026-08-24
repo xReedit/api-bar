@@ -641,7 +641,7 @@ router.put('/update-tipo-pago-sede/:id', function (req, res, next) { return __aw
 }); });
 // guardar datos del delivery update-config-delivery
 router.put('/update-config-delivery/:id', function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var id, dataBody, _a, texto, error, rpt, error_5;
+    var id, dataBody, _a, texto, error, titular, rpt, error_5;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -655,6 +655,13 @@ router.put('/update-config-delivery/:id', function (req, res, next) { return __a
                     if (error)
                         return [2 /*return*/, res.status(400).send({ error: error })];
                     dataBody.parametros = __assign(__assign({}, dataBody.parametros), { reglas_negocio: texto });
+                }
+                // El titular de la billetera también termina dentro del system prompt del
+                // bot: solo letras/espacios/puntos/apóstrofes, máx 60. Endpoint sin auth.
+                if ((dataBody === null || dataBody === void 0 ? void 0 : dataBody.parametros) && 'titular_billetera_chatbot' in dataBody.parametros) {
+                    titular = String(dataBody.parametros.titular_billetera_chatbot || '')
+                        .replace(/[^\p{L}\s.'-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+                    dataBody.parametros = __assign(__assign({}, dataBody.parametros), { titular_billetera_chatbot: titular });
                 }
                 _b.label = 1;
             case 1:

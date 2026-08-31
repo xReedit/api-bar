@@ -2031,7 +2031,24 @@ router.post("/pedido", async (req, res) => {
             isComercioAppDeliveryMapa: isDelivery ? "1" : "0",
             delivery: isDelivery ? 1 : 0,
             // Consumo en el local = reserva (el procedure guarda pedido.reserva)
-            reservar: isReserva ? 1 : 0
+            reservar: isReserva ? 1 : 0,
+            // La comanda (print-server, plantillas PHP y Node) solo imprime el
+            // bloque "DATOS DE LA RESERVA" (nombre, teléfono, personas, hora) si
+            // isCliente=1 y arrDatosReserva viene lleno — el mismo contrato que
+            // usa la PWA del cliente. Sin esto la reserva sale solo como texto
+            // en la referencia y cocina no la distingue.
+            ...(isReserva ? {
+                isCliente: 1,
+                arrDatosReserva: {
+                    nombre_reserva: infoCliente.nombres.toUpperCase(),
+                    telefono: infoCliente.telefono || cliente_telefono || '',
+                    num_personas: reserva_personas || '',
+                    // horaEvento es la hora normalizada; si el cliente dio una
+                    // hora vaga ("ahorita", "en un rato") viaja tal cual.
+                    hora_reserva: horaEvento || reserva_hora || '',
+                    empresa: ''
+                }
+            } : {})
         };
 
         // Actualizar la estructura con el p_header completo

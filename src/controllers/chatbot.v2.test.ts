@@ -222,3 +222,21 @@ describe('limitarIdsOpciones', () => {
         expect(limitarIdsOpciones(undefined)).toEqual({ ids: [], omitidos: [] });
     });
 });
+
+describe('solicitaCubiertosDesdeNotas', () => {
+    it('detecta cubiertos pedidos en las notas', async () => {
+        const { solicitaCubiertosDesdeNotas } = await cargar();
+        expect(solicitaCubiertosDesdeNotas('cada pedido con su cubierto')).toBe('1');
+        expect(solicitaCubiertosDesdeNotas('9 cubiertos, paga con S/200')).toBe('1');
+        expect(solicitaCubiertosDesdeNotas('Con cubiertos por favor')).toBe('1');
+    });
+
+    it('no marca cuando el cliente NO quiere cubiertos o no los menciona', async () => {
+        const { solicitaCubiertosDesdeNotas } = await cargar();
+        expect(solicitaCubiertosDesdeNotas('sin cubiertos')).toBe('0');
+        expect(solicitaCubiertosDesdeNotas('no quiere cubiertos')).toBe('0');
+        expect(solicitaCubiertosDesdeNotas('paga con S/100')).toBe('0');
+        expect(solicitaCubiertosDesdeNotas('')).toBe('0');
+        expect(solicitaCubiertosDesdeNotas(null)).toBe('0');
+    });
+});

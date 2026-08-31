@@ -1255,6 +1255,18 @@ router.get("/config/:idsede", async (req, res) => {
  * inválido desaparecería). El camino nuevo solo entra cuando el pedido
  * realmente tiene opciones o grupos obligatorios.
  */
+/**
+ * El bot no tiene campo propio para cubiertos: cuando el cliente los pide van
+ * en `notas` de confirmar_pedido (regla "Cubiertos" del prompt). El POS imprime
+ * "con cubiertos" leyendo solicitaCubiertos del JSON del pedido, así que se
+ * deduce de las notas. El guard evita el falso positivo de "sin cubiertos" /
+ * "no quiere cubiertos".
+ */
+export const solicitaCubiertosDesdeNotas = (notas: any): "0" | "1" => {
+    const s = String(notas || '');
+    return /cubiert/i.test(s) && !/\b(sin|no)\b[^,.;]{0,20}cubiert/i.test(s) ? "1" : "0";
+};
+
 export const itemsParaCocinarPlano = (items: any[]): any[] =>
     (Array.isArray(items) ? items : []).map((item: any) => ({
         iditem: item.iditem,
@@ -1878,6 +1890,8 @@ router.post("/pedido", async (req, res) => {
             const codigoDelivery = datosDeliveryGuardados?.codigo || "";
             const costoDeliveryCalculado = datosDeliveryGuardados?.costo_delivery || 0;
 
+            const solicitaCubiertos = solicitaCubiertosDesdeNotas(notas);
+
             arrDatosDelivery = {
             idcliente: infoCliente.idcliente.toString(),
             dni: "",
@@ -1916,7 +1930,7 @@ router.post("/pedido", async (req, res) => {
                 latitude: latitudeDelivery.toString(),
                 longitude: longitudeDelivery.toString(),
                 titulo: "Casa",
-                solicitaCubiertos: "0",
+                solicitaCubiertos,
                 direccion_delivery_no_map: [{
                     direccion: direccionDelivery,
                     referencia: referenciaDelivery
@@ -1948,7 +1962,7 @@ router.post("/pedido", async (req, res) => {
             costoTotalDelivery: costoDeliveryCalculado,
             tiempoEntregaProgamado: tiempoEntregaProgamado,
             delivery: 1,
-            solicitaCubiertos: "0",
+            solicitaCubiertos,
             nombres: infoCliente.nombres.toUpperCase()
             };
         } else if (isRecoger) {

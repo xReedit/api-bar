@@ -949,36 +949,55 @@ router.get("/get-estado-pedido/:idsede/:telefono", async (req, res) => {
 
 // bloquear numero de telefono
 router.post("/bloquear-telefono", async (req, res, next) => {
-    const { telefono, idsede, info } = req.body;
-    // idempotente: borra cualquier fila previa del mismo número antes de crear,
-    // así nunca aparece 2 veces en la lista de pausados aunque las peticiones
-    // (pausar/activar disparadas sin await) lleguen desordenadas.
-    await prisma.chatbot_num_bloqueados.deleteMany({
-        where: { telefono: telefono, idsede: idsede }
-    }).catch(() => {});
-    const rpt = await prisma.chatbot_num_bloqueados.create({
-        data: {
-            telefono: telefono,
-            idsede: idsede,
-            info: info,
-            fecha_bloqueo: new Date()
-        }
-    }).catch(next);
-    res.status(200).send(rpt);    
+    const { telefono, info } = req.body;
+    // el panel manda idsede como string (viene del token de sesión); Prisma
+    // exige Int y sin esta conversión el create explotaba con
+    // PrismaClientValidationError → la pausa nunca persistía a BD.
+    const idsede = Number(req.body.idsede);
+    if (!telefono || !Number.isInteger(idsede)) {
+        return res.status(400).send({ error: 'telefono e idsede (numérico) son requeridos' });
+    }
+    try {
+        // idempotente: borra cualquier fila previa del mismo número antes de crear,
+        // así nunca aparece 2 veces en la lista de pausados aunque las peticiones
+        // (pausar/activar disparadas sin await) lleguen desordenadas.
+        await prisma.chatbot_num_bloqueados.deleteMany({
+            where: { telefono: String(telefono), idsede: idsede }
+        }).catch(() => {});
+        const rpt = await prisma.chatbot_num_bloqueados.create({
+            data: {
+                telefono: String(telefono),
+                idsede: idsede,
+                info: info,
+                fecha_bloqueo: new Date()
+            }
+        });
+        res.status(200).send(rpt);
+    } catch (err) {
+        next(err);
+    }
 })
 
 // desbloquear numero de telefono
 router.post("/desbloquear-telefono", async (req, res, next) => {
-    const { telefono, idsede } = req.body;    
-    const rpt = await prisma.chatbot_num_bloqueados.deleteMany({
-        where: {
-            AND: {
-                telefono: telefono,
-                idsede: idsede
+    const { telefono } = req.body;
+    const idsede = Number(req.body.idsede); // mismo caso: el panel manda string
+    if (!telefono || !Number.isInteger(idsede)) {
+        return res.status(400).send({ error: 'telefono e idsede (numérico) son requeridos' });
+    }
+    try {
+        const rpt = await prisma.chatbot_num_bloqueados.deleteMany({
+            where: {
+                AND: {
+                    telefono: String(telefono),
+                    idsede: idsede
+                }
             }
-        }
-    }).catch(next);
-    res.status(200).send(rpt);    
+        });
+        res.status(200).send(rpt);
+    } catch (err) {
+        next(err);
+    }
 })
 
 // listar telefonos bloqueados

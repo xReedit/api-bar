@@ -1158,56 +1158,80 @@ router.get("/get-estado-pedido/:idsede/:telefono", function (req, res) { return 
 }); });
 // bloquear numero de telefono
 router.post("/bloquear-telefono", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, telefono, idsede, info, rpt;
+    var _a, telefono, info, idsede, rpt, err_1;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                _a = req.body, telefono = _a.telefono, idsede = _a.idsede, info = _a.info;
+                _a = req.body, telefono = _a.telefono, info = _a.info;
+                idsede = Number(req.body.idsede);
+                if (!telefono || !Number.isInteger(idsede)) {
+                    return [2 /*return*/, res.status(400).send({ error: 'telefono e idsede (numérico) son requeridos' })];
+                }
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 4, , 5]);
                 // idempotente: borra cualquier fila previa del mismo número antes de crear,
                 // así nunca aparece 2 veces en la lista de pausados aunque las peticiones
                 // (pausar/activar disparadas sin await) lleguen desordenadas.
                 return [4 /*yield*/, prisma.chatbot_num_bloqueados.deleteMany({
-                        where: { telefono: telefono, idsede: idsede }
+                        where: { telefono: String(telefono), idsede: idsede }
                     })["catch"](function () { })];
-            case 1:
+            case 2:
                 // idempotente: borra cualquier fila previa del mismo número antes de crear,
                 // así nunca aparece 2 veces en la lista de pausados aunque las peticiones
                 // (pausar/activar disparadas sin await) lleguen desordenadas.
                 _b.sent();
                 return [4 /*yield*/, prisma.chatbot_num_bloqueados.create({
                         data: {
-                            telefono: telefono,
+                            telefono: String(telefono),
                             idsede: idsede,
                             info: info,
                             fecha_bloqueo: new Date()
                         }
-                    })["catch"](next)];
-            case 2:
+                    })];
+            case 3:
                 rpt = _b.sent();
                 res.status(200).send(rpt);
-                return [2 /*return*/];
+                return [3 /*break*/, 5];
+            case 4:
+                err_1 = _b.sent();
+                next(err_1);
+                return [3 /*break*/, 5];
+            case 5: return [2 /*return*/];
         }
     });
 }); });
 // desbloquear numero de telefono
 router.post("/desbloquear-telefono", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, telefono, idsede, rpt;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    var telefono, idsede, rpt, err_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _a = req.body, telefono = _a.telefono, idsede = _a.idsede;
+                telefono = req.body.telefono;
+                idsede = Number(req.body.idsede);
+                if (!telefono || !Number.isInteger(idsede)) {
+                    return [2 /*return*/, res.status(400).send({ error: 'telefono e idsede (numérico) son requeridos' })];
+                }
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
                 return [4 /*yield*/, prisma.chatbot_num_bloqueados.deleteMany({
                         where: {
                             AND: {
-                                telefono: telefono,
+                                telefono: String(telefono),
                                 idsede: idsede
                             }
                         }
-                    })["catch"](next)];
-            case 1:
-                rpt = _b.sent();
+                    })];
+            case 2:
+                rpt = _a.sent();
                 res.status(200).send(rpt);
-                return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 3:
+                err_2 = _a.sent();
+                next(err_2);
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); });

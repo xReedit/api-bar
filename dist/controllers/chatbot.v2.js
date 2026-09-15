@@ -86,7 +86,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 exports.__esModule = true;
-exports.idsQueNecesitanOpciones = exports.itemsParaCocinarPlano = exports.leerGruposDeItems = exports.limitarIdsOpciones = exports.MAX_ITEMS_OPCIONES = void 0;
+exports.idsQueNecesitanOpciones = exports.itemsParaCocinarPlano = exports.solicitaCubiertosDesdeNotas = exports.leerGruposDeItems = exports.limitarIdsOpciones = exports.MAX_ITEMS_OPCIONES = void 0;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var geocoding_service_1 = require("../services/geocoding.service");
@@ -1300,6 +1300,18 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
  * inválido desaparecería). El camino nuevo solo entra cuando el pedido
  * realmente tiene opciones o grupos obligatorios.
  */
+/**
+ * El bot no tiene campo propio para cubiertos: cuando el cliente los pide van
+ * en `notas` de confirmar_pedido (regla "Cubiertos" del prompt). El POS imprime
+ * "con cubiertos" leyendo solicitaCubiertos del JSON del pedido, así que se
+ * deduce de las notas. El guard evita el falso positivo de "sin cubiertos" /
+ * "no quiere cubiertos".
+ */
+var solicitaCubiertosDesdeNotas = function (notas) {
+    var s = String(notas || '');
+    return /cubiert/i.test(s) && !/\b(sin|no)\b[^,.;]{0,20}cubiert/i.test(s) ? "1" : "0";
+};
+exports.solicitaCubiertosDesdeNotas = solicitaCubiertosDesdeNotas;
 var itemsParaCocinarPlano = function (items) {
     return (Array.isArray(items) ? items : []).map(function (item) { return ({
         iditem: item.iditem,
@@ -1595,7 +1607,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
     // Reserva (consumo en el local): hora de llegada y cantidad de personas.
     reserva_hora, reserva_personas, 
     // Pedido programado (recojo/delivery a una hora): "13:00"
-    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_12;
+    hora_programada, idresumen, preview, estructuraPedidoCocinada_1, datosDeliveryGuardados, tipoConsumoEstructura, tipoEntregaFinal, descripcionTipoConsumo, telefonoSinCodigo, cliente, idcliente, nombreCliente, nuevoCliente, idclientePwaDireccion, direccionFinal, direccionExistente, nuevaDireccion, infoCliente, infoSede, usuarioBot, idusuarioBot, resultInsert, nuevoUsuario, sede, listImpresoras, tipoConsumo, isDelivery, isRecoger, isReserva, horaEvento, tiempoEntregaProgamado, hoyLima, arrDatosDelivery, direccionDelivery, referenciaDelivery, latitudeDelivery, longitudeDelivery, ciudadDelivery, provinciaDelivery, departamentoDelivery, paisDelivery, codigoDelivery, costoDeliveryCalculado, solicitaCubiertos, nombreTel, referenciaTexto, partes, p_header_1, jsonPrintService, arrPrint, dataPrint_1, dataUsuarioSend, pedidoEnviar, dataSocketQuery, payload, URL_RESTOBAR, urlBackend, response, resultado, idpedido, error_12;
     var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     return __generator(this, function (_p) {
         switch (_p.label) {
@@ -1792,6 +1804,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                     paisDelivery = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.pais) || "";
                     codigoDelivery = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.codigo) || "";
                     costoDeliveryCalculado = (datosDeliveryGuardados === null || datosDeliveryGuardados === void 0 ? void 0 : datosDeliveryGuardados.costo_delivery) || 0;
+                    solicitaCubiertos = (0, exports.solicitaCubiertosDesdeNotas)(notas);
                     arrDatosDelivery = {
                         idcliente: infoCliente.idcliente.toString(),
                         dni: "",
@@ -1830,7 +1843,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                             latitude: latitudeDelivery.toString(),
                             longitude: longitudeDelivery.toString(),
                             titulo: "Casa",
-                            solicitaCubiertos: "0",
+                            solicitaCubiertos: solicitaCubiertos,
                             direccion_delivery_no_map: [{
                                     direccion: direccionDelivery,
                                     referencia: referenciaDelivery
@@ -1862,7 +1875,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                         costoTotalDelivery: costoDeliveryCalculado,
                         tiempoEntregaProgamado: tiempoEntregaProgamado,
                         delivery: 1,
-                        solicitaCubiertos: "0",
+                        solicitaCubiertos: solicitaCubiertos,
                         nombres: infoCliente.nombres.toUpperCase()
                     };
                 }
@@ -1920,9 +1933,20 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                 else if (isDelivery && horaEvento) {
                     referenciaTexto = "ENTREGAR ".concat(horaEvento, " - ").concat(infoCliente.nombres.toUpperCase());
                 }
-                p_header_1 = __assign(__assign({}, estructuraPedidoCocinada_1.p_header), { idclie: infoCliente.idcliente.toString(), referencia: referenciaTexto, r: referenciaTexto, idcategoria: ((_l = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idcategoria) === null || _l === void 0 ? void 0 : _l.toString()) || "1", mesa: "", tipo_consumo: ((_m = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idtipo_consumo) === null || _m === void 0 ? void 0 : _m.toString()) || "4", subtotales_tachados: "", arrDatosDelivery: arrDatosDelivery, isComercioAppDeliveryMapa: isDelivery ? "1" : "0", delivery: isDelivery ? 1 : 0, 
+                p_header_1 = __assign(__assign(__assign({}, estructuraPedidoCocinada_1.p_header), { idclie: infoCliente.idcliente.toString(), referencia: referenciaTexto, r: referenciaTexto, idcategoria: ((_l = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idcategoria) === null || _l === void 0 ? void 0 : _l.toString()) || "1", mesa: "", tipo_consumo: ((_m = tipoConsumo === null || tipoConsumo === void 0 ? void 0 : tipoConsumo.idtipo_consumo) === null || _m === void 0 ? void 0 : _m.toString()) || "4", subtotales_tachados: "", arrDatosDelivery: arrDatosDelivery, isComercioAppDeliveryMapa: isDelivery ? "1" : "0", delivery: isDelivery ? 1 : 0, 
                     // Consumo en el local = reserva (el procedure guarda pedido.reserva)
-                    reservar: isReserva ? 1 : 0 });
+                    reservar: isReserva ? 1 : 0 }), (isReserva ? {
+                    isCliente: 1,
+                    arrDatosReserva: {
+                        nombre_reserva: infoCliente.nombres.toUpperCase(),
+                        telefono: infoCliente.telefono || cliente_telefono || '',
+                        num_personas: reserva_personas || '',
+                        // horaEvento es la hora normalizada; si el cliente dio una
+                        // hora vaga ("ahorita", "en un rato") viaja tal cual.
+                        hora_reserva: horaEvento || reserva_hora || '',
+                        empresa: ''
+                    }
+                } : {}));
                 // Actualizar la estructura con el p_header completo
                 estructuraPedidoCocinada_1.p_header = p_header_1;
                 jsonPrintService = new json_print_services_1.JsonPrintService();

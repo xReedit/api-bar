@@ -27,7 +27,52 @@ export const detectarTexto = async (imageUrl: string): Promise<any | null> => {
     }
 };
 
-// Puro: fullTextAnnotation -> líneas (párrafos) con caja relativa = unión de cajas de palabras.
+// Un paragraph de Vision NO es una fila visual: un nombre que hace wrap, o
+// nombre+descripción+precio, caen en el mismo paragraph. El corte real lo marca el
+// detectedBreak del último símbolo de cada palabra (SPACE no corta, fin de renglón sí).
+const cierraLinea = (word: any): boolean => {
+    const symbols: any[] = word.symbols || [];
+    const tipo = symbols[symbols.length - 1]?.property?.detectedBreak?.type;
+    return tipo === 'LINE_BREAK' || tipo === 'EOL_SURE_SPACE';
+};
+
+// Palabras de un paragraph -> grupos, uno por fila visual (la palabra con el salto
+// pertenece a la fila que cierra). Sin ningún break: un solo grupo.
+const agruparEnLineas = (words: any[]): any[][] => {
+    const grupos: any[][] = [];
+    let actual: any[] = [];
+    for (const w of words) {
+        actual.push(w);
+        if (cierraLinea(w)) { grupos.push(actual); actual = []; }
+    }
+    if (actual.length) grupos.push(actual);
+    return grupos;
+};
+
+const textoDe = (words: any[]): string =>
+    words
+        .map((w) => (w.symbols || []).map((s: any) => s.text).join(''))
+        .join(' ')
+        .trim();
+
+// Caja = unión de las cajas de las palabras, normalizada.
+// Vision OMITE la coordenada cuando vale 0 (palabra pegada al borde izquierdo/superior),
+// así que la ausencia se lee como 0; solo se descarta si no hay vértices en absoluto.
+const cajaDe = (words: any[], width: number, height: number): Caja | null => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const w of words) {
+        for (const v of w.boundingBox?.vertices || []) {
+            const vx = typeof v.x === 'number' ? v.x : 0;
+            const vy = typeof v.y === 'number' ? v.y : 0;
+            minX = Math.min(minX, vx); maxX = Math.max(maxX, vx);
+            minY = Math.min(minY, vy); maxY = Math.max(maxY, vy);
+        }
+    }
+    if (!isFinite(minX) || !isFinite(minY)) return null;
+    return { x: minX / width, y: minY / height, w: (maxX - minX) / width, h: (maxY - minY) / height };
+};
+
+// Puro: fullTextAnnotation -> líneas visuales con caja relativa.
 // Relativas 0-1 para que el tachado aguante cualquier resize posterior de la imagen.
 export const extraerLineas = (respuesta: any): { width: number; height: number; lineas: LineaCarta[] } | null => {
     const page = respuesta?.fullTextAnnotation?.pages?.[0];
@@ -36,25 +81,13 @@ export const extraerLineas = (respuesta: any): { width: number; height: number; 
     const lineas: LineaCarta[] = [];
     for (const block of page.blocks || []) {
         for (const par of block.paragraphs || []) {
-            const words: any[] = par.words || [];
-            if (!words.length) continue;
-            const texto = words
-                .map((w) => (w.symbols || []).map((s: any) => s.text).join(''))
-                .join(' ')
-                .trim();
-            if (texto.length < 4) continue; // precios sueltos, viñetas, adornos
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const w of words) {
-                for (const v of w.boundingBox?.vertices || []) {
-                    if (typeof v.x === 'number') { minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x); }
-                    if (typeof v.y === 'number') { minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y); }
-                }
+            for (const words of agruparEnLineas(par.words || [])) {
+                const texto = textoDe(words);
+                if (texto.length < 4) continue; // precios sueltos, viñetas, adornos
+                const box = cajaDe(words, width, height);
+                if (!box) continue;
+                lineas.push({ texto, box });
             }
-            if (!isFinite(minX) || !isFinite(minY)) continue;
-            lineas.push({
-                texto,
-                box: { x: minX / width, y: minY / height, w: (maxX - minX) / width, h: (maxY - minY) / height }
-            });
         }
     }
     return { width, height, lineas };

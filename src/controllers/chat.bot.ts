@@ -7,6 +7,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { construirIndice, leerIndice, guardarIndice } from "../services/carta.indice.service";
 import { generarCartaTachada, invalidarVentana } from "../services/carta.tachado.service";
+import { auth } from "../middleware/auth";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -1183,6 +1184,12 @@ router.get('/stop/:idsede', async (req, res, next) => {
 // Carta con agotados tachados (panel Piter). construirIndice re-OCRea la carta,
 // por eso SOLO se llama desde estos endpoints del panel: ninguna ruta que
 // atienda al cliente/bot debe dispararlo.
+//
+// Estas 4 llevan `auth` por ruta aunque el resto de /chat-bot/* siga sin auth
+// por compatibilidad: indexar gasta cuota de Google Vision en cada llamada y
+// los agotados se ven en la carta que recibe el cliente, así que no pueden
+// quedar abiertas. El panel ya manda Authorization: Bearer en todas sus
+// llamadas. Mismo criterio que /chat-bot/billing en routes/index.ts.
 // ---------------------------------------------------------------------------
 
 // idsede llega por URL: se valida acá para no pasarle un NaN a los servicios.
@@ -1192,7 +1199,7 @@ const sedeValida = (raw: any): number | null => {
 };
 
 // Indexa (OCR) la carta actual de la sede. Idempotente: si la imagen no cambió, devuelve el índice vigente.
-router.post('/carta-indexar/:idsede', async (req: any, res) => {
+router.post('/carta-indexar/:idsede', auth, async (req: any, res) => {
     try {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
@@ -1205,7 +1212,7 @@ router.post('/carta-indexar/:idsede', async (req: any, res) => {
     }
 });
 
-router.get('/carta-indice/:idsede', async (req: any, res) => {
+router.get('/carta-indice/:idsede', auth, async (req: any, res) => {
     try {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
@@ -1219,7 +1226,7 @@ router.get('/carta-indice/:idsede', async (req: any, res) => {
 });
 
 // Modo manual: el operador marca/desmarca agotados por texto de línea. Reemplaza el set completo.
-router.put('/carta-agotados/:idsede', async (req: any, res) => {
+router.put('/carta-agotados/:idsede', auth, async (req: any, res) => {
     try {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
@@ -1250,7 +1257,7 @@ router.put('/carta-agotados/:idsede', async (req: any, res) => {
 });
 
 // Preview para el panel: fuerza regeneración inmediata (sin esperar la ventana)
-router.get('/carta-preview/:idsede', async (req: any, res) => {
+router.get('/carta-preview/:idsede', auth, async (req: any, res) => {
     try {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });

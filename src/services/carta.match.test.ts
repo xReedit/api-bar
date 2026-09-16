@@ -39,4 +39,16 @@ describe('matchLineas', () => {
         expect(r[0].iditem).toBeNull();
         expect(r[1].iditem).toBe(2);
     });
+
+    // El caso de arriba lo resuelve el umbral ('Ceviche' sola no llega a 0.6), así que no
+    // ejercita el greedy. Acá las DOS líneas superan el umbral contra el MISMO item (1.0 y
+    // 0.75): sin el candado de item usado, el iditem 2 se repetiría en ambas.
+    it('con dos líneas sobre el umbral del mismo item, solo la de mejor score se lo queda', () => {
+        const r = matchLineas(
+            [{ texto: 'Ceviche de toyo', box }, { texto: 'Ceviche de toyo S/. 25.00', box }],
+            items
+        );
+        expect(r[0].iditem).toBe(2);
+        expect(r[1].iditem).toBeNull();
+    });
 });

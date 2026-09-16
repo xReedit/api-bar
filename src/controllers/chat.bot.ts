@@ -5,6 +5,8 @@ import { getEstructuraPedido } from "../services/cocinar.pedido";
 import { validarReglas } from "../services/reglas-negocio";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { construirIndice, leerIndice, guardarIndice } from "../services/carta.indice.service";
+import { generarCartaTachada, invalidarVentana } from "../services/carta.tachado.service";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -1174,6 +1176,91 @@ router.get('/stop/:idsede', async (req, res, next) => {
             return res.status(404).json({ error: 'Sede no encontrada' });
         }
         next(error);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Carta con agotados tachados (panel Piter). construirIndice re-OCRea la carta,
+// por eso SOLO se llama desde estos endpoints del panel: ninguna ruta que
+// atienda al cliente/bot debe dispararlo.
+// ---------------------------------------------------------------------------
+
+// idsede llega por URL: se valida acá para no pasarle un NaN a los servicios.
+const sedeValida = (raw: any): number | null => {
+    const n = Number(raw);
+    return !Number.isInteger(n) || n <= 0 ? null : n;
+};
+
+// Indexa (OCR) la carta actual de la sede. Idempotente: si la imagen no cambió, devuelve el índice vigente.
+router.post('/carta-indexar/:idsede', async (req: any, res) => {
+    try {
+        const idsede = sedeValida(req.params.idsede);
+        if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
+
+        const indice = await construirIndice(idsede, prisma);
+        res.status(200).json({ success: !!indice, indice });
+    } catch (error) {
+        console.error('Error en carta-indexar', error);
+        res.status(500).send({ error: 'Error al indexar la carta' });
+    }
+});
+
+router.get('/carta-indice/:idsede', async (req: any, res) => {
+    try {
+        const idsede = sedeValida(req.params.idsede);
+        if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
+
+        const indice = await leerIndice(idsede);
+        res.status(200).json({ success: true, indice });
+    } catch (error) {
+        console.error('Error en carta-indice', error);
+        res.status(500).send({ error: 'Error al leer el indice' });
+    }
+});
+
+// Modo manual: el operador marca/desmarca agotados por texto de línea. Reemplaza el set completo.
+router.put('/carta-agotados/:idsede', async (req: any, res) => {
+    try {
+        const idsede = sedeValida(req.params.idsede);
+        if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
+
+        // Se exige el array explícito: un body malformado no debe interpretarse
+        // como "ningún agotado" y borrar en silencio lo que marcó el operador.
+        const recibidos = req.body?.textos;
+        if (!Array.isArray(recibidos) || recibidos.some((t: any) => typeof t !== 'string')) {
+            return res.status(400).json({ success: false, error: 'textos debe ser un array de strings' });
+        }
+
+        const textos = new Set<string>(recibidos);
+        const idx = await leerIndice(idsede);
+        if (!idx) return res.status(404).json({ success: false, error: 'Sin indice; indexa la carta primero' });
+
+        const actualizado = {
+            ...idx,
+            lineas: idx.lineas.map((l) => ({ ...l, agotado: textos.has(l.texto) })),
+            actualizado: new Date().toISOString()
+        };
+        const ok = await guardarIndice(idsede, actualizado);
+        invalidarVentana(idsede); // el próximo pedido de carta regenera ya
+        res.status(200).json({ success: ok });
+    } catch (error) {
+        console.error('Error en carta-agotados', error);
+        res.status(500).send({ error: 'Error al guardar agotados' });
+    }
+});
+
+// Preview para el panel: fuerza regeneración inmediata (sin esperar la ventana)
+router.get('/carta-preview/:idsede', async (req: any, res) => {
+    try {
+        const idsede = sedeValida(req.params.idsede);
+        if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
+
+        invalidarVentana(idsede);
+        const r = await generarCartaTachada(idsede, prisma);
+        res.status(200).json({ success: true, ...r });
+    } catch (error) {
+        console.error('Error en carta-preview', error);
+        res.status(500).send({ error: 'Error al generar preview' });
     }
 });
 

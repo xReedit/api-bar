@@ -1507,6 +1507,8 @@ router.post('/carta-indexar/:idsede', auth_1.auth, function (req, res) { return 
                 return [4 /*yield*/, (0, carta_indice_service_1.construirIndice)(idsede, prisma)];
             case 1:
                 indice = _a.sent();
+                if (indice)
+                    (0, carta_tachado_service_1.invalidarVentana)(idsede); // carta nueva subida ⇒ no servir la imagen vieja hasta 5 min
                 res.status(200).json({ success: !!indice, indice: indice });
                 return [3 /*break*/, 3];
             case 2:

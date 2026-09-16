@@ -57,6 +57,7 @@ export const construirIndice = async (idsede: number, prisma: any): Promise<Indi
         const archivo = categoria?.url_carta;
         if (!archivo) return null;
         const etag = await etagCarta(archivo);
+        if (!etag) console.warn('[carta-idx] sin etag de S3 (¿falta permiso HeadObject?), versionado de imagen degradado', idsede);
         const previo = await leerIndice(idsede);
         if (previo && etag && previo.etag === etag && previo.archivo === archivo) return previo;
 

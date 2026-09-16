@@ -2370,6 +2370,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
         let agotadosManual: string[] = [];
         if (modoCartaTachado === 'manual') {
             const idx = await leerIndice(Number(idsede));
+            if (!idx) console.warn('[contexto] modo manual sin indice, agotados_manual vacio', idsede);
             agotadosManual = (idx?.lineas || []).filter((l) => l.agotado).map((l) => l.texto);
         }
 

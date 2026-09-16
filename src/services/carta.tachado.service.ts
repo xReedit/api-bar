@@ -1,6 +1,6 @@
 // Genera la carta con platos agotados tachados. Regeneración perezosa:
-// solo cuando un cliente la pide, como máximo una vez cada 5 min por sede,
-// y solo si el set de agotados cambió (key S3 determinística por hash).
+// solo cuando un cliente la pide, como máximo una vez cada 5 min por sede
+// (key S3 determinística por hash, PUT idempotente).
 import { createHash } from 'crypto';
 import axios from 'axios';
 import path from 'path';
@@ -38,11 +38,15 @@ export const obtenerAgotados = async (
     if (modo === 'manual') return idx.lineas.filter((l) => l.agotado);
     // auto: stock del día en carta_lista.cantidad <= 0, cruzado por iditem del match.
     // is_visible_cliente invertido en carta_lista: 0 = visible (ver Task 3).
+    // cantidad = 'ND' es "sin control de stock" (siempre disponible; el contexto lo mapea
+    // a stock 1000): hay que excluirlo a mano porque MySQL castea 'ND' a 0 y tacharía todo
+    // el menú. Verificado en la sede 13: 150 filas ND / 87 con <= 0 / 43 con > 0.
     const rows = await prisma.$queryRawUnsafe(
         `SELECT DISTINCT cl.iditem
          FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem
          WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0
-           AND cl.cantidad IS NOT NULL AND CAST(cl.cantidad AS DECIMAL(10,2)) <= 0`,
+           AND cl.cantidad IS NOT NULL AND cl.cantidad <> 'ND'
+           AND CAST(cl.cantidad AS DECIMAL(10,2)) <= 0`,
         Number(idsede)
     ) as { iditem: number }[];
     const agotados = new Set((rows || []).map((r) => Number(r.iditem)));
@@ -78,28 +82,31 @@ export const generarCartaTachada = async (
         const key = `files-bot/cartas-gen/carta-${Number(idsede)}-${hash}.jpg`;
         const url = `https://${bucket()}.s3.${region()}.amazonaws.com/${key}`;
 
-        if (cache?.hash !== hash) {
-            // sin agotados igual generamos (copia limpia) para URL consistente y cache simple
-            const base = await axios.get(urlCartaBase(idx.archivo), {
-                responseType: 'arraybuffer', timeout: 15000, maxContentLength: 20 * 1024 * 1024
-            });
-            // reescala ANTES de componer: sharp aplica composite sobre la imagen ya
-            // redimensionada, así que el overlay debe construirse con las dimensiones finales
-            const baseBuf = await sharp(Buffer.from(base.data), { failOn: 'none' })
-                .resize({ width: 1600, withoutEnlargement: true })
-                .toBuffer();
-            let img = sharp(baseBuf);
-            const meta = await img.metadata();
-            const W = meta.width || idx.width, H = meta.height || idx.height;
-            if (nombres.length) {
-                const overlay = Buffer.from(construirOverlaySVG(W, H, lineasAgotadas.map((l) => l.box)));
-                img = img.composite([{ input: overlay }]);
-            }
-            // jpeg: la base es una foto opaca; png full-res multiplicaría el peso del media
-            const buf = await img.jpeg({ quality: 82 }).toBuffer();
-            const s3 = new S3Client({ region: region() });
-            await s3.send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: buf, ContentType: 'image/jpeg' }));
+        // Se regenera SIEMPRE que la ventana venció, sin comparar el hash: la key de S3
+        // es determinística y el PUT idempotente, así que volver a generar restaura el
+        // objeto si una regla de lifecycle de S3 lo expiró. Con el guard de hash, un set
+        // de agotados sin cambios servía una URL cuyo objeto S3 ya había borrado (media
+        // muerta en silencio). Dentro de los 5 min sigue devolviéndose la URL cacheada.
+        // sin agotados igual generamos (copia limpia) para URL consistente y cache simple
+        const base = await axios.get(urlCartaBase(idx.archivo), {
+            responseType: 'arraybuffer', timeout: 15000, maxContentLength: 20 * 1024 * 1024
+        });
+        // reescala ANTES de componer: sharp aplica composite sobre la imagen ya
+        // redimensionada, así que el overlay debe construirse con las dimensiones finales
+        const baseBuf = await sharp(Buffer.from(base.data), { failOn: 'none' })
+            .resize({ width: 1600, withoutEnlargement: true })
+            .toBuffer();
+        let img = sharp(baseBuf);
+        const meta = await img.metadata();
+        const W = meta.width || idx.width, H = meta.height || idx.height;
+        if (nombres.length) {
+            const overlay = Buffer.from(construirOverlaySVG(W, H, lineasAgotadas.map((l) => l.box)));
+            img = img.composite([{ input: overlay }]);
         }
+        // jpeg: la base es una foto opaca; png full-res multiplicaría el peso del media
+        const buf = await img.jpeg({ quality: 82 }).toBuffer();
+        const s3 = new S3Client({ region: region() });
+        await s3.send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: buf, ContentType: 'image/jpeg' }));
         ventana.set(Number(idsede), { hash, url, agotados: nombres, en: Date.now() });
         return { tipo: 'imagen', imagen_url: url, agotados: nombres };
     } catch (e) {

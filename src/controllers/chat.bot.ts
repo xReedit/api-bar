@@ -1205,6 +1205,7 @@ router.post('/carta-indexar/:idsede', auth, async (req: any, res) => {
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
 
         const indice = await construirIndice(idsede, prisma);
+        if (indice) invalidarVentana(idsede); // carta nueva subida ⇒ no servir la imagen vieja hasta 5 min
         res.status(200).json({ success: !!indice, indice });
     } catch (error) {
         console.error('Error en carta-indexar', error);

@@ -2244,6 +2244,8 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 return [4 /*yield*/, (0, carta_indice_service_1.leerIndice)(Number(idsede))];
             case 7:
                 idx = _k.sent();
+                if (!idx)
+                    console.warn('[contexto] modo manual sin indice, agotados_manual vacio', idsede);
                 agotadosManual = ((idx === null || idx === void 0 ? void 0 : idx.lineas) || []).filter(function (l) { return l.agotado; }).map(function (l) { return l.texto; });
                 _k.label = 8;
             case 8:

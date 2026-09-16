@@ -50,8 +50,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 exports.__esModule = true;
 exports.invalidarVentana = exports.generarCartaTachada = exports.obtenerAgotados = exports.hashAgotados = exports.construirOverlaySVG = exports.resolverCartaTachado = void 0;
 // Genera la carta con platos agotados tachados. Regeneración perezosa:
-// solo cuando un cliente la pide, como máximo una vez cada 5 min por sede,
-// y solo si el set de agotados cambió (key S3 determinística por hash).
+// solo cuando un cliente la pide, como máximo una vez cada 5 min por sede
+// (key S3 determinística por hash, PUT idempotente).
 var crypto_1 = require("crypto");
 var axios_1 = __importDefault(require("axios"));
 var path_1 = __importDefault(require("path"));
@@ -89,7 +89,7 @@ var obtenerAgotados = function (idsede, modo, idx, prisma) { return __awaiter(vo
             case 0:
                 if (modo === 'manual')
                     return [2 /*return*/, idx.lineas.filter(function (l) { return l.agotado; })];
-                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT DISTINCT cl.iditem\n         FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem\n         WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0\n           AND cl.cantidad IS NOT NULL AND CAST(cl.cantidad AS DECIMAL(10,2)) <= 0", Number(idsede))];
+                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT DISTINCT cl.iditem\n         FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem\n         WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0\n           AND cl.cantidad IS NOT NULL AND cl.cantidad <> 'ND'\n           AND CAST(cl.cantidad AS DECIMAL(10,2)) <= 0", Number(idsede))];
             case 1:
                 rows = _a.sent();
                 agotados = new Set((rows || []).map(function (r) { return Number(r.iditem); }));
@@ -107,7 +107,7 @@ var generarCartaTachada = function (idsede, prisma) { return __awaiter(void 0, v
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                _b.trys.push([0, 14, , 16]);
+                _b.trys.push([0, 13, , 15]);
                 return [4 /*yield*/, prisma.sede_costo_delivery.findFirst({
                         where: { idsede: Number(idsede), estado: '0' }, select: { parametros: true }
                     })];
@@ -138,7 +138,6 @@ var generarCartaTachada = function (idsede, prisma) { return __awaiter(void 0, v
                 hash = (0, exports.hashAgotados)(__spreadArray([idx.etag], nombres, true));
                 key = "files-bot/cartas-gen/carta-".concat(Number(idsede), "-").concat(hash, ".jpg");
                 url = "https://".concat(bucket(), ".s3.").concat(region(), ".amazonaws.com/").concat(key);
-                if (!((cache === null || cache === void 0 ? void 0 : cache.hash) !== hash)) return [3 /*break*/, 13];
                 return [4 /*yield*/, axios_1["default"].get((0, carta_indice_service_1.urlCartaBase)(idx.archivo), {
                         responseType: 'arraybuffer', timeout: 15000, maxContentLength: 20 * 1024 * 1024
                     })];
@@ -165,16 +164,14 @@ var generarCartaTachada = function (idsede, prisma) { return __awaiter(void 0, v
                 return [4 /*yield*/, s3.send(new client_s3_1.PutObjectCommand({ Bucket: bucket(), Key: key, Body: buf, ContentType: 'image/jpeg' }))];
             case 12:
                 _b.sent();
-                _b.label = 13;
-            case 13:
                 ventana.set(Number(idsede), { hash: hash, url: url, agotados: nombres, en: Date.now() });
                 return [2 /*return*/, { tipo: 'imagen', imagen_url: url, agotados: nombres }];
-            case 14:
+            case 13:
                 e_1 = _b.sent();
                 console.error('[carta-tachado] fallo, fallback a link', e_1);
                 return [4 /*yield*/, fallbackLink(idsede, prisma)];
-            case 15: return [2 /*return*/, _b.sent()];
-            case 16: return [2 /*return*/];
+            case 14: return [2 /*return*/, _b.sent()];
+            case 15: return [2 /*return*/];
         }
     });
 }); };

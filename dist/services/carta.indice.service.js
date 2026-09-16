@@ -144,6 +144,8 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
                 return [4 /*yield*/, etagCarta(archivo)];
             case 2:
                 etag = _a.sent();
+                if (!etag)
+                    console.warn('[carta-idx] sin etag de S3 (¿falta permiso HeadObject?), versionado de imagen degradado', idsede);
                 return [4 /*yield*/, (0, exports.leerIndice)(idsede)];
             case 3:
                 previo = _a.sent();

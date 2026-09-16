@@ -81,6 +81,9 @@ var cocinar_pedido_1 = require("../services/cocinar.pedido");
 var reglas_negocio_1 = require("../services/reglas-negocio");
 var client_s3_1 = require("@aws-sdk/client-s3");
 var s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
+var carta_indice_service_1 = require("../services/carta.indice.service");
+var carta_tachado_service_1 = require("../services/carta.tachado.service");
+var auth_1 = require("../middleware/auth");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -1470,6 +1473,131 @@ router.get('/stop/:idsede', function (req, res, next) { return __awaiter(void 0,
                     return [2 /*return*/, res.status(404).json({ error: 'Sede no encontrada' })];
                 }
                 next(error_10);
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); });
+// ---------------------------------------------------------------------------
+// Carta con agotados tachados (panel Piter). construirIndice re-OCRea la carta,
+// por eso SOLO se llama desde estos endpoints del panel: ninguna ruta que
+// atienda al cliente/bot debe dispararlo.
+//
+// Estas 4 llevan `auth` por ruta aunque el resto de /chat-bot/* siga sin auth
+// por compatibilidad: indexar gasta cuota de Google Vision en cada llamada y
+// los agotados se ven en la carta que recibe el cliente, así que no pueden
+// quedar abiertas. El panel ya manda Authorization: Bearer en todas sus
+// llamadas. Mismo criterio que /chat-bot/billing en routes/index.ts.
+// ---------------------------------------------------------------------------
+// idsede llega por URL: se valida acá para no pasarle un NaN a los servicios.
+var sedeValida = function (raw) {
+    var n = Number(raw);
+    return !Number.isInteger(n) || n <= 0 ? null : n;
+};
+// Indexa (OCR) la carta actual de la sede. Idempotente: si la imagen no cambió, devuelve el índice vigente.
+router.post('/carta-indexar/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, indice, error_11;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                idsede = sedeValida(req.params.idsede);
+                if (!idsede)
+                    return [2 /*return*/, res.status(400).json({ success: false, error: 'ID de sede inválido' })];
+                return [4 /*yield*/, (0, carta_indice_service_1.construirIndice)(idsede, prisma)];
+            case 1:
+                indice = _a.sent();
+                res.status(200).json({ success: !!indice, indice: indice });
+                return [3 /*break*/, 3];
+            case 2:
+                error_11 = _a.sent();
+                console.error('Error en carta-indexar', error_11);
+                res.status(500).send({ error: 'Error al indexar la carta' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); });
+router.get('/carta-indice/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, indice, error_12;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                idsede = sedeValida(req.params.idsede);
+                if (!idsede)
+                    return [2 /*return*/, res.status(400).json({ success: false, error: 'ID de sede inválido' })];
+                return [4 /*yield*/, (0, carta_indice_service_1.leerIndice)(idsede)];
+            case 1:
+                indice = _a.sent();
+                res.status(200).json({ success: true, indice: indice });
+                return [3 /*break*/, 3];
+            case 2:
+                error_12 = _a.sent();
+                console.error('Error en carta-indice', error_12);
+                res.status(500).send({ error: 'Error al leer el indice' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); });
+// Modo manual: el operador marca/desmarca agotados por texto de línea. Reemplaza el set completo.
+router.put('/carta-agotados/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, recibidos, textos_1, idx, actualizado, ok, error_13;
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 3, , 4]);
+                idsede = sedeValida(req.params.idsede);
+                if (!idsede)
+                    return [2 /*return*/, res.status(400).json({ success: false, error: 'ID de sede inválido' })];
+                recibidos = (_a = req.body) === null || _a === void 0 ? void 0 : _a.textos;
+                if (!Array.isArray(recibidos) || recibidos.some(function (t) { return typeof t !== 'string'; })) {
+                    return [2 /*return*/, res.status(400).json({ success: false, error: 'textos debe ser un array de strings' })];
+                }
+                textos_1 = new Set(recibidos);
+                return [4 /*yield*/, (0, carta_indice_service_1.leerIndice)(idsede)];
+            case 1:
+                idx = _b.sent();
+                if (!idx)
+                    return [2 /*return*/, res.status(404).json({ success: false, error: 'Sin indice; indexa la carta primero' })];
+                actualizado = __assign(__assign({}, idx), { lineas: idx.lineas.map(function (l) { return (__assign(__assign({}, l), { agotado: textos_1.has(l.texto) })); }), actualizado: new Date().toISOString() });
+                return [4 /*yield*/, (0, carta_indice_service_1.guardarIndice)(idsede, actualizado)];
+            case 2:
+                ok = _b.sent();
+                (0, carta_tachado_service_1.invalidarVentana)(idsede); // el próximo pedido de carta regenera ya
+                res.status(200).json({ success: ok });
+                return [3 /*break*/, 4];
+            case 3:
+                error_13 = _b.sent();
+                console.error('Error en carta-agotados', error_13);
+                res.status(500).send({ error: 'Error al guardar agotados' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });
+// Preview para el panel: fuerza regeneración inmediata (sin esperar la ventana)
+router.get('/carta-preview/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, r, error_14;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                idsede = sedeValida(req.params.idsede);
+                if (!idsede)
+                    return [2 /*return*/, res.status(400).json({ success: false, error: 'ID de sede inválido' })];
+                (0, carta_tachado_service_1.invalidarVentana)(idsede);
+                return [4 /*yield*/, (0, carta_tachado_service_1.generarCartaTachada)(idsede, prisma)];
+            case 1:
+                r = _a.sent();
+                res.status(200).json(__assign({ success: true }, r));
+                return [3 /*break*/, 3];
+            case 2:
+                error_14 = _a.sent();
+                console.error('Error en carta-preview', error_14);
+                res.status(500).send({ error: 'Error al generar preview' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

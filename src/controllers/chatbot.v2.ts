@@ -10,6 +10,8 @@ import { getEstructuraPedido } from "../services/cocinar.pedido";
 import PedidoServices from "../services/pedido.services";
 import { JsonPrintService } from "../services/json.print.services";
 import { generarYSubirTicket } from "../services/ticket.image.service";
+import { generarCartaTachada, resolverCartaTachado } from "../services/carta.tachado.service";
+import { leerIndice } from "../services/carta.indice.service";
 import axios from "axios";
 
 const prisma = new PrismaClient();
@@ -1061,6 +1063,24 @@ router.post("/calcular-delivery", async (req, res) => {
             success: false,
             error: 'Error al calcular delivery'
         });
+    }
+});
+
+// Carta a demanda para el bot: tachada si el flag de la sede está activo y hay
+// índice; si no, el link original. Falla-abierto: cualquier error responde 200
+// con tipo 'link' para que el bot nunca se quede sin respuesta por la carta.
+router.get('/carta-imagen/:idsede', async (req: any, res) => {
+    try {
+        const r = await generarCartaTachada(Number(req.params.idsede), prisma);
+        const mensaje = r.tipo === 'imagen'
+            ? (r.agotados.length
+                ? 'Aquí tienes nuestra carta de hoy 📋 Los platos tachados ya se agotaron.'
+                : 'Aquí tienes nuestra carta de hoy 📋')
+            : undefined;
+        res.status(200).json({ success: true, ...r, ...(mensaje ? { mensaje } : {}) });
+    } catch (error) {
+        console.error('Error en carta-imagen', error);
+        res.status(200).json({ success: true, tipo: 'link', link_carta: null }); // nunca romper al bot
     }
 });
 
@@ -2249,7 +2269,10 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
             where: {
                 idsede: Number(idsede),
                 estado: 0,
-                visible_cliente: '1'
+                visible_cliente: '1',
+                // sin este filtro puede caer en una categoría visible sin carta y
+                // devolver link_carta null aunque otra categoría sí la tenga
+                url_carta: { not: null }
             },
             select: {
                 url_carta: true
@@ -2339,7 +2362,17 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
         }
 
         const parametros = sedeConfig?.parametros || {};
-        
+
+        // Modo de tachado de la sede. En 'manual' hay que leer el índice de S3
+        // (1 GET por contexto) porque los agotados marcados a mano viven ahí;
+        // en 'auto' los resuelve carta-imagen contra el stock de la BD.
+        const modoCartaTachado = resolverCartaTachado(parametros);
+        let agotadosManual: string[] = [];
+        if (modoCartaTachado === 'manual') {
+            const idx = await leerIndice(Number(idsede));
+            agotadosManual = (idx?.lineas || []).filter((l) => l.agotado).map((l) => l.texto);
+        }
+
         let estaAbierto = false;
         const nombreDiaActual = mapaDias[diaActual === 0 ? '1' : (diaActual + 1).toString()];
         if (nombreDiaActual && horarioAtencion[nombreDiaActual]) {
@@ -2393,7 +2426,13 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
             reglas_negocio: resolverReglas((parametros as any).reglas_negocio),
             mensaje_bienvenida: "Bienvenido! En que puedo ayudarte?",
             activo: true,
-            link_carta: categoria?.url_carta ? `https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/${categoria?.url_carta}` : null
+            link_carta: categoria?.url_carta ? `https://papaya-comercio-files.s3.us-east-2.amazonaws.com/files-bot/${categoria?.url_carta}` : null,
+            // Tachado de agotados en la imagen de la carta: 'off' manda el link
+            // de siempre, 'manual'/'auto' hacen que el bot pida carta-imagen.
+            carta_tachado: modoCartaTachado,
+            // Solo en modo manual: nombres que el dueño marcó agotados en el panel.
+            // El bot los usa para no ofrecerlos aunque el stock de la BD no lo diga.
+            agotados_manual: agotadosManual
         };
 
         const telefonoLimpio = telefono.replace(/\s/g, '');

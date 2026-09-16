@@ -36,4 +36,9 @@ describe('hashAgotados', () => {
     it('cambia con el contenido', () => {
         expect(hashAgotados(['a'])).not.toBe(hashAgotados(['a', 'b']));
     });
+    // el etag de la carta entra al hash: carta re-subida con los mismos agotados
+    // debe dar key distinta, si no se sirve la imagen generada con la carta vieja
+    it('distingue versiones de la carta con los mismos agotados', () => {
+        expect(hashAgotados(['etag1', 'a'])).not.toBe(hashAgotados(['etag2', 'a']));
+    });
 });

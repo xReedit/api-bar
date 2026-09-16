@@ -73,23 +73,32 @@ export const generarCartaTachada = async (
 
         const lineasAgotadas = await obtenerAgotados(Number(idsede), modo, idx, prisma);
         const nombres = lineasAgotadas.map((l) => l.texto);
-        const hash = hashAgotados(nombres);
-        const key = `files-bot/cartas-gen/carta-${Number(idsede)}-${hash}.png`;
+        // el etag entra al hash: carta re-subida ⇒ key nueva aunque los agotados no cambien
+        const hash = hashAgotados([idx.etag, ...nombres]);
+        const key = `files-bot/cartas-gen/carta-${Number(idsede)}-${hash}.jpg`;
         const url = `https://${bucket()}.s3.${region()}.amazonaws.com/${key}`;
 
         if (cache?.hash !== hash) {
             // sin agotados igual generamos (copia limpia) para URL consistente y cache simple
-            const base = await axios.get(urlCartaBase(idx.archivo), { responseType: 'arraybuffer', timeout: 15000 });
-            let img = sharp(Buffer.from(base.data), { failOn: 'none' });
+            const base = await axios.get(urlCartaBase(idx.archivo), {
+                responseType: 'arraybuffer', timeout: 15000, maxContentLength: 20 * 1024 * 1024
+            });
+            // reescala ANTES de componer: sharp aplica composite sobre la imagen ya
+            // redimensionada, así que el overlay debe construirse con las dimensiones finales
+            const baseBuf = await sharp(Buffer.from(base.data), { failOn: 'none' })
+                .resize({ width: 1600, withoutEnlargement: true })
+                .toBuffer();
+            let img = sharp(baseBuf);
             const meta = await img.metadata();
             const W = meta.width || idx.width, H = meta.height || idx.height;
             if (nombres.length) {
                 const overlay = Buffer.from(construirOverlaySVG(W, H, lineasAgotadas.map((l) => l.box)));
                 img = img.composite([{ input: overlay }]);
             }
-            const png = await img.png().toBuffer();
+            // jpeg: la base es una foto opaca; png full-res multiplicaría el peso del media
+            const buf = await img.jpeg({ quality: 82 }).toBuffer();
             const s3 = new S3Client({ region: region() });
-            await s3.send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: png, ContentType: 'image/png' }));
+            await s3.send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: buf, ContentType: 'image/jpeg' }));
         }
         ventana.set(Number(idsede), { hash, url, agotados: nombres, en: Date.now() });
         return { tipo: 'imagen', imagen_url: url, agotados: nombres };

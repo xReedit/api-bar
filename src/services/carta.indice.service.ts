@@ -64,10 +64,16 @@ export const construirIndice = async (idsede: number, prisma: any): Promise<Indi
         const extraido = respuesta ? extraerLineas(respuesta) : null;
         if (!extraido) return null;
 
+        // OJO: en carta_lista el flag está INVERTIDO respecto a categoria.visible_cliente.
+        // Es un Boolean @default(false) (schema.prisma) y las queries de producción del repo
+        // leen 0 = visible al cliente (ver chat.bot.ts:660). Con '1' la lista sale casi vacía
+        // y ninguna línea de la carta llega a enlazarse con su item.
+        // i.estado = 0 excluye items dados de baja que siguen en carta_lista: si no, uno de
+        // ellos puede ganarle el match greedy al item correcto y el tachado cae en la línea mala.
         const items = await prisma.$queryRawUnsafe(
             `SELECT DISTINCT i.iditem, i.descripcion
              FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem
-             WHERE i.idsede = ? AND cl.estado = 0 AND cl.is_visible_cliente = '1'`,
+             WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0`,
             Number(idsede)
         ) as { iditem: number; descripcion: string }[];
 

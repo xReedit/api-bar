@@ -12,6 +12,13 @@ import { startPushWatcher } from './services/push.watcher';
 
 const app = express()
 
+// IP real del cliente para el rate limit de /encuesta-publica. Se confia por DIRECCION y no por numero de saltos:
+// a la API se llega por el VPS de la encuesta y directo por papaya.com.pe, con distinta cantidad de proxies, y un
+// conteo fijo o se falsifica (X-Forwarded-For del cliente) o deja a todos con la misma IP (limite global).
+// TRUST_PROXY_IPS = IPs de los proxies propios separadas por coma (el de papaya.com.pe si no es local y la IP
+// publica del VPS de la encuesta). loopback siempre: proxy en la misma maquina y proxy de Vite en desarrollo.
+app.set('trust proxy', ['loopback', ...(env.TRUST_PROXY_IPS ?? '').split(',').map((s) => s.trim()).filter(Boolean)]);
+
 app.use(cors());
 app.use(express.json());
 app.use(errorHandler);

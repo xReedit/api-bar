@@ -11,6 +11,7 @@ import chatbot_billing_admin from "../controllers/chatbot.billing.admin";
 import chatbot_v2 from "../controllers/chatbot.v2";
 import loginRestobar from "../controllers/login.restobar";
 import permiso_remoto from "../controllers/permiso.remoto";
+import encuesta_publica from "../controllers/encuesta.publica";
 import reinpresion from "../controllers/reimpresion";
 import app_repartidor from "../controllers/app.repartidor";
 import restobar_cobranza from "../controllers/restobar/cobranza";
@@ -23,6 +24,7 @@ import dashboard_usuarios from "../controllers/dashboard/usuarios";
 import dashboard_compras from "../controllers/dashboard/compras";
 import dashboard_punto_equilibrio from "../controllers/dashboard/punto-equilibrio";
 import dashboard_promociones_cupones from "../controllers/dashboard/promociones-cupones";
+import dashboard_encuestas from "../controllers/dashboard/encuestas";
 import push from "../controllers/push";
 
 const router = express.Router();
@@ -49,6 +51,8 @@ router.use('/chat-bot', chat_bot);
 router.use('/chatbot/billing-admin', apiKeyAuth, chatbot_billing_admin);
 router.use('/chatbot', apiKeyAuth, chatbot_v2);
 router.use('/permiso-remoto', permiso_remoto);
+// encuesta de satisfaccion publica (sin login): seguridad propia por firma HMAC + nonce + rate limit
+router.use('/encuesta-publica', encuesta_publica);
 router.use('/reimpresion', reinpresion);
 router.use('/app-repartidor', app_repartidor);
 
@@ -65,6 +69,8 @@ router.use('/dash-usuarios', auth, dashboard_usuarios);
 router.use('/dash-compras', auth, dashboard_compras);
 router.use('/dash-punto-equilibrio', auth, dashboard_punto_equilibrio);
 router.use('/dash-promociones-cupones', auth, dashboard_promociones_cupones);
+// valida que cada sede pedida pertenezca al token (los demas dash-* no lo hacen)
+router.use('/dash-encuestas', auth, dashboard_encuestas);
 
 // push notifications (Web Push VAPID)
 router.use('/push', auth, push);

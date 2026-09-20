@@ -1204,9 +1204,11 @@ router.post('/carta-indexar/:idsede', auth, async (req: any, res) => {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
 
-        const indice = await construirIndice(idsede, prisma);
-        if (indice) invalidarVentana(idsede); // carta nueva subida ⇒ no servir la imagen vieja hasta 5 min
-        res.status(200).json({ success: !!indice, indice });
+        const r = await construirIndice(idsede, prisma);
+        // Invalida también cuando la carta resultó demasiado larga: el índice previo se
+        // borró y no hay que seguir sirviendo la imagen tachada vieja hasta 5 min.
+        if (r.indice || r.motivo) invalidarVentana(idsede);
+        res.status(200).json({ success: !!r.indice, indice: r.indice, ...(r.motivo ? { motivo: r.motivo, lineas: r.lineas, max: r.max } : {}) });
     } catch (error) {
         console.error('Error en carta-indexar', error);
         res.status(500).send({ error: 'Error al indexar la carta' });

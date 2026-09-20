@@ -1496,7 +1496,7 @@ var sedeValida = function (raw) {
 };
 // Indexa (OCR) la carta actual de la sede. Idempotente: si la imagen no cambió, devuelve el índice vigente.
 router.post('/carta-indexar/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var idsede, indice, error_11;
+    var idsede, r, error_11;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -1506,10 +1506,12 @@ router.post('/carta-indexar/:idsede', auth_1.auth, function (req, res) { return 
                     return [2 /*return*/, res.status(400).json({ success: false, error: 'ID de sede inválido' })];
                 return [4 /*yield*/, (0, carta_indice_service_1.construirIndice)(idsede, prisma)];
             case 1:
-                indice = _a.sent();
-                if (indice)
-                    (0, carta_tachado_service_1.invalidarVentana)(idsede); // carta nueva subida ⇒ no servir la imagen vieja hasta 5 min
-                res.status(200).json({ success: !!indice, indice: indice });
+                r = _a.sent();
+                // Invalida también cuando la carta resultó demasiado larga: el índice previo se
+                // borró y no hay que seguir sirviendo la imagen tachada vieja hasta 5 min.
+                if (r.indice || r.motivo)
+                    (0, carta_tachado_service_1.invalidarVentana)(idsede);
+                res.status(200).json(__assign({ success: !!r.indice, indice: r.indice }, (r.motivo ? { motivo: r.motivo, lineas: r.lineas, max: r.max } : {})));
                 return [3 /*break*/, 3];
             case 2:
                 error_11 = _a.sent();

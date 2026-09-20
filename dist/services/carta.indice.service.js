@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.construirIndice = exports.guardarIndice = exports.leerIndice = exports.urlCartaBase = void 0;
+exports.construirIndice = exports.guardarIndice = exports.leerIndice = exports.urlCartaBase = exports.maxLineasCarta = void 0;
 // Índice de la carta: qué línea de texto está en qué caja de la imagen.
 // Vive en S3 (files-bot/cartas-idx/), NUNCA en sede_costo_delivery.parametros:
 // el PUT update-config-delivery del panel reemplaza ese JSON completo y lo pisaría.
@@ -56,6 +56,14 @@ var carta_ocr_service_1 = require("./carta.ocr.service");
 var carta_match_service_1 = require("./carta.match.service");
 var bucket = function () { return process.env.AWS_BUCKET_NAME || 'papaya-comercio-files'; };
 var region = function () { return process.env.AWS_REGION || 'us-east-2'; };
+// El tachado es para cartas cortas (menú del día): con cartas grandes el OCR y el
+// match se vuelven poco confiables y la imagen queda ilegible. Tope en líneas de
+// texto detectadas (proxy de nº de platos), configurable por env.
+var maxLineasCarta = function () {
+    var n = Number(process.env.CARTA_TACHADO_MAX_LINEAS);
+    return Number.isInteger(n) && n > 0 ? n : 40;
+};
+exports.maxLineasCarta = maxLineasCarta;
 var idxKey = function (idsede) { return "files-bot/cartas-idx/idx-".concat(idsede, ".json"); };
 var urlCartaBase = function (archivo) {
     return "https://".concat(bucket(), ".s3.").concat(region(), ".amazonaws.com/files-bot/").concat(archivo);
@@ -124,14 +132,32 @@ var etagCarta = function (archivo) { return __awaiter(void 0, void 0, void 0, fu
         }
     });
 }); };
+var borrarIndice = function (idsede) { return __awaiter(void 0, void 0, void 0, function () {
+    var s3, _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                s3 = new client_s3_1.S3Client({ region: region() });
+                return [4 /*yield*/, s3.send(new client_s3_1.DeleteObjectCommand({ Bucket: bucket(), Key: idxKey(idsede) }))];
+            case 1:
+                _b.sent();
+                return [3 /*break*/, 3];
+            case 2:
+                _a = _b.sent();
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
 // Idempotente: si la imagen no cambió (ETag), devuelve el índice existente.
 // Al reindexar se conservan los "agotado" manuales de líneas cuyo texto se mantiene.
 var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 0, void 0, function () {
-    var categoria, archivo, etag, previo, respuesta, extraido, items, agotadosPrevios_1, lineas, idx, e_2;
+    var categoria, archivo, etag, previo, respuesta, extraido, max, items, agotadosPrevios_1, lineas, idx, e_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 7, , 8]);
+                _a.trys.push([0, 9, , 10]);
                 return [4 /*yield*/, prisma.categoria.findFirst({
                         where: { idsede: Number(idsede), estado: 0, visible_cliente: '1', url_carta: { not: null } },
                         select: { url_carta: true }
@@ -140,7 +166,7 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
                 categoria = _a.sent();
                 archivo = categoria === null || categoria === void 0 ? void 0 : categoria.url_carta;
                 if (!archivo)
-                    return [2 /*return*/, null];
+                    return [2 /*return*/, { indice: null }];
                 return [4 /*yield*/, etagCarta(archivo)];
             case 2:
                 etag = _a.sent();
@@ -150,15 +176,26 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
             case 3:
                 previo = _a.sent();
                 if (previo && etag && previo.etag === etag && previo.archivo === archivo)
-                    return [2 /*return*/, previo];
+                    return [2 /*return*/, { indice: previo }];
                 return [4 /*yield*/, (0, carta_ocr_service_1.detectarTexto)((0, exports.urlCartaBase)(archivo))];
             case 4:
                 respuesta = _a.sent();
                 extraido = respuesta ? (0, carta_ocr_service_1.extraerLineas)(respuesta) : null;
                 if (!extraido)
-                    return [2 /*return*/, null];
-                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT DISTINCT i.iditem, i.descripcion\n             FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem\n             WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0", Number(idsede))];
+                    return [2 /*return*/, { indice: null }];
+                max = (0, exports.maxLineasCarta)();
+                if (!(extraido.lineas.length > max)) return [3 /*break*/, 6];
+                // Carta demasiado larga: se borra el índice previo para que un índice de una
+                // carta anterior (corta) no tache posiciones equivocadas sobre la imagen nueva.
+                return [4 /*yield*/, borrarIndice(idsede)];
             case 5:
+                // Carta demasiado larga: se borra el índice previo para que un índice de una
+                // carta anterior (corta) no tache posiciones equivocadas sobre la imagen nueva.
+                _a.sent();
+                console.warn("[carta-idx] carta demasiado larga (".concat(extraido.lineas.length, " lineas > ").concat(max, "), tachado desactivado"), idsede);
+                return [2 /*return*/, { indice: null, motivo: 'carta_demasiado_larga', lineas: extraido.lineas.length, max: max }];
+            case 6: return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT DISTINCT i.iditem, i.descripcion\n             FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem\n             WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0", Number(idsede))];
+            case 7:
                 items = _a.sent();
                 agotadosPrevios_1 = new Set(((previo === null || previo === void 0 ? void 0 : previo.lineas) || []).filter(function (l) { return l.agotado; }).map(function (l) { return l.texto; }));
                 lineas = (0, carta_match_service_1.matchLineas)(extraido.lineas, items || []).map(function (l) { return (__assign(__assign({}, l), { agotado: agotadosPrevios_1.has(l.texto) })); });
@@ -169,14 +206,14 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
                     actualizado: new Date().toISOString()
                 };
                 return [4 /*yield*/, (0, exports.guardarIndice)(idsede, idx)];
-            case 6:
+            case 8:
                 _a.sent();
-                return [2 /*return*/, idx];
-            case 7:
+                return [2 /*return*/, { indice: idx }];
+            case 9:
                 e_2 = _a.sent();
                 console.error('[carta-idx] construir fallo', e_2);
-                return [2 /*return*/, null];
-            case 8: return [2 /*return*/];
+                return [2 /*return*/, { indice: null }];
+            case 10: return [2 /*return*/];
         }
     });
 }); };

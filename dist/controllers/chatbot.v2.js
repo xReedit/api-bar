@@ -104,6 +104,85 @@ var carta_indice_service_1 = require("../services/carta.indice.service");
 var axios_1 = __importDefault(require("axios"));
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
+// Seguimiento del pedido para el chatbot: en qué va, quién lo lleva y cuánto falta.
+// El teléfono del repartidor es su número personal, así que solo se entrega mientras el pedido
+// está en camino. Antes no hace falta y después queda circulando sin motivo.
+var CHATBOT_VEL_KMH = Number(process.env.CHATBOT_VEL_KMH) || 18;
+// Al cliente se le promete de más a propósito: si le decimos 5 y llegan en 8 reclama, si le
+// decimos 12 y llegan en 8 siente que lo atendieron rápido.
+var CHATBOT_ETA_HOLGURA = Number(process.env.CHATBOT_ETA_HOLGURA) || 1.7;
+var CHATBOT_ETA_MARGEN_MIN = Number(process.env.CHATBOT_ETA_MARGEN_MIN) || 5;
+// Con la posición vieja no se promete ningún tiempo: es mejor no dar número que dar uno falso.
+var CHATBOT_POSICION_VIGENTE_MIN = 5;
+var resolverSeguimientoPedido = function (f) {
+    var _a, _b;
+    var paso = Number(f.paso);
+    var dStatus = String((_a = f.pwa_delivery_status) !== null && _a !== void 0 ? _a : '');
+    var estadoPwa = String((_b = f.pwa_estado) !== null && _b !== void 0 ? _b : '');
+    var idrepartidor = Number(f.idrepartidor) || 0;
+    var estado;
+    if (dStatus === '5' || estadoPwa === 'C') {
+        estado = 'cancelado';
+    }
+    else if (dStatus === '4' || estadoPwa === 'E' || paso === 3) {
+        estado = 'entregado';
+    }
+    else if (idrepartidor > 0 && (paso >= 2 || dStatus === '3')) {
+        estado = 'en_camino';
+    }
+    else if (idrepartidor > 0) {
+        estado = 'con_repartidor';
+    }
+    else if (estadoPwa === 'A') {
+        estado = 'en_preparacion';
+    }
+    else {
+        estado = 'recibido';
+    }
+    var textos = {
+        cancelado: 'El pedido fue cancelado',
+        entregado: 'Entregado',
+        en_camino: 'En camino a tu dirección',
+        con_repartidor: 'Listo y asignado a un repartidor, sale del local en breve',
+        en_preparacion: 'En preparación en la cocina',
+        recibido: 'Recibido, el local lo está por confirmar'
+    };
+    var out = { estado: estado, estado_texto: textos[estado] };
+    var nombre = [f.repartidor, f.rep_apellido].filter(function (x) { return x && x !== 'sin asignar'; }).join(' ').trim();
+    if (idrepartidor > 0 && nombre) {
+        out.repartidor_nombre = nombre;
+    }
+    if (estado !== 'en_camino') {
+        return out;
+    }
+    if (f.rep_telefono) {
+        out.repartidor_telefono = String(f.rep_telefono);
+    }
+    // distancia y tiempo solo con posición fresca y destino conocido
+    var minutosSinReportar = f.rep_minutos_sin_reportar === null ? null : Number(f.rep_minutos_sin_reportar);
+    if (minutosSinReportar === null || minutosSinReportar > CHATBOT_POSICION_VIGENTE_MIN) {
+        return out;
+    }
+    var pos = f.rep_position;
+    if (typeof pos === 'string') {
+        try {
+            pos = JSON.parse(pos);
+        }
+        catch (_c) {
+            pos = null;
+        }
+    }
+    var repLat = Number(pos === null || pos === void 0 ? void 0 : pos.latitude), repLng = Number(pos === null || pos === void 0 ? void 0 : pos.longitude);
+    var destLat = Number(f.dest_lat), destLng = Number(f.dest_lng);
+    if (![repLat, repLng, destLat, destLng].every(Number.isFinite)) {
+        return out;
+    }
+    var km = (0, geocoding_service_1.estimarKmRuta)(geocoding_service_1.GeocodingService.calcularDistanciaHaversine(repLat, repLng, destLat, destLng));
+    var crudo = (km / CHATBOT_VEL_KMH) * 60;
+    out.distancia_texto = km < 1 ? "".concat(Math.round(km * 1000), " m") : "".concat(km.toFixed(1), " km");
+    out.llega_en_minutos = Math.max(5, Math.round(crudo * CHATBOT_ETA_HOLGURA) + CHATBOT_ETA_MARGEN_MIN);
+    return out;
+};
 // Función helper para calcular tiempo estimado con margen
 var calcularTiempoEstimado = function (tiempoAproxMinutos) {
     var margenMenos = 5;
@@ -2060,7 +2139,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
 }); });
 // consultar pedido por session_id
 router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var session_id, pedidoPreview, pedido, infoPedido, pedidoSerializable, resultado, error_14;
+    var session_id, pedidoPreview, pedido, infoPedido, pedidoSerializable, resultado, f, seguimiento, error_14;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -2085,17 +2164,13 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
                     idpedido: pedido.idpedido ? Number(pedido.idpedido) : null
                 };
                 if (!(pedido.estado === 'confirmed' && pedido.idpedido)) return [3 /*break*/, 3];
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_19 || (templateObject_19 = __makeTemplateObject(["\n                SELECT \n                    p.idpedido,\n                    p.fecha_hora, \n                    tc.descripcion as canal_consumo, \n                    COALESCE(r.nombre, 'sin asignar') as repartidor,\n                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                LEFT JOIN repartidor r USING(idrepartidor)\n                WHERE p.idpedido = ", "\n                LIMIT 1"], ["\n                SELECT \n                    p.idpedido,\n                    p.fecha_hora, \n                    tc.descripcion as canal_consumo, \n                    COALESCE(r.nombre, 'sin asignar') as repartidor,\n                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                LEFT JOIN repartidor r USING(idrepartidor)\n                WHERE p.idpedido = ", "\n                LIMIT 1"])), pedido.idpedido)];
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_19 || (templateObject_19 = __makeTemplateObject(["\n                SELECT \n                    p.idpedido,\n                    p.fecha_hora, \n                    tc.descripcion as canal_consumo, \n                    COALESCE(r.nombre, 'sin asignar') as repartidor,\n                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos,\n                    p.pwa_estado,\n                    p.pwa_delivery_status,\n                    COALESCE(p.idrepartidor, 0) as idrepartidor,\n                    r.apellido as rep_apellido,\n                    r.telefono as rep_telefono,\n                    r.position_now as rep_position,\n                    TIMESTAMPDIFF(MINUTE, r.position_now_fecha, NOW()) as rep_minutos_sin_reportar,\n                    JSON_UNQUOTE(JSON_EXTRACT(tl.time_line, '$.paso')) as paso,\n                    CASE WHEN JSON_VALID(p.json_datos_delivery) THEN JSON_UNQUOTE(JSON_EXTRACT(\n                        p.json_datos_delivery, '$.p_header.arrDatosDelivery.direccionEnvioSelected.latitude')) END as dest_lat,\n                    CASE WHEN JSON_VALID(p.json_datos_delivery) THEN JSON_UNQUOTE(JSON_EXTRACT(\n                        p.json_datos_delivery, '$.p_header.arrDatosDelivery.direccionEnvioSelected.longitude')) END as dest_lng\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                LEFT JOIN repartidor r USING(idrepartidor)\n                LEFT JOIN pedido_time_line_entrega tl ON tl.idpedido = p.idpedido\n                WHERE p.idpedido = ", "\n                LIMIT 1"], ["\n                SELECT \n                    p.idpedido,\n                    p.fecha_hora, \n                    tc.descripcion as canal_consumo, \n                    COALESCE(r.nombre, 'sin asignar') as repartidor,\n                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos,\n                    p.pwa_estado,\n                    p.pwa_delivery_status,\n                    COALESCE(p.idrepartidor, 0) as idrepartidor,\n                    r.apellido as rep_apellido,\n                    r.telefono as rep_telefono,\n                    r.position_now as rep_position,\n                    TIMESTAMPDIFF(MINUTE, r.position_now_fecha, NOW()) as rep_minutos_sin_reportar,\n                    JSON_UNQUOTE(JSON_EXTRACT(tl.time_line, '$.paso')) as paso,\n                    CASE WHEN JSON_VALID(p.json_datos_delivery) THEN JSON_UNQUOTE(JSON_EXTRACT(\n                        p.json_datos_delivery, '$.p_header.arrDatosDelivery.direccionEnvioSelected.latitude')) END as dest_lat,\n                    CASE WHEN JSON_VALID(p.json_datos_delivery) THEN JSON_UNQUOTE(JSON_EXTRACT(\n                        p.json_datos_delivery, '$.p_header.arrDatosDelivery.direccionEnvioSelected.longitude')) END as dest_lng\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                LEFT JOIN repartidor r USING(idrepartidor)\n                LEFT JOIN pedido_time_line_entrega tl ON tl.idpedido = p.idpedido\n                WHERE p.idpedido = ", "\n                LIMIT 1"])), pedido.idpedido)];
             case 2:
                 resultado = _a.sent();
                 if (resultado && resultado.length > 0) {
-                    infoPedido = {
-                        idpedido: Number(resultado[0].idpedido),
-                        fecha_hora: resultado[0].fecha_hora,
-                        canal_consumo: resultado[0].canal_consumo,
-                        repartidor: resultado[0].repartidor,
-                        tiempo_transcurrido_minutos: Number(resultado[0].tiempo_transcurrido_minutos)
-                    };
+                    f = resultado[0];
+                    seguimiento = resolverSeguimientoPedido(f);
+                    infoPedido = __assign({ idpedido: Number(f.idpedido), fecha_hora: f.fecha_hora, canal_consumo: f.canal_consumo, repartidor: f.repartidor, tiempo_transcurrido_minutos: Number(f.tiempo_transcurrido_minutos) }, seguimiento);
                 }
                 _a.label = 3;
             case 3:

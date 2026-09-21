@@ -17,6 +17,73 @@ import axios from "axios";
 const prisma = new PrismaClient();
 const router = express.Router();
 
+// Seguimiento del pedido para el chatbot: en qué va, quién lo lleva y cuánto falta.
+// El teléfono del repartidor es su número personal, así que solo se entrega mientras el pedido
+// está en camino. Antes no hace falta y después queda circulando sin motivo.
+const CHATBOT_VEL_KMH = Number(process.env.CHATBOT_VEL_KMH) || 18;
+// Al cliente se le promete de más a propósito: si le decimos 5 y llegan en 8 reclama, si le
+// decimos 12 y llegan en 8 siente que lo atendieron rápido.
+const CHATBOT_ETA_HOLGURA = Number(process.env.CHATBOT_ETA_HOLGURA) || 1.7;
+const CHATBOT_ETA_MARGEN_MIN = Number(process.env.CHATBOT_ETA_MARGEN_MIN) || 5;
+// Con la posición vieja no se promete ningún tiempo: es mejor no dar número que dar uno falso.
+const CHATBOT_POSICION_VIGENTE_MIN = 5;
+
+const resolverSeguimientoPedido = (f: any) => {
+    const paso = Number(f.paso);
+    const dStatus = String(f.pwa_delivery_status ?? '');
+    const estadoPwa = String(f.pwa_estado ?? '');
+    const idrepartidor = Number(f.idrepartidor) || 0;
+
+    let estado: string;
+    if (dStatus === '5' || estadoPwa === 'C') {
+        estado = 'cancelado';
+    } else if (dStatus === '4' || estadoPwa === 'E' || paso === 3) {
+        estado = 'entregado';
+    } else if (idrepartidor > 0 && (paso >= 2 || dStatus === '3')) {
+        estado = 'en_camino';
+    } else if (idrepartidor > 0) {
+        estado = 'con_repartidor';
+    } else if (estadoPwa === 'A') {
+        estado = 'en_preparacion';
+    } else {
+        estado = 'recibido';
+    }
+
+    const textos: Record<string, string> = {
+        cancelado: 'El pedido fue cancelado',
+        entregado: 'Entregado',
+        en_camino: 'En camino a tu dirección',
+        con_repartidor: 'Listo y asignado a un repartidor, sale del local en breve',
+        en_preparacion: 'En preparación en la cocina',
+        recibido: 'Recibido, el local lo está por confirmar'
+    };
+
+    const out: any = { estado, estado_texto: textos[estado] };
+
+    const nombre = [f.repartidor, f.rep_apellido].filter((x: any) => x && x !== 'sin asignar').join(' ').trim();
+    if (idrepartidor > 0 && nombre) { out.repartidor_nombre = nombre; }
+
+    if (estado !== 'en_camino') { return out; }
+
+    if (f.rep_telefono) { out.repartidor_telefono = String(f.rep_telefono); }
+
+    // distancia y tiempo solo con posición fresca y destino conocido
+    const minutosSinReportar = f.rep_minutos_sin_reportar === null ? null : Number(f.rep_minutos_sin_reportar);
+    if (minutosSinReportar === null || minutosSinReportar > CHATBOT_POSICION_VIGENTE_MIN) { return out; }
+
+    let pos: any = f.rep_position;
+    if (typeof pos === 'string') { try { pos = JSON.parse(pos); } catch { pos = null; } }
+    const repLat = Number(pos?.latitude), repLng = Number(pos?.longitude);
+    const destLat = Number(f.dest_lat), destLng = Number(f.dest_lng);
+    if (![repLat, repLng, destLat, destLng].every(Number.isFinite)) { return out; }
+
+    const km = estimarKmRuta(GeocodingService.calcularDistanciaHaversine(repLat, repLng, destLat, destLng));
+    const crudo = (km / CHATBOT_VEL_KMH) * 60;
+    out.distancia_texto = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+    out.llega_en_minutos = Math.max(5, Math.round(crudo * CHATBOT_ETA_HOLGURA) + CHATBOT_ETA_MARGEN_MIN);
+    return out;
+};
+
 // Función helper para calcular tiempo estimado con margen
 const calcularTiempoEstimado = (tiempoAproxMinutos: number): string => {
     const margenMenos = 5;
@@ -2205,20 +2272,37 @@ router.get('/info-pedido/:session_id', async (req, res) => {
                     p.fecha_hora, 
                     tc.descripcion as canal_consumo, 
                     COALESCE(r.nombre, 'sin asignar') as repartidor,
-                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos
+                    TIMESTAMPDIFF(MINUTE, p.fecha_hora, NOW()) as tiempo_transcurrido_minutos,
+                    p.pwa_estado,
+                    p.pwa_delivery_status,
+                    COALESCE(p.idrepartidor, 0) as idrepartidor,
+                    r.apellido as rep_apellido,
+                    r.telefono as rep_telefono,
+                    r.position_now as rep_position,
+                    TIMESTAMPDIFF(MINUTE, r.position_now_fecha, NOW()) as rep_minutos_sin_reportar,
+                    JSON_UNQUOTE(JSON_EXTRACT(tl.time_line, '$.paso')) as paso,
+                    CASE WHEN JSON_VALID(p.json_datos_delivery) THEN JSON_UNQUOTE(JSON_EXTRACT(
+                        p.json_datos_delivery, '$.p_header.arrDatosDelivery.direccionEnvioSelected.latitude')) END as dest_lat,
+                    CASE WHEN JSON_VALID(p.json_datos_delivery) THEN JSON_UNQUOTE(JSON_EXTRACT(
+                        p.json_datos_delivery, '$.p_header.arrDatosDelivery.direccionEnvioSelected.longitude')) END as dest_lng
                 FROM pedido p
                 INNER JOIN tipo_consumo tc USING(idtipo_consumo)
                 LEFT JOIN repartidor r USING(idrepartidor)
+                LEFT JOIN pedido_time_line_entrega tl ON tl.idpedido = p.idpedido
                 WHERE p.idpedido = ${pedido.idpedido}
                 LIMIT 1`;
 
             if (resultado && resultado.length > 0) {
+                const f = resultado[0];
+                const seguimiento = resolverSeguimientoPedido(f);
+
                 infoPedido = {
-                    idpedido: Number(resultado[0].idpedido),
-                    fecha_hora: resultado[0].fecha_hora,
-                    canal_consumo: resultado[0].canal_consumo,
-                    repartidor: resultado[0].repartidor,
-                    tiempo_transcurrido_minutos: Number(resultado[0].tiempo_transcurrido_minutos)
+                    idpedido: Number(f.idpedido),
+                    fecha_hora: f.fecha_hora,
+                    canal_consumo: f.canal_consumo,
+                    repartidor: f.repartidor,
+                    tiempo_transcurrido_minutos: Number(f.tiempo_transcurrido_minutos),
+                    ...seguimiento
                 };
             }
         }

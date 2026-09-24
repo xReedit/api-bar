@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -60,16 +71,28 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 exports.__esModule = true;
 var express = __importStar(require("express"));
+var express_rate_limit_1 = require("express-rate-limit");
 var errors_util_1 = require("../utils/errors.util");
 var usuario_1 = require("./usuario");
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
+// Freno a la enumeración: login-bot emite tokens a partir de ids numéricos
+// pequeños (idusuario/idsede/idorg) y las claves se comparan sin hash, así que
+// sin límite un atacante prueba combinaciones gratis. 15/min por IP alcanza
+// de sobra para el uso legítimo (un login por sesión de panel).
+var limiteLogin = (0, express_rate_limit_1.rateLimit)({
+    windowMs: 60000,
+    limit: 15,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: function (_req, res) { return res.status(429).json({ success: false, error: 'Demasiados intentos. Espera un momento.' }); }
+});
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a login-restobar' });
 });
 // login user
-router.post('/login', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.post('/login', limiteLogin, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _data, idsede, userRestobar, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
@@ -131,23 +154,25 @@ router.post('/login', function (req, res) { return __awaiter(void 0, void 0, voi
     });
 }); });
 // login user
-router.post('/login-bot', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _data, us, userRestobar, _userBot, usuario_pass, dataUser;
+router.post('/login-bot', limiteLogin, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _data, userRestobar, _userBot, usuario_pass, dataUser, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _data = req.body;
-                us = _data;
-                return [4 /*yield*/, getUserRestobar(_data.id, _data.idsede)
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 9, , 10]);
+                return [4 /*yield*/, getUserRestobar(_data.id, _data.idsede, _data.idorg)
                     // si el usuario es correcto
                 ];
-            case 1:
-                userRestobar = _a.sent();
-                if (!(userRestobar.length !== 0)) return [3 /*break*/, 6];
-                return [4 /*yield*/, getUserBot(_data.idsede)];
             case 2:
+                userRestobar = _a.sent();
+                if (!(userRestobar.length !== 0)) return [3 /*break*/, 7];
+                return [4 /*yield*/, getUserBot(_data.idsede)];
+            case 3:
                 _userBot = _a.sent();
-                if (!(_userBot.length == 0)) return [3 /*break*/, 4];
+                if (!(_userBot.length == 0)) return [3 /*break*/, 5];
                 usuario_pass = Math.random().toString(36).substring(2, 7) + '-bot';
                 dataUser = {
                     idsede: _data.idsede,
@@ -162,25 +187,32 @@ router.post('/login-bot', function (req, res) { return __awaiter(void 0, void 0,
                     per: ''
                 };
                 return [4 /*yield*/, createUser(dataUser)];
-            case 3:
+            case 4:
                 userRestobar = _a.sent();
                 prisma.$disconnect();
-                return [3 /*break*/, 5];
-            case 4:
+                return [3 /*break*/, 6];
+            case 5:
                 userRestobar = _userBot[0];
                 prisma.$disconnect();
-                _a.label = 5;
-            case 5: return [3 /*break*/, 7];
-            case 6: // login             
+                _a.label = 6;
+            case 6: return [3 /*break*/, 8];
+            case 7: // login             
             return [2 /*return*/, res.status(500).send((0, errors_util_1.getErrorMessage)('usuario no existe'))];
-            case 7:
+            case 8:
                 userRestobar.idsede = _data.idsede;
                 (0, usuario_1.loginRestobarBot)(req, res, userRestobar);
-                return [2 /*return*/];
+                return [3 /*break*/, 10];
+            case 9:
+                error_2 = _a.sent();
+                // Sin este catch, un throw en los await dejaba la request colgada
+                // (rechazo de promesa sin manejar en express 4).
+                console.error('login-bot:', error_2);
+                return [2 /*return*/, res.status(500).send((0, errors_util_1.getErrorMessage)(error_2))];
+            case 10: return [2 /*return*/];
         }
     });
 }); });
-router.post('/login-dashboard', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.post('/login-dashboard', limiteLogin, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, usuario, pass, code, user;
     return __generator(this, function (_b) {
         _a = req.body, usuario = _a.usuario, pass = _a.pass, code = _a.code;
@@ -192,18 +224,13 @@ router.post('/login-dashboard', function (req, res) { return __awaiter(void 0, v
         return [2 /*return*/, (0, usuario_1.loginDashboard)(req, res, user)];
     });
 }); });
-var getUserRestobar = function (idusuario, idsede) { return __awaiter(void 0, void 0, void 0, function () {
+var getUserRestobar = function (idusuario, idsede, idorg) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, prisma.usuario.findMany({
-                    where: { AND: {
-                            idusuario: Number(idusuario),
-                            idsede: Number(idsede)
-                        } }
+                    where: { AND: __assign({ idusuario: Number(idusuario), idsede: Number(idsede) }, (idorg !== undefined ? { idorg: Number(idorg) } : {})) }
                 })];
-            case 1: 
-            ////console.log('=======', idusuario);
-            return [2 /*return*/, _a.sent()];
+            case 1: return [2 /*return*/, _a.sent()];
         }
     });
 }); };

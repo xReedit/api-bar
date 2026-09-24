@@ -59,9 +59,25 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.authVerify = exports.apiKeyAuth = exports.auth = exports.SECRET_KEY = void 0;
+exports.authVerify = exports.apiKeyAuth = exports.authSede = exports.auth = exports.secretKey = void 0;
 var jwt = __importStar(require("jsonwebtoken"));
-exports.SECRET_KEY = 'DalePlay182182';
+// La clave sale del env. El literal viejo queda SOLO como fallback de transición
+// para no invalidar sesiones al deployar este cambio; rotar = setear JWT_SECRET
+// con un valor nuevo y largo (invalida todos los tokens vigentes → re-login).
+// Función y no const: si algún día se agrega dotenv tardío, igual lee el valor real.
+var CLAVE_LEGACY = 'DalePlay182182';
+var avisoClaveLegacy = false;
+var secretKey = function () {
+    var s = process.env.JWT_SECRET;
+    if (s && s.length >= 16)
+        return s;
+    if (!avisoClaveLegacy) {
+        console.warn('[auth] JWT_SECRET no configurada (o muy corta): usando clave legacy hardcodeada. Configurala y rotala en produccion.');
+        avisoClaveLegacy = true;
+    }
+    return CLAVE_LEGACY;
+};
+exports.secretKey = secretKey;
 var auth = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
     var token, decoded;
     var _a;
@@ -71,7 +87,7 @@ var auth = function (req, res, next) { return __awaiter(void 0, void 0, void 0, 
             if (!token) {
                 throw new Error();
             }
-            decoded = jwt.verify(token, exports.SECRET_KEY);
+            decoded = jwt.verify(token, (0, exports.secretKey)());
             req.token = decoded;
             next();
         }
@@ -82,6 +98,28 @@ var auth = function (req, res, next) { return __awaiter(void 0, void 0, void 0, 
     });
 }); };
 exports.auth = auth;
+// Autorización por sede (multi-tenant): un token válido de la sede A no debe
+// poder operar sobre la sede B cambiando el :idsede de la URL. El JWT ya trae
+// idsede desde el login (y el de dashboard además sedes[] para orgs multi-sede).
+// Se usa SIEMPRE después de `auth` (necesita el token ya decodificado).
+var authSede = function (req, res, next) {
+    var t = req.token;
+    var pedida = Number(req.params.idsede);
+    var propias = new Set();
+    if (Number.isFinite(Number(t === null || t === void 0 ? void 0 : t.idsede)))
+        propias.add(Number(t.idsede));
+    if (Array.isArray(t === null || t === void 0 ? void 0 : t.sedes)) {
+        for (var _i = 0, _a = t.sedes; _i < _a.length; _i++) {
+            var s = _a[_i];
+            if (Number.isFinite(Number(s === null || s === void 0 ? void 0 : s.idsede)))
+                propias.add(Number(s.idsede));
+        }
+    }
+    if (Number.isFinite(pedida) && propias.has(pedida))
+        return next();
+    res.status(403).json({ success: false, error: 'Sede no autorizada para este usuario' });
+};
+exports.authSede = authSede;
 // API key compartida para las rutas server-to-server del chatbot (/chatbot/*).
 // El bot Go envía el header x-api-key; nadie más debe poder leer contexto de
 // clientes ni crear pedidos. Si CHATBOT_API_KEY no está configurada, deja
@@ -110,7 +148,7 @@ var authVerify = function (req, res, next) { return __awaiter(void 0, void 0, vo
             if (!token) {
                 throw new Error();
             }
-            decoded = jwt.verify(token, exports.SECRET_KEY);
+            decoded = jwt.verify(token, (0, exports.secretKey)());
             req.token = decoded;
             res.status(200).send('Ok');
         }

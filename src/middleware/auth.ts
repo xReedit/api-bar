@@ -2,7 +2,21 @@ import * as jwt from 'jsonwebtoken';
 import { Secret, JwtPayload } from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 
-export const SECRET_KEY: Secret = 'DalePlay182182';
+// La clave sale del env. El literal viejo queda SOLO como fallback de transición
+// para no invalidar sesiones al deployar este cambio; rotar = setear JWT_SECRET
+// con un valor nuevo y largo (invalida todos los tokens vigentes → re-login).
+// Función y no const: si algún día se agrega dotenv tardío, igual lee el valor real.
+const CLAVE_LEGACY = 'DalePlay182182';
+let avisoClaveLegacy = false;
+export const secretKey = (): Secret => {
+    const s = process.env.JWT_SECRET;
+    if (s && s.length >= 16) return s;
+    if (!avisoClaveLegacy) {
+        console.warn('[auth] JWT_SECRET no configurada (o muy corta): usando clave legacy hardcodeada. Configurala y rotala en produccion.');
+        avisoClaveLegacy = true;
+    }
+    return CLAVE_LEGACY;
+};
 
 export interface CustomRequest extends Request {
     token: string | JwtPayload;
@@ -16,13 +30,31 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
             throw new Error();
         }
 
-        const decoded = jwt.verify(token, SECRET_KEY);
+        const decoded = jwt.verify(token, secretKey());
         (req as CustomRequest).token = decoded;
 
         next();
     } catch (err) {
         res.status(401).send('Autentificacion Incorrecta');
     }
+};
+
+// Autorización por sede (multi-tenant): un token válido de la sede A no debe
+// poder operar sobre la sede B cambiando el :idsede de la URL. El JWT ya trae
+// idsede desde el login (y el de dashboard además sedes[] para orgs multi-sede).
+// Se usa SIEMPRE después de `auth` (necesita el token ya decodificado).
+export const authSede = (req: Request, res: Response, next: NextFunction) => {
+    const t: any = (req as CustomRequest).token;
+    const pedida = Number(req.params.idsede);
+    const propias = new Set<number>();
+    if (Number.isFinite(Number(t?.idsede))) propias.add(Number(t.idsede));
+    if (Array.isArray(t?.sedes)) {
+        for (const s of t.sedes) {
+            if (Number.isFinite(Number(s?.idsede))) propias.add(Number(s.idsede));
+        }
+    }
+    if (Number.isFinite(pedida) && propias.has(pedida)) return next();
+    res.status(403).json({ success: false, error: 'Sede no autorizada para este usuario' });
 };
 
 // API key compartida para las rutas server-to-server del chatbot (/chatbot/*).
@@ -53,7 +85,7 @@ export const authVerify = async (req: Request, res: Response, next: NextFunction
             throw new Error();
         }
 
-        const decoded = jwt.verify(token, SECRET_KEY);
+        const decoded = jwt.verify(token, secretKey());
         (req as CustomRequest).token = decoded;
 
         res.status(200).send('Ok');

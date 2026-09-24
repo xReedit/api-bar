@@ -7,7 +7,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { construirIndice, leerIndice, guardarIndice } from "../services/carta.indice.service";
 import { generarCartaTachada, invalidarVentana } from "../services/carta.tachado.service";
-import { auth } from "../middleware/auth";
+import { auth, authSede } from "../middleware/auth";
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -20,10 +20,15 @@ router.get("/", async (req, res) => {
 // credenciales AWS que vivían en el navegador (panel Piter): ahora las keys
 // están solo en el env del server y la URL solo permite PUT de un jpeg al
 // prefijo files-bot/ por 60 segundos.
-router.post('/presign-upload', async (req, res) => {
+// `auth` por ruta: sin él, cualquiera podía mintear PUTs firmados y pisar
+// cualquier imagen de files-bot/ (incluida la carta que el bot reenvía a los
+// clientes). El panel ya manda Authorization: Bearer en esta llamada.
+router.post('/presign-upload', auth, async (req, res) => {
     try {
         const safeName = String(req.body?.fileName || '').replace(/[^a-zA-Z0-9._-]/g, '');
-        if (!safeName) {
+        // Solo imágenes: la URL firmada fija ContentType image/jpeg, pero el nombre
+        // también debe serlo (evita colar .html/.js servidos desde el bucket público).
+        if (!safeName || !/\.(jpe?g|png)$/i.test(safeName)) {
             return res.status(400).json({ success: false, error: 'fileName inválido' });
         }
         if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
@@ -1199,7 +1204,7 @@ const sedeValida = (raw: any): number | null => {
 };
 
 // Indexa (OCR) la carta actual de la sede. Idempotente: si la imagen no cambió, devuelve el índice vigente.
-router.post('/carta-indexar/:idsede', auth, async (req: any, res) => {
+router.post('/carta-indexar/:idsede', auth, authSede, async (req: any, res) => {
     try {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
@@ -1215,7 +1220,7 @@ router.post('/carta-indexar/:idsede', auth, async (req: any, res) => {
     }
 });
 
-router.get('/carta-indice/:idsede', auth, async (req: any, res) => {
+router.get('/carta-indice/:idsede', auth, authSede, async (req: any, res) => {
     try {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
@@ -1229,7 +1234,7 @@ router.get('/carta-indice/:idsede', auth, async (req: any, res) => {
 });
 
 // Modo manual: el operador marca/desmarca agotados por texto de línea. Reemplaza el set completo.
-router.put('/carta-agotados/:idsede', auth, async (req: any, res) => {
+router.put('/carta-agotados/:idsede', auth, authSede, async (req: any, res) => {
     try {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });
@@ -1260,7 +1265,7 @@ router.put('/carta-agotados/:idsede', auth, async (req: any, res) => {
 });
 
 // Preview para el panel: fuerza regeneración inmediata (sin esperar la ventana)
-router.get('/carta-preview/:idsede', auth, async (req: any, res) => {
+router.get('/carta-preview/:idsede', auth, authSede, async (req: any, res) => {
     try {
         const idsede = sedeValida(req.params.idsede);
         if (!idsede) return res.status(400).json({ success: false, error: 'ID de sede inválido' });

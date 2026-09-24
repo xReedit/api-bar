@@ -1,7 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 import * as express from "express";
 import * as bcrypt from 'bcryptjs';
-import { SECRET_KEY } from '../middleware/auth';
+import { secretKey } from '../middleware/auth';
 import { PrismaClient } from "@prisma/client";
 
 
@@ -21,7 +21,7 @@ export async function login(_usuario: any) {
         const isMatch = _usuario.pass === usuario.pass;
 
         if (isMatch) {
-            const token = jwt.sign({ id: usuario.idusuario, usuario: usuario.usuario, idsede: usuario.idsede, idorg: usuario.idorg }, SECRET_KEY,
+            const token = jwt.sign({ id: usuario.idusuario, usuario: usuario.usuario, idsede: usuario.idsede, idorg: usuario.idorg }, secretKey(),
                 {
                     expiresIn: "1d",
                 })
@@ -50,7 +50,7 @@ export async function loginBot(_usuario: any) {
         const isMatch = usuario.isbot === '1';
 
         if (isMatch) {
-            const token = jwt.sign({ id: usuario.idusuario, usuario: usuario.usuario, idsede: usuario.idsede, idorg: usuario.idorg }, SECRET_KEY,
+            const token = jwt.sign({ id: usuario.idusuario, usuario: usuario.usuario, idsede: usuario.idsede, idorg: usuario.idorg }, secretKey(),
                 {
                     expiresIn: "10d",
                 })
@@ -130,7 +130,7 @@ async function datosUser(usuario: any) {
             idsede: usuario.idsede,
             idorg: usuario.idorg,
             sedes: listSedes
-        }, SECRET_KEY,
+        }, secretKey(),
             {
                 expiresIn: "1d",
             })

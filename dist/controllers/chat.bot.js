@@ -96,7 +96,10 @@ router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, f
 // credenciales AWS que vivían en el navegador (panel Piter): ahora las keys
 // están solo en el env del server y la URL solo permite PUT de un jpeg al
 // prefijo files-bot/ por 60 segundos.
-router.post('/presign-upload', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+// `auth` por ruta: sin él, cualquiera podía mintear PUTs firmados y pisar
+// cualquier imagen de files-bot/ (incluida la carta que el bot reenvía a los
+// clientes). El panel ya manda Authorization: Bearer en esta llamada.
+router.post('/presign-upload', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var safeName, bucket, region, s3, key, uploadUrl, error_1;
     var _a;
     return __generator(this, function (_b) {
@@ -104,7 +107,9 @@ router.post('/presign-upload', function (req, res) { return __awaiter(void 0, vo
             case 0:
                 _b.trys.push([0, 2, , 3]);
                 safeName = String(((_a = req.body) === null || _a === void 0 ? void 0 : _a.fileName) || '').replace(/[^a-zA-Z0-9._-]/g, '');
-                if (!safeName) {
+                // Solo imágenes: la URL firmada fija ContentType image/jpeg, pero el nombre
+                // también debe serlo (evita colar .html/.js servidos desde el bucket público).
+                if (!safeName || !/\.(jpe?g|png)$/i.test(safeName)) {
                     return [2 /*return*/, res.status(400).json({ success: false, error: 'fileName inválido' })];
                 }
                 if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
@@ -1495,7 +1500,7 @@ var sedeValida = function (raw) {
     return !Number.isInteger(n) || n <= 0 ? null : n;
 };
 // Indexa (OCR) la carta actual de la sede. Idempotente: si la imagen no cambió, devuelve el índice vigente.
-router.post('/carta-indexar/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.post('/carta-indexar/:idsede', auth_1.auth, auth_1.authSede, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var idsede, r, error_11;
     return __generator(this, function (_a) {
         switch (_a.label) {
@@ -1522,7 +1527,7 @@ router.post('/carta-indexar/:idsede', auth_1.auth, function (req, res) { return 
         }
     });
 }); });
-router.get('/carta-indice/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.get('/carta-indice/:idsede', auth_1.auth, auth_1.authSede, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var idsede, indice, error_12;
     return __generator(this, function (_a) {
         switch (_a.label) {
@@ -1546,7 +1551,7 @@ router.get('/carta-indice/:idsede', auth_1.auth, function (req, res) { return __
     });
 }); });
 // Modo manual: el operador marca/desmarca agotados por texto de línea. Reemplaza el set completo.
-router.put('/carta-agotados/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.put('/carta-agotados/:idsede', auth_1.auth, auth_1.authSede, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var idsede, recibidos, textos_1, idx, actualizado, ok, error_13;
     var _a;
     return __generator(this, function (_b) {
@@ -1583,7 +1588,7 @@ router.put('/carta-agotados/:idsede', auth_1.auth, function (req, res) { return 
     });
 }); });
 // Preview para el panel: fuerza regeneración inmediata (sin esperar la ventana)
-router.get('/carta-preview/:idsede', auth_1.auth, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+router.get('/carta-preview/:idsede', auth_1.auth, auth_1.authSede, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var idsede, r, error_14;
     return __generator(this, function (_a) {
         switch (_a.label) {

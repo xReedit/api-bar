@@ -82,7 +82,7 @@ function login(_usuario) {
                     }
                     isMatch = _usuario.pass === usuario.pass;
                     if (isMatch) {
-                        token = jwt.sign({ id: usuario.idusuario, usuario: usuario.usuario, idsede: usuario.idsede, idorg: usuario.idorg }, auth_1.SECRET_KEY, {
+                        token = jwt.sign({ id: usuario.idusuario, usuario: usuario.usuario, idsede: usuario.idsede, idorg: usuario.idorg }, (0, auth_1.secretKey)(), {
                             expiresIn: "1d"
                         });
                         return [2 /*return*/, { usuario: usuario, token: token }];
@@ -115,7 +115,7 @@ function loginBot(_usuario) {
                     }
                     isMatch = usuario.isbot === '1';
                     if (isMatch) {
-                        token = jwt.sign({ id: usuario.idusuario, usuario: usuario.usuario, idsede: usuario.idsede, idorg: usuario.idorg }, auth_1.SECRET_KEY, {
+                        token = jwt.sign({ id: usuario.idusuario, usuario: usuario.usuario, idsede: usuario.idsede, idorg: usuario.idorg }, (0, auth_1.secretKey)(), {
                             expiresIn: "10d"
                         });
                         return [2 /*return*/, { usuario: usuario, token: token }];
@@ -203,7 +203,7 @@ function datosUser(usuario) {
                         idsede: usuario.idsede,
                         idorg: usuario.idorg,
                         sedes: listSedes
-                    }, auth_1.SECRET_KEY, {
+                    }, (0, auth_1.secretKey)(), {
                         expiresIn: "1d"
                     });
                     return [2 /*return*/, { usuario: usuario, token: token, sedes: listSedes }];

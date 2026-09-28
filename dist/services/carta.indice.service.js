@@ -150,7 +150,7 @@ var borrarIndice = function (idsede) { return __awaiter(void 0, void 0, void 0, 
         }
     });
 }); };
-// Idempotente: si la imagen no cambió (ETag), devuelve el índice existente.
+// Re-OCRea y re-empareja en cada llamada (acción explícita del panel).
 // Al reindexar se conservan los "agotado" manuales de líneas cuyo texto se mantiene.
 var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 0, void 0, function () {
     var categoria, archivo, etag, previo, respuesta, extraido, max, items, agotadosPrevios_1, lineas, idx, e_2;
@@ -175,8 +175,6 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
                 return [4 /*yield*/, (0, exports.leerIndice)(idsede)];
             case 3:
                 previo = _a.sent();
-                if (previo && etag && previo.etag === etag && previo.archivo === archivo)
-                    return [2 /*return*/, { indice: previo }];
                 return [4 /*yield*/, (0, carta_ocr_service_1.detectarTexto)((0, exports.urlCartaBase)(archivo))];
             case 4:
                 respuesta = _a.sent();

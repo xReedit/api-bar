@@ -70,7 +70,7 @@ export type ResultadoIndexado = {
     max?: number;
 };
 
-// Idempotente: si la imagen no cambió (ETag), devuelve el índice existente.
+// Re-OCRea y re-empareja en cada llamada (acción explícita del panel).
 // Al reindexar se conservan los "agotado" manuales de líneas cuyo texto se mantiene.
 export const construirIndice = async (idsede: number, prisma: any): Promise<ResultadoIndexado> => {
     try {
@@ -82,8 +82,12 @@ export const construirIndice = async (idsede: number, prisma: any): Promise<Resu
         if (!archivo) return { indice: null };
         const etag = await etagCarta(archivo);
         if (!etag) console.warn('[carta-idx] sin etag de S3 (¿falta permiso HeadObject?), versionado de imagen degradado', idsede);
+        // Siempre se re-OCRea y re-empareja: indexar es una acción explícita del panel
+        // (botón "Leer carta" o subida de carta) y un OCR por clic es barato. El atajo
+        // "misma imagen ⇒ devolver índice previo" dejaba enlaces línea↔item viejos
+        // congelados aunque el algoritmo de match mejorara (bug sopa/saltado). El etag
+        // se conserva porque versiona la imagen dentro del hash del cache de tachado.
         const previo = await leerIndice(idsede);
-        if (previo && etag && previo.etag === etag && previo.archivo === archivo) return { indice: previo };
 
         const respuesta = await detectarTexto(urlCartaBase(archivo));
         const extraido = respuesta ? extraerLineas(respuesta) : null;

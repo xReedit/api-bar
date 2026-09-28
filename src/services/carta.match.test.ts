@@ -51,4 +51,67 @@ describe('matchLineas', () => {
         expect(r[0].iditem).toBe(2);
         expect(r[1].iditem).toBeNull();
     });
+
+    // Bug reportado en producción (2026-09-27): "Sopa de pollo" y "Saltado de pollo"
+    // comparten "de" y "pollo" (Dice 0.667 > 0.6) — si la línea del saltado no aparece
+    // en la imagen, el agotado le robaba la línea a la sopa y se tachaba el plato vivo.
+    // Las palabras vacías no cuentan como similitud: sopa/pollo vs saltado/pollo = 0.5.
+    describe('platos hermanos (palabras vacías fuera del score)', () => {
+        it('el agotado sin línea propia NO roba la línea del plato parecido', () => {
+            const r = matchLineas(
+                [{ texto: 'Sopa de pollo', box }],
+                [{ iditem: 2, descripcion: 'Saltado de pollo' }]
+            );
+            expect(r[0].iditem).toBeNull();
+        });
+
+        it('con ambos platos en el sistema, cada línea va a su item exacto', () => {
+            const r = matchLineas(
+                [{ texto: 'Sopa de pollo', box }, { texto: 'Saltado de pollo', box }],
+                [{ iditem: 1, descripcion: 'Sopa de pollo' }, { iditem: 2, descripcion: 'Saltado de pollo' }]
+            );
+            expect(r[0].iditem).toBe(1);
+            expect(r[1].iditem).toBe(2);
+        });
+    });
+
+    describe('ambigüedad: mejor no tachar que tachar mal', () => {
+        it('dos items empatados contra la misma línea ⇒ la línea queda sin match', () => {
+            const r = matchLineas(
+                [{ texto: 'Ají de gallina', box }],
+                [
+                    { iditem: 1, descripcion: 'Ají de gallina especial' },
+                    { iditem: 2, descripcion: 'Ají de gallina clásico' }
+                ]
+            );
+            expect(r[0].iditem).toBeNull();
+        });
+
+        it('con un ganador claro el margen no bloquea (exacto 1.0 vs parcial 0.8)', () => {
+            const r = matchLineas(
+                [{ texto: 'Ceviche mixto', box }, { texto: 'Ceviche mixto especial', box }],
+                [{ iditem: 1, descripcion: 'Ceviche mixto' }, { iditem: 2, descripcion: 'Ceviche mixto especial' }]
+            );
+            expect(r[0].iditem).toBe(1);
+            expect(r[1].iditem).toBe(2);
+        });
+    });
+
+    describe('guardia numérica (porciones 1/2 vs 1/4)', () => {
+        it('los números del item deben estar en la línea: 1/2 no tacha la línea del 1/4', () => {
+            const r = matchLineas(
+                [{ texto: 'Pollo a la brasa 1/4 S/. 25.00', box }],
+                [{ iditem: 2, descripcion: 'Pollo a la brasa 1/2' }]
+            );
+            expect(r[0].iditem).toBeNull();
+        });
+
+        it('misma porción sí matchea aunque la línea traiga precio', () => {
+            const r = matchLineas(
+                [{ texto: 'Pollo a la brasa 1/4 S/. 25.00', box }],
+                [{ iditem: 1, descripcion: 'Pollo a la brasa 1/4' }]
+            );
+            expect(r[0].iditem).toBe(1);
+        });
+    });
 });

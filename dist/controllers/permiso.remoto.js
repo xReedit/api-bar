@@ -69,6 +69,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
@@ -83,9 +92,9 @@ router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, f
     });
 }); });
 router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var link, permiso, registros, formattedRegistros;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var link, permiso, campos, deEsteAdmin, _a, pendientes, respondidas, registros, suya, formattedRegistros;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
                 link = req.params.link;
                 return [4 /*yield*/, prisma.permiso_remoto.findFirst({
@@ -93,47 +102,70 @@ router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, voi
                             link: link.toString()
                         },
                         select: {
+                            idpermiso_remoto: true,
                             idsede: true,
                             idusuario_admin: true
                         }
                     })];
             case 1:
-                permiso = _a.sent();
-                // si hay datos que continue sino que devuelva un mensaje    
+                permiso = _b.sent();
+                // si hay datos que continue sino que devuelva un mensaje
                 if (!permiso) {
                     return [2 /*return*/, res.status(400).json({ success: false, message: 'El link no existe' })];
                 }
-                return [4 /*yield*/, prisma.permiso_remoto.findMany({
-                        take: 10,
-                        orderBy: {
-                            idpermiso_remoto: 'desc'
-                        },
-                        where: {
-                            idsede: permiso.idsede,
-                            idusuario_admin: permiso.idusuario_admin,
-                            atendido: '0',
-                            estado: '0'
-                        },
+                campos = {
+                    idpermiso_remoto: true,
+                    fecha: true,
+                    hora: true,
+                    atendido: true,
+                    data: true,
+                    sede: {
                         select: {
-                            idpermiso_remoto: true,
-                            fecha: true,
-                            hora: true,
-                            atendido: true,
-                            data: true,
-                            sede: {
-                                select: {
-                                    idorg: true,
-                                    idsede: true
-                                }
-                            }
+                            idorg: true,
+                            idsede: true
                         }
-                    })];
+                    }
+                };
+                deEsteAdmin = {
+                    idsede: permiso.idsede,
+                    idusuario_admin: permiso.idusuario_admin,
+                    estado: '0'
+                };
+                return [4 /*yield*/, Promise.all([
+                        prisma.permiso_remoto.findMany({
+                            take: 10,
+                            orderBy: { idpermiso_remoto: 'desc' },
+                            where: __assign(__assign({}, deEsteAdmin), { atendido: '0' }),
+                            select: campos
+                        }),
+                        prisma.permiso_remoto.findMany({
+                            take: 5,
+                            orderBy: { idpermiso_remoto: 'desc' },
+                            where: __assign(__assign({}, deEsteAdmin), { atendido: { not: '0' } }),
+                            select: campos
+                        })
+                    ])];
             case 2:
-                registros = _a.sent();
+                _a = _b.sent(), pendientes = _a[0], respondidas = _a[1];
+                registros = __spreadArray(__spreadArray([], pendientes, true), respondidas, true);
+                if (!!registros.some(function (r) { return r.idpermiso_remoto === permiso.idpermiso_remoto; })) return [3 /*break*/, 4];
+                return [4 /*yield*/, prisma.permiso_remoto.findUnique({
+                        where: { idpermiso_remoto: permiso.idpermiso_remoto },
+                        select: campos
+                    })];
+            case 3:
+                suya = _b.sent();
+                if (suya) {
+                    registros.push(suya);
+                }
+                _b.label = 4;
+            case 4:
                 formattedRegistros = registros.map(function (registro) {
                     // Asegurarse de que la fecha se maneje correctamente sin ajuste de zona horaria
                     var fechaISO = typeof registro.fecha === 'string' ? registro.fecha : registro.fecha.toISOString();
-                    return __assign(__assign({}, registro), { fecha: (0, format_1.format)((0, parseISO_1.parseISO)(fechaISO), 'yyyy-MM-dd') });
+                    return __assign(__assign({}, registro), { fecha: (0, format_1.format)((0, parseISO_1.parseISO)(fechaISO), 'yyyy-MM-dd'), 
+                        // Para que la pantalla pueda resaltar la que el admin vino a ver.
+                        es_del_link: registro.idpermiso_remoto === permiso.idpermiso_remoto });
                 });
                 // devolver los resultados
                 // res.status(200).json({ success: true, data: registros });

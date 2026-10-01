@@ -1,6 +1,6 @@
 import * as express from "express";
 import { login } from "../controllers/usuario";
-import { auth, authVerify, apiKeyAuth } from '../middleware/auth';
+import { auth, authVerify, apiKeyAuth, authSedeBody} from '../middleware/auth';
 import rol from "../controllers/rol";
 import sede from "../controllers/sede";
 import colaborador from "../controllers/colaborador";
@@ -26,6 +26,7 @@ import dashboard_compras from "../controllers/dashboard/compras";
 import dashboard_punto_equilibrio from "../controllers/dashboard/punto-equilibrio";
 import dashboard_promociones_cupones from "../controllers/dashboard/promociones-cupones";
 import dashboard_encuestas from "../controllers/dashboard/encuestas";
+import dashboard_asistente from "../controllers/dashboard/asistente";
 import push from "../controllers/push";
 
 const router = express.Router();
@@ -61,18 +62,20 @@ router.use('/app-repartidor', app_repartidor);
 router.use('/restobar/cobranza', restobar_cobranza);
 
 // dashboard
-router.use('/dash-ventas', auth, dashboard_ventas);
-router.use('/dash-iecaja', auth, dashboard_iecaja);
-router.use('/dash-colaboradores', auth, dashboard_colaboradores);
-router.use('/dash-producto-receta', auth, dashboard_producto_recta);
-router.use('/dash-clientes', auth, dashboard_clientes);
-router.use('/dash-rrhh', auth, dashboard_rrhh);
-router.use('/dash-usuarios', auth, dashboard_usuarios);
-router.use('/dash-compras', auth, dashboard_compras);
-router.use('/dash-punto-equilibrio', auth, dashboard_punto_equilibrio);
-router.use('/dash-promociones-cupones', auth, dashboard_promociones_cupones);
+router.use('/dash-ventas', auth, authSedeBody, dashboard_ventas);
+router.use('/dash-iecaja', auth, authSedeBody, dashboard_iecaja);
+router.use('/dash-colaboradores', auth, authSedeBody, dashboard_colaboradores);
+router.use('/dash-producto-receta', auth, authSedeBody, dashboard_producto_recta);
+router.use('/dash-clientes', auth, authSedeBody, dashboard_clientes);
+router.use('/dash-rrhh', auth, authSedeBody, dashboard_rrhh);
+router.use('/dash-usuarios', auth, authSedeBody, dashboard_usuarios);
+router.use('/dash-compras', auth, authSedeBody, dashboard_compras);
+router.use('/dash-punto-equilibrio', auth, authSedeBody, dashboard_punto_equilibrio);
+router.use('/dash-promociones-cupones', auth, authSedeBody, dashboard_promociones_cupones);
 // valida que cada sede pedida pertenezca al token (los demas dash-* no lo hacen)
-router.use('/dash-encuestas', auth, dashboard_encuestas);
+router.use('/dash-encuestas', auth, authSedeBody, dashboard_encuestas);
+// Asistente IA del dashboard (docs/PLAN_ASISTENTE_IA.md)
+router.use('/dash-asistente', auth, authSedeBody, dashboard_asistente);
 
 // push notifications (Web Push VAPID)
 router.use('/push', auth, push);

@@ -57,6 +57,35 @@ export const authSede = (req: Request, res: Response, next: NextFunction) => {
     res.status(403).json({ success: false, error: 'Sede no autorizada para este usuario' });
 };
 
+// Igual que authSede pero leyendo la sede del CUERPO, que es de donde la toman
+// los controladores dash-*. Sin esto, un token valido de la sede A puede pedir
+// los datos de la sede B cambiando un numero en el body: el `auth` de la ruta
+// solo comprueba que el token exista, no que la sede sea suya.
+//
+// Si el cuerpo no trae idsede no se bloquea: hay endpoints que no lo usan. Lo
+// que se impide es pedir una sede AJENA.
+export const authSedeBody = (req: Request, res: Response, next: NextFunction) => {
+    const bruto = (req.body ?? {}).idsede;
+    if (bruto === undefined || bruto === null || bruto === '') return next();
+
+    const pedida = Number(bruto);
+    if (!Number.isFinite(pedida)) {
+        return res.status(400).json({ success: false, error: 'idsede invalido' });
+    }
+
+    const t: any = (req as CustomRequest).token;
+    const propias = new Set<number>();
+    if (Number.isFinite(Number(t?.idsede))) propias.add(Number(t.idsede));
+    if (Array.isArray(t?.sedes)) {
+        for (const s of t.sedes) {
+            if (Number.isFinite(Number(s?.idsede))) propias.add(Number(s.idsede));
+        }
+    }
+
+    if (propias.has(pedida)) return next();
+    res.status(403).json({ success: false, error: 'Sede no autorizada para este usuario' });
+};
+
 // API key compartida para las rutas server-to-server del chatbot (/chatbot/*).
 // El bot Go envía el header x-api-key; nadie más debe poder leer contexto de
 // clientes ni crear pedidos. Si CHATBOT_API_KEY no está configurada, deja

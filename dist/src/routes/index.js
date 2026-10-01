@@ -54,6 +54,7 @@ var compras_1 = __importDefault(require("../controllers/dashboard/compras"));
 var punto_equilibrio_1 = __importDefault(require("../controllers/dashboard/punto-equilibrio"));
 var promociones_cupones_1 = __importDefault(require("../controllers/dashboard/promociones-cupones"));
 var encuestas_1 = __importDefault(require("../controllers/dashboard/encuestas"));
+var asistente_1 = __importDefault(require("../controllers/dashboard/asistente"));
 var push_1 = __importDefault(require("../controllers/push"));
 var router = express.Router();
 router.get('/', function (req, res) {
@@ -84,18 +85,20 @@ router.use('/app-repartidor', app_repartidor_1["default"]);
 // restobar
 router.use('/restobar/cobranza', cobranza_1["default"]);
 // dashboard
-router.use('/dash-ventas', auth_1.auth, ventas_1["default"]);
-router.use('/dash-iecaja', auth_1.auth, iecaja_1["default"]);
-router.use('/dash-colaboradores', auth_1.auth, colaboradores_1["default"]);
-router.use('/dash-producto-receta', auth_1.auth, producto_receta_1["default"]);
-router.use('/dash-clientes', auth_1.auth, clientes_1["default"]);
-router.use('/dash-rrhh', auth_1.auth, rrhh_1["default"]);
-router.use('/dash-usuarios', auth_1.auth, usuarios_1["default"]);
-router.use('/dash-compras', auth_1.auth, compras_1["default"]);
-router.use('/dash-punto-equilibrio', auth_1.auth, punto_equilibrio_1["default"]);
-router.use('/dash-promociones-cupones', auth_1.auth, promociones_cupones_1["default"]);
+router.use('/dash-ventas', auth_1.auth, auth_1.authSedeBody, ventas_1["default"]);
+router.use('/dash-iecaja', auth_1.auth, auth_1.authSedeBody, iecaja_1["default"]);
+router.use('/dash-colaboradores', auth_1.auth, auth_1.authSedeBody, colaboradores_1["default"]);
+router.use('/dash-producto-receta', auth_1.auth, auth_1.authSedeBody, producto_receta_1["default"]);
+router.use('/dash-clientes', auth_1.auth, auth_1.authSedeBody, clientes_1["default"]);
+router.use('/dash-rrhh', auth_1.auth, auth_1.authSedeBody, rrhh_1["default"]);
+router.use('/dash-usuarios', auth_1.auth, auth_1.authSedeBody, usuarios_1["default"]);
+router.use('/dash-compras', auth_1.auth, auth_1.authSedeBody, compras_1["default"]);
+router.use('/dash-punto-equilibrio', auth_1.auth, auth_1.authSedeBody, punto_equilibrio_1["default"]);
+router.use('/dash-promociones-cupones', auth_1.auth, auth_1.authSedeBody, promociones_cupones_1["default"]);
 // valida que cada sede pedida pertenezca al token (los demas dash-* no lo hacen)
-router.use('/dash-encuestas', auth_1.auth, encuestas_1["default"]);
+router.use('/dash-encuestas', auth_1.auth, auth_1.authSedeBody, encuestas_1["default"]);
+// Asistente IA del dashboard (docs/PLAN_ASISTENTE_IA.md)
+router.use('/dash-asistente', auth_1.auth, auth_1.authSedeBody, asistente_1["default"]);
 // push notifications (Web Push VAPID)
 router.use('/push', auth_1.auth, push_1["default"]);
 // router.use('/usuario', auth, usuario);

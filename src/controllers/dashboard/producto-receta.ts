@@ -3,6 +3,8 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
 import { normalizeResponse, normalizeResponseDashProductos } from "../../services/dash.util";
 import { limitarRangoFechasDashboard } from "../../utils/utils";
+import * as dashProductos from "../../services/dash/productos";
+import { mensajeError } from "../../services/dash/errores";
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -70,38 +72,10 @@ router.post("/get-productos-bodega", async (req, res) => {
 
 router.post("/get-dash-productos", async (req, res) => {
     const { idsede, params } = req.body;
-
-    let productoResultados: any;
-
-    const p_tipo_consulta = params.tipo_consulta;
-    
-    // Limitar rango de fechas a máximo 5 meses
-    const fechasLimitadas = limitarRangoFechasDashboard(params.rango_start_date, params.rango_end_date);
-    const p_fecha_inicio = fechasLimitadas.fecha_inicio;
-    const p_fecha_fin = fechasLimitadas.fecha_fin;
-    
-    try {        
-        productoResultados = await prisma.$transaction(async (tx) => {
-            await tx.$executeRawUnsafe(`SET @xidsede = ${idsede}`);
-            await tx.$executeRawUnsafe(`SET @tipo_consulta = '${p_tipo_consulta}'`);
-            await tx.$executeRawUnsafe(`SET @fecha_inicio = '${p_fecha_inicio}'`);
-            await tx.$executeRawUnsafe(`SET @fecha_fin = '${p_fecha_fin}'`);
-
-
-            
-
-            try {
-                const result = await tx.$queryRawUnsafe(`CALL procedure_module_dash_productos(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)`);
-                return result;
-            } catch (error) {
-                throw error;
-            }
-        });
-
-        const productoResultadosFormateados = normalizeResponseDashProductos(productoResultados, p_tipo_consulta);       
-        res.status(200).json(productoResultadosFormateados);
+    try {
+        res.status(200).json(await dashProductos.dashProductos(idsede, params));
     } catch (error) {
-        res.status(500).json(error);
+        res.status(500).json({ error: mensajeError(error, "consultar los productos") });
     }
 });
 

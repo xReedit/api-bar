@@ -59,7 +59,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.authVerify = exports.apiKeyAuth = exports.authSede = exports.auth = exports.secretKey = void 0;
+exports.authVerify = exports.apiKeyAuth = exports.authSedeBody = exports.authSede = exports.auth = exports.secretKey = void 0;
 var jwt = __importStar(require("jsonwebtoken"));
 // La clave sale del env. El literal viejo queda SOLO como fallback de transición
 // para no invalidar sesiones al deployar este cambio; rotar = setear JWT_SECRET
@@ -120,6 +120,38 @@ var authSede = function (req, res, next) {
     res.status(403).json({ success: false, error: 'Sede no autorizada para este usuario' });
 };
 exports.authSede = authSede;
+// Igual que authSede pero leyendo la sede del CUERPO, que es de donde la toman
+// los controladores dash-*. Sin esto, un token valido de la sede A puede pedir
+// los datos de la sede B cambiando un numero en el body: el `auth` de la ruta
+// solo comprueba que el token exista, no que la sede sea suya.
+//
+// Si el cuerpo no trae idsede no se bloquea: hay endpoints que no lo usan. Lo
+// que se impide es pedir una sede AJENA.
+var authSedeBody = function (req, res, next) {
+    var _a;
+    var bruto = ((_a = req.body) !== null && _a !== void 0 ? _a : {}).idsede;
+    if (bruto === undefined || bruto === null || bruto === '')
+        return next();
+    var pedida = Number(bruto);
+    if (!Number.isFinite(pedida)) {
+        return res.status(400).json({ success: false, error: 'idsede invalido' });
+    }
+    var t = req.token;
+    var propias = new Set();
+    if (Number.isFinite(Number(t === null || t === void 0 ? void 0 : t.idsede)))
+        propias.add(Number(t.idsede));
+    if (Array.isArray(t === null || t === void 0 ? void 0 : t.sedes)) {
+        for (var _i = 0, _b = t.sedes; _i < _b.length; _i++) {
+            var s = _b[_i];
+            if (Number.isFinite(Number(s === null || s === void 0 ? void 0 : s.idsede)))
+                propias.add(Number(s.idsede));
+        }
+    }
+    if (propias.has(pedida))
+        return next();
+    res.status(403).json({ success: false, error: 'Sede no autorizada para este usuario' });
+};
+exports.authSedeBody = authSedeBody;
 // API key compartida para las rutas server-to-server del chatbot (/chatbot/*).
 // El bot Go envía el header x-api-key; nadie más debe poder leer contexto de
 // clientes ni crear pedidos. Si CHATBOT_API_KEY no está configurada, deja

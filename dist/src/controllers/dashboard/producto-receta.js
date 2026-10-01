@@ -66,7 +66,8 @@ var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
-var utils_1 = require("../../utils/utils");
+var dashProductos = __importStar(require("../../services/dash/productos"));
+var errores_1 = require("../../services/dash/errores");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -137,63 +138,29 @@ router.post("/get-productos-bodega", function (req, res) { return __awaiter(void
     });
 }); });
 router.post("/get-dash-productos", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, params, productoResultados, p_tipo_consulta, fechasLimitadas, p_fecha_inicio, p_fecha_fin, productoResultadosFormateados, error_3;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    var _a, idsede, params, _b, _c, error_3;
+    return __generator(this, function (_d) {
+        switch (_d.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, params = _a.params;
-                p_tipo_consulta = params.tipo_consulta;
-                fechasLimitadas = (0, utils_1.limitarRangoFechasDashboard)(params.rango_start_date, params.rango_end_date);
-                p_fecha_inicio = fechasLimitadas.fecha_inicio;
-                p_fecha_fin = fechasLimitadas.fecha_fin;
-                _b.label = 1;
+                _d.label = 1;
             case 1:
-                _b.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                        var result, error_4;
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @xidsede = ".concat(idsede))];
-                                case 1:
-                                    _a.sent();
-                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @tipo_consulta = '".concat(p_tipo_consulta, "'"))];
-                                case 2:
-                                    _a.sent();
-                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_inicio = '".concat(p_fecha_inicio, "'"))];
-                                case 3:
-                                    _a.sent();
-                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_fin = '".concat(p_fecha_fin, "'"))];
-                                case 4:
-                                    _a.sent();
-                                    _a.label = 5;
-                                case 5:
-                                    _a.trys.push([5, 7, , 8]);
-                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_module_dash_productos(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)")];
-                                case 6:
-                                    result = _a.sent();
-                                    return [2 /*return*/, result];
-                                case 7:
-                                    error_4 = _a.sent();
-                                    throw error_4;
-                                case 8: return [2 /*return*/];
-                            }
-                        });
-                    }); })];
+                _d.trys.push([1, 3, , 4]);
+                _c = (_b = res.status(200)).json;
+                return [4 /*yield*/, dashProductos.dashProductos(idsede, params)];
             case 2:
-                productoResultados = _b.sent();
-                productoResultadosFormateados = (0, dash_util_1.normalizeResponseDashProductos)(productoResultados, p_tipo_consulta);
-                res.status(200).json(productoResultadosFormateados);
+                _c.apply(_b, [_d.sent()]);
                 return [3 /*break*/, 4];
             case 3:
-                error_3 = _b.sent();
-                res.status(500).json(error_3);
+                error_3 = _d.sent();
+                res.status(500).json({ error: (0, errores_1.mensajeError)(error_3, "consultar los productos") });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }
     });
 }); });
 router.post("/save-food-cost", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var items, inserted, updated, _i, items_1, item, idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, receta_sugerida, existingRecord, error_5;
+    var items, inserted, updated, _i, items_1, item, idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, receta_sugerida, existingRecord, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -235,8 +202,8 @@ router.post("/save-food-cost", function (req, res) { return __awaiter(void 0, vo
                 });
                 return [3 /*break*/, 10];
             case 9:
-                error_5 = _a.sent();
-                res.status(500).json({ error: 'Error al guardar el food cost', details: error_5 });
+                error_4 = _a.sent();
+                res.status(500).json({ error: 'Error al guardar el food cost', details: error_4 });
                 return [3 /*break*/, 10];
             case 10: return [2 /*return*/];
         }

@@ -43,6 +43,7 @@ exports.extraerLineas = exports.detectarTexto = void 0;
 // OCR de la imagen de la carta con Google Cloud Vision (REST + API key).
 // Se llama UNA vez por imagen subida (indexado), nunca por request de cliente.
 var axios_1 = __importDefault(require("axios"));
+var logger_1 = require("../utils/logger");
 var VISION_URL = 'https://vision.googleapis.com/v1/images:annotate';
 // Llama a Vision con la URL pública de S3 (imageUri: Vision descarga la imagen, aquí no).
 var detectarTexto = function (imageUrl) { return __awaiter(void 0, void 0, void 0, function () {
@@ -53,7 +54,7 @@ var detectarTexto = function (imageUrl) { return __awaiter(void 0, void 0, void 
             case 0:
                 key = process.env.GOOGLE_VISION_API_KEY;
                 if (!key) {
-                    console.warn('[carta-ocr] GOOGLE_VISION_API_KEY no configurada, indexado omitido');
+                    logger_1.logger.warn('[carta-ocr] GOOGLE_VISION_API_KEY no configurada, indexado omitido');
                     return [2 /*return*/, null];
                 }
                 _f.label = 1;
@@ -65,7 +66,7 @@ var detectarTexto = function (imageUrl) { return __awaiter(void 0, void 0, void 
                 return [2 /*return*/, (_b = (_a = data === null || data === void 0 ? void 0 : data.responses) === null || _a === void 0 ? void 0 : _a[0]) !== null && _b !== void 0 ? _b : null];
             case 3:
                 e_1 = _f.sent();
-                console.error('[carta-ocr] Vision fallo:', ((_e = (_d = (_c = e_1 === null || e_1 === void 0 ? void 0 : e_1.response) === null || _c === void 0 ? void 0 : _c.data) === null || _d === void 0 ? void 0 : _d.error) === null || _e === void 0 ? void 0 : _e.message) || (e_1 === null || e_1 === void 0 ? void 0 : e_1.message));
+                logger_1.logger.error('[carta-ocr] Vision fallo:', ((_e = (_d = (_c = e_1 === null || e_1 === void 0 ? void 0 : e_1.response) === null || _c === void 0 ? void 0 : _c.data) === null || _d === void 0 ? void 0 : _d.error) === null || _e === void 0 ? void 0 : _e.message) || (e_1 === null || e_1 === void 0 ? void 0 : e_1.message));
                 return [2 /*return*/, null];
             case 4: return [2 /*return*/];
         }

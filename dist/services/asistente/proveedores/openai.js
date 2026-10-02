@@ -88,27 +88,45 @@ function crearProveedorOpenAI() {
         throw new Error('OPENAI_API_KEY no configurada');
     }
     var modelo = process.env.IA_MODELO || 'gpt-4o-mini';
+    // Se descubre en la primera llamada y se queda: los modelos de razonamiento
+    // (o1, o3, gpt-5...) y los clasicos (gpt-4o y familia) no comparten los
+    // parametros de muestreo.
+    var familia = /^(o\d|gpt-5)/i.test(modelo)
+        ? 'razonamiento'
+        : 'clasico';
+    var reintentado = false;
     return {
         nombre: 'openai',
         modelo: modelo,
         chat: function (mensajes, herramientas, forzar) {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
             return __awaiter(this, void 0, void 0, function () {
-                var esfuerzo, cuerpo, data, err_1, detalle, mensaje, toolCalls;
-                return __generator(this, function (_m) {
-                    switch (_m.label) {
+                var esfuerzo, cuerpo, data, err_1, detalle, esDeParametro, mensaje, toolCalls;
+                return __generator(this, function (_p) {
+                    switch (_p.label) {
                         case 0:
                             esfuerzo = (0, tipos_1.leerEsfuerzo)();
+                            reintentado = false;
                             cuerpo = {
                                 model: modelo,
                                 messages: mensajes.map(aFormatoOpenAI)
                             };
+                            // OpenAI tiene dos familias de modelos y cada una rechaza el parametro
+                            // de la otra: los clasicos aceptan temperature y no conocen
+                            // reasoning_effort; los de razonamiento al reves, y ademas traen un
+                            // esfuerzo por defecto que choca con las herramientas si no se apaga
+                            // a mano. Como el nombre del modelo no dice de que familia es, se
+                            // manda la version mas probable y se reintenta con la otra si la API
+                            // se queja del parametro. Una peticion de mas la primera vez, y nunca
+                            // mas gracias a la cache de abajo.
                             if (esfuerzo === 'off') {
-                                cuerpo.temperature = 0.2;
+                                if (familia === 'razonamiento')
+                                    cuerpo.reasoning_effort = 'none';
+                                else
+                                    cuerpo.temperature = 0.2;
                             }
                             else {
-                                // Solo lo aceptan los modelos de razonamiento; 'max' no existe en
-                                // OpenAI, se mapea a 'high'.
+                                // 'max' no existe en OpenAI: se mapea a 'high'.
                                 cuerpo.reasoning_effort = esfuerzo === 'medio' ? 'medium' : 'high';
                             }
                             if (herramientas.length > 0) {
@@ -124,9 +142,9 @@ function crearProveedorOpenAI() {
                                     ? { type: 'function', "function": { name: forzar } }
                                     : 'auto';
                             }
-                            _m.label = 1;
+                            _p.label = 1;
                         case 1:
-                            _m.trys.push([1, 3, , 4]);
+                            _p.trys.push([1, 3, , 4]);
                             return [4 /*yield*/, axios_1["default"].post(URL, cuerpo, {
                                     headers: {
                                         Authorization: "Bearer ".concat(apiKey),
@@ -135,17 +153,23 @@ function crearProveedorOpenAI() {
                                     timeout: 60000
                                 })];
                         case 2:
-                            (data = (_m.sent()).data);
+                            (data = (_p.sent()).data);
                             return [3 /*break*/, 4];
                         case 3:
-                            err_1 = _m.sent();
-                            detalle = (_d = (_c = (_b = (_a = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.message) !== null && _d !== void 0 ? _d : err_1 === null || err_1 === void 0 ? void 0 : err_1.message;
-                            throw new Error("OpenAI (".concat((_f = (_e = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _e === void 0 ? void 0 : _e.status) !== null && _f !== void 0 ? _f : 'sin estado', "): ").concat(detalle));
+                            err_1 = _p.sent();
+                            detalle = (_e = (_d = (_c = (_b = (_a = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.message) !== null && _d !== void 0 ? _d : err_1 === null || err_1 === void 0 ? void 0 : err_1.message) !== null && _e !== void 0 ? _e : '';
+                            esDeParametro = /reasoning_effort|temperature/i.test(detalle) && ((_f = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _f === void 0 ? void 0 : _f.status) === 400;
+                            if (esDeParametro && !reintentado) {
+                                reintentado = true;
+                                familia = familia === 'razonamiento' ? 'clasico' : 'razonamiento';
+                                return [2 /*return*/, this.chat(mensajes, herramientas, forzar)];
+                            }
+                            throw new Error("OpenAI (".concat((_h = (_g = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _g === void 0 ? void 0 : _g.status) !== null && _h !== void 0 ? _h : 'sin estado', "): ").concat(detalle));
                         case 4:
-                            mensaje = (_j = (_h = (_g = data === null || data === void 0 ? void 0 : data.choices) === null || _g === void 0 ? void 0 : _g[0]) === null || _h === void 0 ? void 0 : _h.message) !== null && _j !== void 0 ? _j : {};
-                            toolCalls = (_k = mensaje.tool_calls) !== null && _k !== void 0 ? _k : [];
+                            mensaje = (_l = (_k = (_j = data === null || data === void 0 ? void 0 : data.choices) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.message) !== null && _l !== void 0 ? _l : {};
+                            toolCalls = (_m = mensaje.tool_calls) !== null && _m !== void 0 ? _m : [];
                             return [2 /*return*/, {
-                                    texto: (_l = mensaje.content) !== null && _l !== void 0 ? _l : null,
+                                    texto: (_o = mensaje.content) !== null && _o !== void 0 ? _o : null,
                                     llamadas: toolCalls.map(function (t) { return ({
                                         id: t.id,
                                         nombre: t["function"].name,

@@ -61,6 +61,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.authVerify = exports.apiKeyAuth = exports.authSedeBody = exports.authSede = exports.auth = exports.secretKey = void 0;
 var jwt = __importStar(require("jsonwebtoken"));
+var logger_1 = require("../utils/logger");
 // La clave sale del env. El literal viejo queda SOLO como fallback de transición
 // para no invalidar sesiones al deployar este cambio; rotar = setear JWT_SECRET
 // con un valor nuevo y largo (invalida todos los tokens vigentes → re-login).
@@ -72,7 +73,7 @@ var secretKey = function () {
     if (s && s.length >= 16)
         return s;
     if (!avisoClaveLegacy) {
-        console.warn('[auth] JWT_SECRET no configurada (o muy corta): usando clave legacy hardcodeada. Configurala y rotala en produccion.');
+        logger_1.logger.warn('[auth] JWT_SECRET no configurada (o muy corta): usando clave legacy hardcodeada. Configurala y rotala en produccion.');
         avisoClaveLegacy = true;
     }
     return CLAVE_LEGACY;
@@ -161,7 +162,7 @@ var apiKeyAuth = function (req, res, next) {
     var expected = process.env.CHATBOT_API_KEY;
     if (!expected) {
         if (!warnedNoApiKey) {
-            console.warn('CHATBOT_API_KEY no configurada: /chatbot/* queda SIN protección');
+            logger_1.logger.warn('CHATBOT_API_KEY no configurada: /chatbot/* queda SIN protección');
             warnedNoApiKey = true;
         }
         return next();

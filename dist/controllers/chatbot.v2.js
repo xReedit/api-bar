@@ -102,6 +102,7 @@ var ticket_image_service_1 = require("../services/ticket.image.service");
 var carta_tachado_service_1 = require("../services/carta.tachado.service");
 var carta_indice_service_1 = require("../services/carta.indice.service");
 var axios_1 = __importDefault(require("axios"));
+var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 // Seguimiento del pedido para el chatbot: en qué va, quién lo lleva y cuánto falta.
@@ -317,7 +318,7 @@ router.get('/comprobante/:idsede/:documento/:fecha/:importe', function (req, res
             case 5: return [2 /*return*/, res.status(200).json(__assign({ success: true, numero_comprobante: numeroComprobante, external_id: externalId }, (urlPdf ? { url_pdf: urlPdf } : {})))];
             case 6:
                 error_1 = _e.sent();
-                console.error('Error en /comprobante:', error_1);
+                logger_1.logger.error('Error en /comprobante:', error_1);
                 return [2 /*return*/, res.status(500).json({ success: false, error: 'No se pudo consultar el comprobante' })];
             case 7:
                 prisma.$disconnect();
@@ -445,14 +446,14 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
                 return [3 /*break*/, 12];
             case 11:
                 e_1 = _f.sent();
-                console.error("generar-comprobante: EMITIDO ".concat(d.numero, " (").concat(d.external_id, ") pero NO persistido para sesi\u00F3n ").concat(session_id_1, ":"), e_1 === null || e_1 === void 0 ? void 0 : e_1.message);
+                logger_1.logger.error("generar-comprobante: EMITIDO ".concat(d.numero, " (").concat(d.external_id, ") pero NO persistido para sesi\u00F3n ").concat(session_id_1, ":"), e_1 === null || e_1 === void 0 ? void 0 : e_1.message);
                 return [3 /*break*/, 12];
             case 12: return [2 /*return*/, res.status(200).json({ success: true, numero: d.numero, url_pdf: d.url_pdf })];
             case 13:
                 e_2 = _f.sent();
                 status = (_e = e_2 === null || e_2 === void 0 ? void 0 : e_2.response) === null || _e === void 0 ? void 0 : _e.status;
                 if (!(status === 401 || status === 403)) return [3 /*break*/, 18];
-                console.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
+                logger_1.logger.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
                 _f.label = 14;
             case 14:
                 _f.trys.push([14, 16, , 17]);
@@ -467,7 +468,7 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
             case 18:
                 // Red caída a mitad de camino = estado incierto: NO liberar (el CPE
                 // pudo emitirse); que lo resuelva caja antes que duplicar.
-                console.error('generar-comprobante: fallo llamando a backend-pedidos:', e_2 === null || e_2 === void 0 ? void 0 : e_2.message);
+                logger_1.logger.error('generar-comprobante: fallo llamando a backend-pedidos:', e_2 === null || e_2 === void 0 ? void 0 : e_2.message);
                 _f.label = 19;
             case 19:
                 _f.trys.push([19, 21, , 22]);
@@ -482,7 +483,7 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
             case 23: return [3 /*break*/, 25];
             case 24:
                 error_2 = _f.sent();
-                console.error('Error en /generar-comprobante:', error_2 === null || error_2 === void 0 ? void 0 : error_2.message);
+                logger_1.logger.error('Error en /generar-comprobante:', error_2 === null || error_2 === void 0 ? void 0 : error_2.message);
                 return [2 /*return*/, res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; puedes pedirlo en caja' })];
             case 25: return [2 /*return*/];
         }
@@ -612,7 +613,7 @@ var mapaOpcionesPorItem = function (idsede) { return __awaiter(void 0, void 0, v
                 return [3 /*break*/, 4];
             case 3:
                 e_3 = _b.sent();
-                console.error('mapaOpcionesPorItem: no se pudo leer los grupos de opciones, el menú va sin marcador:', e_3 === null || e_3 === void 0 ? void 0 : e_3.message);
+                logger_1.logger.error('mapaOpcionesPorItem: no se pudo leer los grupos de opciones, el menú va sin marcador:', e_3 === null || e_3 === void 0 ? void 0 : e_3.message);
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/, mapa];
         }
@@ -667,7 +668,7 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
                 return [3 /*break*/, 4];
             case 3:
                 error_4 = _c.sent();
-                console.error('Error en consultar_menu:', error_4);
+                logger_1.logger.error('Error en consultar_menu:', error_4);
                 res.status(500).json({
                     success: false,
                     error: 'Error al consultar menu'
@@ -734,7 +735,7 @@ var leerGruposDeItems = function (ids, leer) {
                                         return [2 /*return*/, { iditem: iditem, grupos: Array.isArray(grupos) ? grupos : [] }];
                                     case 2:
                                         e_4 = _a.sent();
-                                        console.error("opciones: fall\u00F3 el CALL del iditem ".concat(iditem, ", ese plato va sin opciones:"), e_4 === null || e_4 === void 0 ? void 0 : e_4.message);
+                                        logger_1.logger.error("opciones: fall\u00F3 el CALL del iditem ".concat(iditem, ", ese plato va sin opciones:"), e_4 === null || e_4 === void 0 ? void 0 : e_4.message);
                                         return [2 /*return*/, { iditem: iditem, grupos: [] }];
                                     case 3: return [2 /*return*/];
                                 }
@@ -777,7 +778,7 @@ router.post("/opciones-items", function (req, res) { return __awaiter(void 0, vo
                         })];
                 }
                 if (omitidos.length > 0) {
-                    console.warn("/opciones-items: se pidieron ".concat(ids.length + omitidos.length, " platos, tope ").concat(exports.MAX_ITEMS_OPCIONES, "; omitidos: ").concat(omitidos.join(', ')));
+                    logger_1.logger.warn("/opciones-items: se pidieron ".concat(ids.length + omitidos.length, " platos, tope ").concat(exports.MAX_ITEMS_OPCIONES, "; omitidos: ").concat(omitidos.join(', ')));
                 }
                 return [4 /*yield*/, (0, exports.leerGruposDeItems)(ids)];
             case 1:
@@ -795,7 +796,7 @@ router.post("/opciones-items", function (req, res) { return __awaiter(void 0, vo
                         }) }, (omitidos.length > 0 ? { omitidos: omitidos } : {})))];
             case 2:
                 error_5 = _b.sent();
-                console.error('Error en /opciones-items:', error_5);
+                logger_1.logger.error('Error en /opciones-items:', error_5);
                 return [2 /*return*/, res.status(200).json({ success: true, platos: [] })];
             case 3: return [2 /*return*/];
         }
@@ -913,7 +914,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 zonas = modo === 'zonas' ? (0, delivery_zonas_1.validarZonas)(parametros.zonas) : [];
                 if (modo === 'zonas' && zonas.length === 0) {
                     // Misconfig del panel: no tumbar el delivery de la sede.
-                    console.warn('calcular-delivery: modo zonas sin zonas válidas, fallback a variable', { idsede: idsede });
+                    logger_1.logger.warn('calcular-delivery: modo zonas sin zonas válidas, fallback a variable', { idsede: idsede });
                     modo = 'variable';
                 }
                 return [4 /*yield*/, prisma.sede.findUnique({
@@ -1012,12 +1013,12 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
             case 12: return [3 /*break*/, 14];
             case 13:
                 error_6 = _d.sent();
-                console.error('calcular-delivery: fallo buscando direccion guardada, sigue geocoding:', error_6.message);
+                logger_1.logger.error('calcular-delivery: fallo buscando direccion guardada, sigue geocoding:', error_6.message);
                 return [3 /*break*/, 14];
             case 14:
                 if (!coordsGuardadas) return [3 /*break*/, 15];
                 distanciaGuardada = (0, geocoding_service_1.estimarKmRuta)(geocoding_service_1.GeocodingService.calcularDistanciaHaversine(Number(sede.latitude), Number(sede.longitude), coordsGuardadas.lat, coordsGuardadas.lng));
-                console.log("calcular-delivery: direccion guardada reusada (\"".concat(coordsGuardadas.direccion, "\", ").concat(distanciaGuardada, " km) \u2014 sin geocoding"));
+                logger_1.logger.debug("calcular-delivery: direccion guardada reusada (\"".concat(coordsGuardadas.direccion, "\", ").concat(distanciaGuardada, " km) \u2014 sin geocoding"));
                 desdeGuardada = true;
                 direccionLegible = coordsGuardadas.direccion;
                 resultadoDistancia_1 = {
@@ -1189,7 +1190,7 @@ router.post("/calcular-delivery", function (req, res) { return __awaiter(void 0,
                 return [3 /*break*/, 31];
             case 30:
                 error_7 = _d.sent();
-                console.error('Error en calcular_delivery:', error_7);
+                logger_1.logger.error('Error en calcular_delivery:', error_7);
                 res.status(500).json({
                     success: false,
                     error: 'Error al calcular delivery'
@@ -1220,7 +1221,7 @@ router.get('/carta-imagen/:idsede', function (req, res) { return __awaiter(void 
                 return [3 /*break*/, 3];
             case 2:
                 error_8 = _a.sent();
-                console.error('Error en carta-imagen', error_8);
+                logger_1.logger.error('Error en carta-imagen', error_8);
                 res.status(200).json({ success: true, tipo: 'link', link_carta: null }); // nunca romper al bot
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -1390,7 +1391,7 @@ router.get("/config/:idsede", function (req, res) { return __awaiter(void 0, voi
                 return [3 /*break*/, 7];
             case 6:
                 error_9 = _a.sent();
-                console.error('Error en obtener_config_negocio:', error_9);
+                logger_1.logger.error('Error en obtener_config_negocio:', error_9);
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener configuracion'
@@ -1516,7 +1517,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                             // El POS infla el cierre de caja cuando un item se parte en
                             // varias filas de detalle (defecto preexistente). Se loguea
                             // para medir la frecuencia real durante el piloto.
-                            console.warn("resumen-pedido: iditem ".concat(a.iditem, " genera ").concat(subitems_view.length, " elementos en subitems_view (cierre de caja inflado, defecto preexistente del POS)"));
+                            logger_1.logger.warn("resumen-pedido: iditem ".concat(a.iditem, " genera ").concat(subitems_view.length, " elementos en subitems_view (cierre de caja inflado, defecto preexistente del POS)"));
                         }
                         return __assign(__assign({}, base), { sobreprecio_total: sobreprecio_total, subitems_view: subitems_view });
                     });
@@ -1550,7 +1551,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
             case 11: return [3 /*break*/, 13];
             case 12:
                 e_5 = _j.sent();
-                console.error('resumen-pedido: fallo resolviendo costo delivery autoritativo, se usa el del bot:', e_5 === null || e_5 === void 0 ? void 0 : e_5.message);
+                logger_1.logger.error('resumen-pedido: fallo resolviendo costo delivery autoritativo, se usa el del bot:', e_5 === null || e_5 === void 0 ? void 0 : e_5.message);
                 return [3 /*break*/, 13];
             case 13:
                 datosEntrega = {
@@ -1600,12 +1601,12 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                     }
                 }
                 catch (errorDireccion) {
-                    console.error('resumen-pedido: fallo parseando direccion_cliente del preview:', errorDireccion.message);
+                    logger_1.logger.error('resumen-pedido: fallo parseando direccion_cliente del preview:', errorDireccion.message);
                 }
                 return [3 /*break*/, 18];
             case 17:
                 error_10 = _j.sent();
-                console.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error_10.message);
+                logger_1.logger.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error_10.message);
                 numeroResumen = 1;
                 return [3 /*break*/, 18];
             case 18:
@@ -1684,7 +1685,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
             case 25: return [3 /*break*/, 27];
             case 26:
                 error_11 = _j.sent();
-                console.error('resumen-pedido: fallo modo imagen, usando texto:', error_11.message);
+                logger_1.logger.error('resumen-pedido: fallo modo imagen, usando texto:', error_11.message);
                 imagenUrl = null;
                 numeroResumenRespuesta = null;
                 resumenRespuesta = ticketFormateado;
@@ -1694,7 +1695,7 @@ router.post("/resumen-pedido", function (req, res) { return __awaiter(void 0, vo
                 return [3 /*break*/, 29];
             case 28:
                 error_12 = _j.sent();
-                console.error('Error en resumen-pedido:', error_12);
+                logger_1.logger.error('Error en resumen-pedido:', error_12);
                 msg = ((error_12 === null || error_12 === void 0 ? void 0 : error_12.message) || '').toLowerCase();
                 if (msg.includes('canal de consumo no encontrado')) {
                     return [2 /*return*/, res.status(200).json({
@@ -1766,7 +1767,7 @@ router.post("/pedido", function (req, res) { return __awaiter(void 0, void 0, vo
                             : preview[0].direccion_cliente;
                     }
                     catch (error) {
-                        console.error('Error al parsear direccion_cliente:', error);
+                        logger_1.logger.error('Error al parsear direccion_cliente:', error);
                     }
                 }
                 tipoConsumoEstructura = (_c = (_b = estructuraPedidoCocinada_1.p_body) === null || _b === void 0 ? void 0 : _b.tipoconsumo) === null || _c === void 0 ? void 0 : _c[0];
@@ -2320,7 +2321,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
             case 7:
                 idx = _k.sent();
                 if (!idx)
-                    console.warn('[contexto] modo manual sin indice, agotados_manual vacio', idsede);
+                    logger_1.logger.warn('[contexto] modo manual sin indice, agotados_manual vacio', idsede);
                 agotadosManual = ((idx === null || idx === void 0 ? void 0 : idx.lineas) || []).filter(function (l) { return l.agotado; }).map(function (l) { return l.texto; });
                 _k.label = 8;
             case 8:
@@ -2470,7 +2471,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 error_15 = _k.sent();
                 // Log del error real: antes era mudo y un fallo aquí dejaba al bot
                 // sin carta/menú sin pista alguna en los logs.
-                console.error('Error en /chatbot/contexto:', error_15);
+                logger_1.logger.error('Error en /chatbot/contexto:', error_15);
                 res.status(500).json({
                     success: false,
                     error: 'Error al obtener contexto'

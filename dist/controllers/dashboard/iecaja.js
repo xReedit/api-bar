@@ -71,6 +71,7 @@ var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
 var utils_1 = require("../../utils/utils");
+var logger_1 = require("../../utils/logger");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -270,7 +271,7 @@ router.post("/get-dash-caja", function (req, res) { return __awaiter(void 0, voi
                                     return [2 /*return*/, result];
                                 case 7:
                                     error_7 = _a.sent();
-                                    console.error('Error al ejecutar el stored procedure:', error_7);
+                                    logger_1.logger.error('Error al ejecutar el stored procedure:', error_7);
                                     throw error_7;
                                 case 8: return [2 /*return*/];
                             }

@@ -67,6 +67,7 @@ var client_1 = require("@prisma/client");
 var crypto_1 = __importDefault(require("crypto"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var push_sender_1 = require("../services/push.sender");
+var logger_1 = require("../utils/logger");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -114,7 +115,7 @@ router.post('/subscribe', function (req, res) { return __awaiter(void 0, void 0,
                 return [3 /*break*/, 3];
             case 2:
                 error_1 = _d.sent();
-                console.error('Error en /push/subscribe:', error_1);
+                logger_1.logger.error('Error en /push/subscribe:', error_1);
                 res.status(500).json({ error: 'Error guardando suscripción' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -142,7 +143,7 @@ router.post('/unsubscribe', function (req, res) { return __awaiter(void 0, void 
                 return [3 /*break*/, 3];
             case 2:
                 error_2 = _a.sent();
-                console.error('Error en /push/unsubscribe:', error_2);
+                logger_1.logger.error('Error en /push/unsubscribe:', error_2);
                 res.status(500).json({ error: 'Error desuscribiendo' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -183,7 +184,7 @@ router.post('/resubscribe', function (req, res) { return __awaiter(void 0, void 
                 return [3 /*break*/, 4];
             case 3:
                 error_3 = _d.sent();
-                console.error('Error en /push/resubscribe:', error_3);
+                logger_1.logger.error('Error en /push/resubscribe:', error_3);
                 res.status(500).json({ error: 'Error en resubscribe' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
@@ -218,7 +219,7 @@ router.post('/test', function (req, res) { return __awaiter(void 0, void 0, void
                 return [3 /*break*/, 3];
             case 2:
                 error_4 = _b.sent();
-                console.error('Error en /push/test:', error_4);
+                logger_1.logger.error('Error en /push/test:', error_4);
                 res.status(500).json({ error: 'Error enviando push de prueba' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

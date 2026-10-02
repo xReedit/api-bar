@@ -9,7 +9,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 exports.__esModule = true;
-exports.bloqueTablaGenerica = exports.bloqueTablaInventario = exports.bloqueTablaMargen = exports.bloqueDispersionMargen = exports.bloqueRadialMetas = exports.bloqueMapaHorario = exports.bloquePendiente = exports.bloqueMancuernaMetas = exports.bloqueComboVentas = exports.bloqueComparativaDias = exports.bloqueTreemap = exports.bloqueMedidor = exports.bloqueRankingMetas = exports.bloqueClima = exports.bloqueTablaProductos = exports.bloqueBarrasLocales = exports.bloqueRankingLocales = exports.bloqueSerieDiaria = exports.bloqueKpis = void 0;
+exports.bloqueTablaGenerica = exports.bloqueTablaInventario = exports.bloqueTablaMargen = exports.bloqueDispersionMargen = exports.bloqueRadialMetas = exports.bloqueMapaHorario = exports.bloquePendiente = exports.bloqueMancuernaMetas = exports.bloqueComboVentas = exports.bloqueComparativaDias = exports.bloqueDonaCanales = exports.bloqueRankingUsuarios = exports.bloqueKpisAlertas = exports.bloqueKpisResumen = exports.bloqueTreemap = exports.bloqueMedidor = exports.bloqueRankingMetas = exports.bloqueClima = exports.bloqueTablaProductos = exports.bloqueBarrasLocales = exports.bloqueRankingLocales = exports.bloqueSerieDiaria = exports.bloqueKpis = void 0;
 var agregados_1 = require("../dash/agregados");
 /**
  * Constructores de bloques visuales.
@@ -230,6 +230,117 @@ function bloqueTreemap(id, titulo, items) {
     };
 }
 exports.bloqueTreemap = bloqueTreemap;
+/**
+ * KPIs a partir de un resumen: un objeto, o una lista de una sola fila.
+ *
+ * Los modulos genericos devuelven dos formas distintas: una lista de filas
+ * (compras por proveedor) o un resumen con totales (punto de equilibrio). La
+ * tabla generica solo sabe dibujar la primera, asi que la mitad de los modulos
+ * respondia sin un solo numero en pantalla. Esto cubre la otra mitad.
+ */
+function bloqueKpisResumen(id, titulo, datos) {
+    var fila = Array.isArray(datos) && datos.length === 1
+        ? datos[0]
+        : !Array.isArray(datos) && datos && typeof datos === 'object'
+            ? datos
+            : null;
+    if (!fila)
+        return null;
+    var kpis = Object.entries(fila)
+        .filter(function (_a) {
+        var v = _a[1];
+        return typeof v === 'number' || (typeof v === 'string' && v !== '' && !isNaN(Number(v)));
+    })
+        .map(function (_a) {
+        var clave = _a[0], v = _a[1];
+        return ({
+            etiqueta: clave.replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); }),
+            valor: Number(v),
+            // El nombre de la columna es lo unico que dice si son soles o unidades.
+            formato: /total|monto|importe|venta|costo|gasto|precio|ingreso|utilidad/i.test(clave)
+                ? 'moneda'
+                : /pct|porcentaje|margen/i.test(clave)
+                    ? 'porcentaje'
+                    : 'entero'
+        });
+    })
+        .slice(0, 6);
+    return kpis.length ? { id: id, tipo: 'kpi', titulo: titulo, kpis: kpis } : null;
+}
+exports.bloqueKpisResumen = bloqueKpisResumen;
+/**
+ * Indicadores de alerta como KPIs, con su peso sobre la venta.
+ *
+ * Era el modulo que mas importa mirar y el unico que respondia sin un solo
+ * numero en pantalla: "hay algo raro este mes" se contestaba en prosa. El delta
+ * es la variacion contra el periodo anterior, que es lo que convierte una cifra
+ * suelta en una senal.
+ */
+function bloqueKpisAlertas(id, titulo, indicadores) {
+    var conDatos = indicadores.filter(function (i) { return i.monto > 0; });
+    if (conDatos.length === 0)
+        return null;
+    return {
+        id: id,
+        tipo: 'kpi',
+        titulo: titulo,
+        kpis: conDatos.slice(0, 6).map(function (i) { return ({
+            // La marca deja el ojo donde hay que mirar sin leer los seis.
+            etiqueta: i.anomalo ? "".concat(i.etiqueta, " !") : i.etiqueta,
+            valor: i.monto,
+            delta: i.variacionPct,
+            formato: 'moneda'
+        }); })
+    };
+}
+exports.bloqueKpisAlertas = bloqueKpisAlertas;
+/** Quien borra, quien anula, quien saca de caja: ranking con barra de proporcion. */
+function bloqueRankingUsuarios(id, titulo, usuarios) {
+    if (usuarios.length === 0)
+        return null;
+    return {
+        id: id,
+        tipo: 'ranking',
+        titulo: titulo,
+        columnas: [
+            { clave: 'usuario', titulo: 'Usuario' },
+            { clave: 'monto', titulo: 'Monto', formato: 'moneda' },
+            { clave: 'cantidad', titulo: 'Veces', formato: 'entero' }
+        ],
+        filas: usuarios.slice(0, 8).map(function (u) { return ({
+            usuario: u.usuario,
+            monto: u.monto,
+            cantidad: u.cantidad
+        }); }),
+        claveProporcion: 'monto',
+        filasVisiblesMovil: 5
+    };
+}
+exports.bloqueRankingUsuarios = bloqueRankingUsuarios;
+/**
+ * Reparto por canal en dona.
+ *
+ * Tres o cuatro partes que suman el total: es el caso para el que sirve una
+ * dona. Con mas categorias no se distinguen los sectores y gana una tabla.
+ */
+function bloqueDonaCanales(id, titulo, canales) {
+    return {
+        id: id,
+        tipo: 'grafico',
+        titulo: titulo,
+        grafico: {
+            apex: 'donut',
+            categorias: canales.map(function (c) { return c.canal; }),
+            etiquetas: canales.map(function (c) { return c.canal; }),
+            series: [{ name: 'Vendido', data: canales.map(function (c) { return c.total; }) }],
+            formatoValor: 'moneda',
+            altoMovil: 260,
+            altoEscritorio: 300,
+            leyenda: true
+        }
+    };
+}
+exports.bloqueDonaCanales = bloqueDonaCanales;
 var DIA_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 /**
  * Dos periodos superpuestos, un trazo cada uno.
@@ -273,9 +384,9 @@ function bloqueComparativaDias(id, titulo, actual, anterior, etiquetaActual, eti
         tipo: 'grafico',
         titulo: titulo,
         grafico: {
-            // Linea y no area: dos rellenos superpuestos se ensucian y tapan el
-            // cruce, que es justo lo que hay que ver.
-            apex: 'line',
+            // Area, con el relleno a baja opacidad: da el volumen de cada periodo
+            // sin tapar el cruce de los trazos, que es lo que hay que leer.
+            apex: 'area',
             categorias: categorias,
             series: [
                 { name: etiquetaActual, data: serie(actual) },

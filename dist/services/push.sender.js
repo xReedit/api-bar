@@ -43,6 +43,7 @@ exports.notifyAnulacionGrande = exports.notifyCierreDia = exports.notifyMetaAlca
 var web_push_1 = __importDefault(require("web-push"));
 var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
+var logger_1 = require("../utils/logger");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 // =============================================================================
@@ -56,7 +57,7 @@ function ensureVapidConfigured() {
     if (vapidConfigured)
         return true;
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-        console.warn('[push] VAPID keys no configuradas. Define VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en .env. ' +
+        logger_1.logger.warn('[push] VAPID keys no configuradas. Define VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en .env. ' +
             'Genera unas con: npx web-push generate-vapid-keys');
         return false;
     }

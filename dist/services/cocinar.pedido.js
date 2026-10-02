@@ -44,6 +44,7 @@ exports.getEstructuraPedido = void 0;
 var axios_1 = __importDefault(require("axios"));
 var pedido_services_1 = __importDefault(require("./pedido.services"));
 var estructura_pedido_1 = __importDefault(require("../class/estructura.pedido"));
+var logger_1 = require("../utils/logger");
 var getEstructuraPedido = function (items, tipo_entrega, datos_entrega, idsede) { return __awaiter(void 0, void 0, void 0, function () {
     var pedidoServices, classEstructuraPedido, rules, items_secciones, secciones, canales_consumo, canalConsumoMasPedido, arrTotales;
     return __generator(this, function (_a) {
@@ -97,7 +98,7 @@ var getReglasCarta = function (idsede) { return __awaiter(void 0, void 0, void 0
                 return [2 /*return*/, response.data];
             case 3:
                 error_1 = _a.sent();
-                console.error(error_1);
+                logger_1.logger.error(error_1);
                 return [2 /*return*/, null];
             case 4: return [2 /*return*/];
         }
@@ -144,7 +145,7 @@ function getCanalesConsumo(idsede) {
                     return [2 /*return*/, response.data];
                 case 3:
                     error_3 = _a.sent();
-                    console.error(error_3);
+                    logger_1.logger.error(error_3);
                     return [2 /*return*/, []];
                 case 4: return [2 /*return*/];
             }

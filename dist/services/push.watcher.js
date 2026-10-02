@@ -58,6 +58,7 @@ exports.dispararCierreDia = exports.startPushWatcher = void 0;
 var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
 var push_sender_1 = require("./push.sender");
+var logger_1 = require("../utils/logger");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 // =============================================================================
@@ -74,10 +75,10 @@ var cursorAnulacionPorSede = new Map();
 // =============================================================================
 function startPushWatcher() {
     if (process.env.PUSH_WATCHER_ENABLED !== 'true') {
-        console.log('[push-watcher] Deshabilitado (PUSH_WATCHER_ENABLED != true)');
+        logger_1.logger.info('[push-watcher] Deshabilitado (PUSH_WATCHER_ENABLED != true)');
         return;
     }
-    console.log('[push-watcher] Iniciado');
+    logger_1.logger.info('[push-watcher] Iniciado');
     // Ejecutar una vez al arrancar y luego cada N ms
     void runAnulaciones();
     void runStock();
@@ -121,7 +122,7 @@ function runAnulaciones() {
                 case 6: return [3 /*break*/, 8];
                 case 7:
                     err_1 = _a.sent();
-                    console.error('[push-watcher] runAnulaciones error:', err_1);
+                    logger_1.logger.error('[push-watcher] runAnulaciones error:', err_1);
                     return [3 /*break*/, 8];
                 case 8: return [2 /*return*/];
             }
@@ -167,7 +168,7 @@ function runStock() {
                 case 6: return [3 /*break*/, 8];
                 case 7:
                     err_2 = _a.sent();
-                    console.error('[push-watcher] runStock error:', err_2);
+                    logger_1.logger.error('[push-watcher] runStock error:', err_2);
                     return [3 /*break*/, 8];
                 case 8: return [2 /*return*/];
             }
@@ -212,7 +213,7 @@ function runMeta() {
                 case 6: return [3 /*break*/, 8];
                 case 7:
                     err_3 = _c.sent();
-                    console.error('[push-watcher] runMeta error:', err_3);
+                    logger_1.logger.error('[push-watcher] runMeta error:', err_3);
                     return [3 /*break*/, 8];
                 case 8: return [2 /*return*/];
             }

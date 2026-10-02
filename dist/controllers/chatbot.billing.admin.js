@@ -51,6 +51,7 @@ exports.__esModule = true;
 // GET /chat-bot/billing/packs (JWT del restaurante).
 var client_1 = require("@prisma/client");
 var express_1 = __importDefault(require("express"));
+var logger_1 = require("../utils/logger");
 var router = express_1["default"].Router();
 var prisma = new client_1.PrismaClient();
 /** Catálogo completo (incluye inactivos, para poder reactivarlos). */
@@ -67,7 +68,7 @@ router.get('/packs', function (_req, res) { return __awaiter(void 0, void 0, voi
                 return [3 /*break*/, 3];
             case 2:
                 error_1 = _a.sent();
-                console.error('billing-admin packs:', error_1);
+                logger_1.logger.error('billing-admin packs:', error_1);
                 res.status(500).json({ success: false, error: 'no se pudieron listar los paquetes' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -116,7 +117,7 @@ router.post('/packs', function (req, res) { return __awaiter(void 0, void 0, voi
                 return [3 /*break*/, 8];
             case 7:
                 error_2 = _e.sent();
-                console.error('billing-admin guardar pack:', error_2);
+                logger_1.logger.error('billing-admin guardar pack:', error_2);
                 res.status(500).json({ success: false, error: 'no se pudo guardar el paquete' });
                 return [3 /*break*/, 8];
             case 8: return [2 /*return*/];
@@ -140,7 +141,7 @@ router.get('/pagos', function (req, res) { return __awaiter(void 0, void 0, void
                 return [3 /*break*/, 4];
             case 3:
                 error_3 = _a.sent();
-                console.error('billing-admin pagos:', error_3);
+                logger_1.logger.error('billing-admin pagos:', error_3);
                 res.status(500).json({ success: false, error: 'no se pudieron listar los pagos' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
@@ -162,7 +163,7 @@ router.get('/activaciones', function (_req, res) { return __awaiter(void 0, void
                 return [3 /*break*/, 3];
             case 2:
                 error_4 = _a.sent();
-                console.error('billing-admin activaciones:', error_4);
+                logger_1.logger.error('billing-admin activaciones:', error_4);
                 res.status(500).json({ success: false, error: 'no se pudieron listar las activaciones' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

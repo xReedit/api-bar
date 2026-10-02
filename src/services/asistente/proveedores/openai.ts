@@ -66,23 +66,40 @@ export function crearProveedorOpenAI(): Proveedor {
     }
     const modelo = process.env.IA_MODELO || 'gpt-4o-mini';
 
+    // Se descubre en la primera llamada y se queda: los modelos de razonamiento
+    // (o1, o3, gpt-5...) y los clasicos (gpt-4o y familia) no comparten los
+    // parametros de muestreo.
+    let familia: 'razonamiento' | 'clasico' = /^(o\d|gpt-5)/i.test(modelo)
+        ? 'razonamiento'
+        : 'clasico';
+    let reintentado = false;
+
     return {
         nombre: 'openai',
         modelo,
 
         async chat(mensajes, herramientas, forzar): Promise<RespuestaProveedor> {
             const esfuerzo = leerEsfuerzo();
+            reintentado = false;
 
             const cuerpo: Record<string, unknown> = {
                 model: modelo,
                 messages: mensajes.map(aFormatoOpenAI)
             };
 
+            // OpenAI tiene dos familias de modelos y cada una rechaza el parametro
+            // de la otra: los clasicos aceptan temperature y no conocen
+            // reasoning_effort; los de razonamiento al reves, y ademas traen un
+            // esfuerzo por defecto que choca con las herramientas si no se apaga
+            // a mano. Como el nombre del modelo no dice de que familia es, se
+            // manda la version mas probable y se reintenta con la otra si la API
+            // se queja del parametro. Una peticion de mas la primera vez, y nunca
+            // mas gracias a la cache de abajo.
             if (esfuerzo === 'off') {
-                cuerpo.temperature = 0.2;
+                if (familia === 'razonamiento') cuerpo.reasoning_effort = 'none';
+                else cuerpo.temperature = 0.2;
             } else {
-                // Solo lo aceptan los modelos de razonamiento; 'max' no existe en
-                // OpenAI, se mapea a 'high'.
+                // 'max' no existe en OpenAI: se mapea a 'high'.
                 cuerpo.reasoning_effort = esfuerzo === 'medio' ? 'medium' : 'high';
             }
 
@@ -111,7 +128,19 @@ export function crearProveedorOpenAI(): Proveedor {
                 }));
             } catch (err: any) {
                 // Sin esto, el volcado de axios tapa el mensaje real de la API.
-                const detalle = err?.response?.data?.error?.message ?? err?.message;
+                const detalle: string = err?.response?.data?.error?.message ?? err?.message ?? '';
+
+                // La API dice exactamente que parametro sobra: se cambia de familia
+                // y se repite. Se recuerda para el resto de la sesion.
+                const esDeParametro =
+                    /reasoning_effort|temperature/i.test(detalle) && err?.response?.status === 400;
+
+                if (esDeParametro && !reintentado) {
+                    reintentado = true;
+                    familia = familia === 'razonamiento' ? 'clasico' : 'razonamiento';
+                    return this.chat(mensajes, herramientas, forzar);
+                }
+
                 throw new Error(`OpenAI (${err?.response?.status ?? 'sin estado'}): ${detalle}`);
             }
 

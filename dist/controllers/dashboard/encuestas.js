@@ -69,6 +69,7 @@ exports.rangoDe = exports.sedePermitida = exports.sesionDe = void 0;
 var express = __importStar(require("express"));
 var utils_1 = require("../../utils/utils");
 var dash = __importStar(require("../../services/encuesta.dash.service"));
+var logger_1 = require("../../utils/logger");
 var router = express.Router();
 var FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 /** Datos del JWT. 403 si el token no trae org o sedes (tokens de otros logins). */
@@ -108,7 +109,7 @@ var responder = function (res, fn, contexto) {
     return fn().then(function (datos) { return res.status(200).json(datos); }, function (e) {
         if (e instanceof dash.ErrorDash)
             return res.status(e.status).json({ error: e.message });
-        console.error("[dash-encuestas] ".concat(contexto, ":"), e);
+        logger_1.logger.error("[dash-encuestas] ".concat(contexto, ":"), e);
         return res.status(500).json({ error: 'No se pudieron cargar las encuestas.' });
     });
 };

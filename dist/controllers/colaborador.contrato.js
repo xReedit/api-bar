@@ -72,6 +72,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
+var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get('/', function (req, res) {
@@ -118,7 +119,7 @@ router.post('/create', function (req, res, next) { return __awaiter(void 0, void
                 return [3 /*break*/, 5];
             case 4:
                 error_1 = _a.sent();
-                console.error(error_1);
+                logger_1.logger.error(error_1);
                 return [2 /*return*/, res.status(400).send({ success: false, error: 'Error al procesar la solicitud' })];
             case 5:
                 prisma.$disconnect();

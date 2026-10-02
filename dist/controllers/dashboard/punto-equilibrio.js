@@ -67,6 +67,7 @@ var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
 var utils_1 = require("../../utils/utils");
+var logger_1 = require("../../utils/logger");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -115,7 +116,7 @@ router.post("/get-datos", function (req, res) { return __awaiter(void 0, void 0,
                                     return [2 /*return*/, result];
                                 case 7:
                                     error_2 = _a.sent();
-                                    console.error('Error al ejecutar el stored procedure:', error_2);
+                                    logger_1.logger.error('Error al ejecutar el stored procedure:', error_2);
                                     throw error_2;
                                 case 8: return [2 /*return*/];
                             }
@@ -128,7 +129,7 @@ router.post("/get-datos", function (req, res) { return __awaiter(void 0, void 0,
                 return [3 /*break*/, 4];
             case 3:
                 error_1 = _b.sent();
-                console.error('Error en punto equilibrio:', error_1);
+                logger_1.logger.error('Error en punto equilibrio:', error_1);
                 res.status(500).json({
                     error: error_1 instanceof Error ? error_1.message : 'Error desconocido',
                     details: String(error_1)
@@ -185,7 +186,7 @@ router.post("/set-datos-punto-equilibrio", function (req, res) { return __awaite
                 return [3 /*break*/, 8];
             case 7:
                 error_3 = _b.sent();
-                console.error('Error en punto equilibrio:', error_3);
+                logger_1.logger.error('Error en punto equilibrio:', error_3);
                 res.status(500).json({
                     error: error_3 instanceof Error ? error_3.message : 'Error desconocido',
                     details: String(error_3)

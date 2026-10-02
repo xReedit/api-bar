@@ -59,6 +59,7 @@ process.env.FONTCONFIG_PATH = process.env.FONTCONFIG_PATH || path_1["default"].j
 var sharp_1 = __importDefault(require("sharp"));
 var client_s3_1 = require("@aws-sdk/client-s3");
 var carta_indice_service_1 = require("./carta.indice.service");
+var logger_1 = require("../utils/logger");
 var bucket = function () { return process.env.AWS_BUCKET_NAME || 'papaya-comercio-files'; };
 var region = function () { return process.env.AWS_REGION || 'us-east-2'; };
 var resolverCartaTachado = function (parametros) {
@@ -168,7 +169,7 @@ var generarCartaTachada = function (idsede, prisma) { return __awaiter(void 0, v
                 return [2 /*return*/, { tipo: 'imagen', imagen_url: url, agotados: nombres }];
             case 13:
                 e_1 = _b.sent();
-                console.error('[carta-tachado] fallo, fallback a link', e_1);
+                logger_1.logger.error('[carta-tachado] fallo, fallback a link', e_1);
                 return [4 /*yield*/, fallbackLink(idsede, prisma)];
             case 14: return [2 /*return*/, _b.sent()];
             case 15: return [2 /*return*/];

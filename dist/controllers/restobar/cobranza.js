@@ -61,6 +61,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
+var logger_1 = require("../../utils/logger");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -188,7 +189,7 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
             return [2 /*return*/, res.json({ mostrar: false })];
             case 12:
                 error_1 = _a.sent();
-                console.error('Error en advertencia cobranza:', error_1);
+                logger_1.logger.error('Error en advertencia cobranza:', error_1);
                 return [2 /*return*/, res.json({ mostrar: false })];
             case 13: return [2 /*return*/];
         }

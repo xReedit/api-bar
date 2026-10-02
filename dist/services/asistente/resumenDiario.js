@@ -46,6 +46,7 @@ var proveedor_1 = require("./proveedor");
 var herramientas_1 = require("./herramientas");
 var push_sender_1 = require("../push.sender");
 var reglas_1 = require("./reglas");
+var logger_1 = require("../../utils/logger");
 var prisma = new client_1.PrismaClient();
 /**
  * Resumen diario que LLEGA SIN QUE PREGUNTES.
@@ -260,7 +261,7 @@ function enviarResumenDiario(fechaISO) {
                     return [3 /*break*/, 9];
                 case 8:
                     err_1 = _c.sent();
-                    console.error("[resumen-ia] sede ".concat(idsede, ":"), err_1);
+                    logger_1.logger.error("[resumen-ia] sede ".concat(idsede, ":"), err_1);
                     omitidos++;
                     return [3 /*break*/, 9];
                 case 9:

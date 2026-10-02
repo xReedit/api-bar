@@ -184,7 +184,7 @@ var PedidoServices = /** @class */ (function () {
         // reset precio_total_calc -> precio_total;
         // seccionMasItems.map((z: any) => {
         //     z.items.map((n: any) => {
-        //         console.log('=== 1 item ===', n);
+        //         logger.debug('=== 1 item ===', n);
         //     });
         // });            
         rules.map(function (regla) {
@@ -199,13 +199,13 @@ var PedidoServices = /** @class */ (function () {
                 .map(function (z) {
                 z.items
                     .map(function (n) {
-                    // console.log('=== init item ===', n);
+                    // logger.debug('=== init item ===', n);
                     var precioUnitario_item = parseFloat(n.precio);
                     var cant_item = n.cantidad_seleccionada;
                     xPrecio_mostrado = n.precio_total_calc !== null ? n.precio_total_calc : n.precio_total;
                     xPrecio_item_bus = xPrecio_mostrado;
-                    // console.log('=== xCantidadBuscar ===', xCantidadBuscar);
-                    // console.log('=== xCantidadBuscarSecc_detalle ===', xCantidadBuscarSecc_detalle);                                    
+                    // logger.debug('=== xCantidadBuscar ===', xCantidadBuscar);
+                    // logger.debug('=== xCantidadBuscarSecc_detalle ===', xCantidadBuscarSecc_detalle);                                    
                     if (xCantidadBuscar >= xCantidadBuscarSecc_detalle) {
                         xPrecio_item_bus = 0;
                     }
@@ -215,17 +215,17 @@ var PedidoServices = /** @class */ (function () {
                         xPrecio_item_bus = xPrecio_item_bus < 0 ? 0 : xPrecio_item_bus;
                         diferencia = diferencia - cant_item < 0 ? 0 : diferencia - cant_item;
                     }
-                    // console.log('=== xPrecio_item_bus ===', xPrecio_item_bus);
-                    // console.log('=== cant_item ===', cant_item);
+                    // logger.debug('=== xPrecio_item_bus ===', xPrecio_item_bus);
+                    // logger.debug('=== cant_item ===', cant_item);
                     n.precio_total_calc = parseFloat(xPrecio_item_bus.toString()); //
                     n.precio_print = parseFloat(xPrecio_item_bus.toString()); //
                     n.cantidad_descontado = cant_item;
-                    // console.log('=== final item ===', n);
+                    // logger.debug('=== final item ===', n);
                 });
             });
             // seccionMasItems.map((z: any) => {
             //     z.items.map((n: any) => {
-            //         console.log('=== item ===', n);
+            //         logger.debug('=== item ===', n);
             //     });
             // })
         });
@@ -307,8 +307,8 @@ var PedidoServices = /** @class */ (function () {
             var costosAdicionales = _this.getCostosAdicionalesPorSeccion(item.idseccion, idtipo_consumo);
             costosAdicionales.map(function (c) {
                 // si el nivel es 0 se multiplica por la cantidad de items de la seccion
-                // console.log('c', c);
-                // console.log('seccion', item);
+                // logger.debug('c', c);
+                // logger.debug('seccion', item);
                 var _idSubtotal = "".concat(c.tipo).concat(c.id);
                 var _totalItemsSeccion = item.items.reduce(function (a, b) { return a + parseFloat(b.cantidad_seleccionada); }, 0);
                 var _costoXcantidad = c.nivel === 0 ? parseFloat(c.monto) * _totalItemsSeccion : parseFloat(c.monto);
@@ -334,7 +334,7 @@ var PedidoServices = /** @class */ (function () {
         // let totalItemsPedido = this.getTotalItemsPedido(this.arrSeccionesPedido)
         var totalItemsPedido = this.getTotalItemsPedido(seccionMasItems);
         var importeSubTotal = totalItemsPedido;
-        // console.log('importeSubTotal', importeSubTotal);
+        // logger.debug('importeSubTotal', importeSubTotal);
         // total en productos
         var rowSubtotalProductos = {
             descripcion: "Sub Total",
@@ -343,7 +343,7 @@ var PedidoServices = /** @class */ (function () {
             quitar: false,
             visible_cpe: true
         };
-        // console.log('rowSubtotalProductos',rowSubtotalProductos);
+        // logger.debug('rowSubtotalProductos',rowSubtotalProductos);
         arrSubtotales.unshift(rowSubtotalProductos);
         // array delivery calculado segun la config del panel (fijo/variable/zonas)
         if (arrSubtotalCostoEntega) {
@@ -359,9 +359,9 @@ var PedidoServices = /** @class */ (function () {
             }
         }
         // totoal arrSubtotales antes de impuestos
-        // console.log('arrSubtotales', arrSubtotales);
+        // logger.debug('arrSubtotales', arrSubtotales);
         var totalSubtotales = arrSubtotales.map(function (x) { return parseFloat(x.importe); }).reduce(function (a, b) { return a + b; }, 0);
-        // console.log('totalSubtotales', totalSubtotales);
+        // logger.debug('totalSubtotales', totalSubtotales);
         // agregar solo el igv sobre el total
         var rowIGVAdd = null;
         var rowIGV = this.arrReglasCarta.subtotales.filter(function (item) { return item.es_impuesto === 1 && item.descripcion.toLowerCase().trim() === 'i.g.v' && item.activo === 0; })[0] || [];
@@ -403,7 +403,7 @@ var PedidoServices = /** @class */ (function () {
         var _this = this;
         var stringFormatted = '';
         var totalItemsPedido = arrSubtotales.length ? arrSubtotales[arrSubtotales.length - 1].importe : '0.00';
-        // console.log('totalItemsPedido', totalItemsPedido);
+        // logger.debug('totalItemsPedido', totalItemsPedido);
         // let importeSubTotal = totalItemsPedido;
         // canal de consumo
         stringFormatted += "Pedido *".concat(canal_consumo.descripcion, "*\n");
@@ -435,7 +435,7 @@ var PedidoServices = /** @class */ (function () {
         stringFormatted += '\n';
         var listItemSubtotales = [];
         arrSubtotales.map(function (item) {
-            // console.log('item subtotal', item);
+            // logger.debug('item subtotal', item);
             var _newItem = { descripcion: "".concat(item.descripcion), importe: parseFloat(item.importe).toFixed(2).toString() };
             listItemSubtotales.push(_newItem);
         });

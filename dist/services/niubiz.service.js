@@ -47,6 +47,7 @@ exports.authorize = exports.createSession = exports.getAccessToken = exports.niu
 // checkout.js sin ?qa=true).
 var axios_1 = __importDefault(require("axios"));
 var billing_helpers_1 = require("./billing.helpers");
+var logger_1 = require("../utils/logger");
 // Solo el host: pegar la URL completa de un endpoint en NIUBIZ_BASE_URL es el
 // error fácil de cometer y produce un 404 con la ruta duplicada.
 var BASE = function () {
@@ -137,7 +138,7 @@ var authorize = function (accessToken, order) { return __awaiter(void 0, void 0,
                     // Rechazo real o respuesta irreconocible (5xx, HTML, token expirado): dejamos
                     // rastro forense — sin esto, un 5xx de Niubiz se pierde y no hay forma de
                     // diagnosticar por qué un pago quedó en 'procesando' o se marcó 'fallido'.
-                    console.error('niubiz: authorize sin aprobación', {
+                    logger_1.logger.error('niubiz: authorize sin aprobación', {
                         status: resp.status,
                         reconocido: resultado.reconocido,
                         actionCode: resultado.actionCode,

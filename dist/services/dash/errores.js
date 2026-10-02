@@ -1,11 +1,4 @@
 "use strict";
-/**
- * Saneo de errores para las respuestas del dashboard y del asistente IA.
- *
- * Un error crudo de Prisma o MySQL lleva dentro el nombre de la tabla, el SQL y
- * a veces el stack. Eso no puede salir al cliente ni llegar al modelo: es la via
- * de fuga mas probable del asistente (ver docs/PLAN_ASISTENTE_IA.md, 6.1).
- */
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
@@ -23,6 +16,14 @@ var __extends = (this && this.__extends) || (function () {
 })();
 exports.__esModule = true;
 exports.mensajeError = exports.ErrorValidacion = void 0;
+var logger_1 = require("../../utils/logger");
+/**
+ * Saneo de errores para las respuestas del dashboard y del asistente IA.
+ *
+ * Un error crudo de Prisma o MySQL lleva dentro el nombre de la tabla, el SQL y
+ * a veces el stack. Eso no puede salir al cliente ni llegar al modelo: es la via
+ * de fuga mas probable del asistente (ver docs/PLAN_ASISTENTE_IA.md, 6.1).
+ */
 /** Error de entrada: su mensaje SI se puede mostrar, lo causo quien llamo. */
 var ErrorValidacion = /** @class */ (function (_super) {
     __extends(ErrorValidacion, _super);
@@ -48,7 +49,7 @@ function mensajeError(error, contexto) {
     if (error instanceof ErrorValidacion) {
         return error.message;
     }
-    console.error("[dash] Error al ".concat(contexto, ":"), error);
+    logger_1.logger.error("[dash] Error al ".concat(contexto, ":"), error);
     return "No se pudo ".concat(contexto, ". Intenta nuevamente.");
 }
 exports.mensajeError = mensajeError;

@@ -70,6 +70,7 @@ var agregados_1 = require("../dash/agregados");
 var metas_1 = require("../dash/metas");
 var alertas_1 = require("../dash/alertas");
 var dashVentas = __importStar(require("../dash/ventas"));
+var logger_1 = require("../../utils/logger");
 var prisma = new client_1.PrismaClient();
 exports.CATALOGO = [
     {
@@ -297,7 +298,7 @@ function evaluarSede(idsede, fecha) {
                     return [3 /*break*/, 6];
                 case 5:
                     err_1 = _a.sent();
-                    console.error("[reglas] regla ".concat(regla.id, ":"), err_1);
+                    logger_1.logger.error("[reglas] regla ".concat(regla.id, ":"), err_1);
                     return [3 /*break*/, 6];
                 case 6:
                     _i++;

@@ -77,6 +77,7 @@ if (!process.env.FONTCONFIG_PATH) {
 var sharp_1 = __importDefault(require("sharp"));
 var client_s3_1 = require("@aws-sdk/client-s3");
 var ticket_svg_1 = require("./ticket.svg");
+var logger_1 = require("../utils/logger");
 var bucket = function () { return process.env.AWS_BUCKET_NAME || 'papaya-comercio-files'; };
 var region = function () { return process.env.AWS_REGION || 'us-east-2'; };
 // Base de la carpeta legacy /restobar/print/logo/ donde vive el archivo cuyo
@@ -115,7 +116,7 @@ var normalizarLogo = function (logoDataUrl) { return __awaiter(void 0, void 0, v
                 return [2 /*return*/, "data:image/png;base64,".concat(png.toString('base64'))];
             case 3:
                 error_1 = _a.sent();
-                console.error('ticket-imagen: logo malformado, se omite:', error_1.message);
+                logger_1.logger.error('ticket-imagen: logo malformado, se omite:', error_1.message);
                 return [2 /*return*/, null];
             case 4: return [2 /*return*/];
         }
@@ -153,7 +154,7 @@ var obtenerLogo = function (nombreArchivo, logo64) { return __awaiter(void 0, vo
                 return [2 /*return*/, "data:image/png;base64,".concat(png.toString('base64'))];
             case 5:
                 error_2 = _a.sent();
-                console.error('ticket-imagen: fallo obteniendo logo real (conf_print.logo):', error_2.message);
+                logger_1.logger.error('ticket-imagen: fallo obteniendo logo real (conf_print.logo):', error_2.message);
                 return [3 /*break*/, 6];
             case 6:
                 _i++;
@@ -170,7 +171,7 @@ var generarYSubirTicket = function (sessionId, datos) { return __awaiter(void 0,
             case 0:
                 _a.trys.push([0, 4, , 5]);
                 if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-                    console.error('ticket-imagen: faltan credenciales AWS en el env');
+                    logger_1.logger.error('ticket-imagen: faltan credenciales AWS en el env');
                     return [2 /*return*/, null];
                 }
                 logoArchivo = datos.logoArchivo, logo64 = datos.logo64, resto = __rest(datos, ["logoArchivo", "logo64"]);
@@ -194,7 +195,7 @@ var generarYSubirTicket = function (sessionId, datos) { return __awaiter(void 0,
                 return [2 /*return*/, "https://".concat(bucket(), ".s3.").concat(region(), ".amazonaws.com/").concat(key)];
             case 4:
                 error_3 = _a.sent();
-                console.error('ticket-imagen: error generando/subiendo:', error_3.message);
+                logger_1.logger.error('ticket-imagen: error generando/subiendo:', error_3.message);
                 return [2 /*return*/, null];
             case 5: return [2 /*return*/];
         }

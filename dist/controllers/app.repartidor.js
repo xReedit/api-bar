@@ -78,6 +78,7 @@ exports.__esModule = true;
 var express = __importStar(require("express"));
 var client_1 = require("@prisma/client");
 var socket_services_1 = __importDefault(require("../services/socket.services"));
+var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -365,7 +366,7 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
                 return [3 /*break*/, 5];
             case 4:
                 error_1 = _b.sent();
-                console.error('error', error_1);
+                logger_1.logger.error('error', error_1);
                 res.status(500).json({ message: 'Error al marcar pedido entregado' });
                 return [3 /*break*/, 5];
             case 5:

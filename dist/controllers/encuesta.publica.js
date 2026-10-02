@@ -57,6 +57,7 @@ var net_1 = require("net");
 var express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 var encuesta_firma_1 = require("../services/encuesta.firma");
 var encuesta_publica_service_1 = require("../services/encuesta.publica.service");
+var logger_1 = require("../utils/logger");
 var router = express_1["default"].Router();
 // En estos canales el token viaja impreso en cada comprobante: sin la firma de la venta cualquiera responderia sin limite
 var CANALES_CON_VENTA = ['ticket', 'whatsapp'];
@@ -79,7 +80,7 @@ router.use(function (req, res, next) {
     res.set('X-Content-Type-Options', 'nosniff');
     if (!(0, encuesta_firma_1.secretoEncuesta)()) {
         if (!avisoSinSecreto)
-            console.error('[encuesta-publica] ENCUESTA_SECRET no configurado (minimo 32 caracteres): servicio deshabilitado');
+            logger_1.logger.error('[encuesta-publica] ENCUESTA_SECRET no configurado (minimo 32 caracteres): servicio deshabilitado');
         avisoSinSecreto = true;
         return error(res, 503, 'NO_DISPONIBLE', 'La encuesta no esta disponible en este momento.');
     }
@@ -92,7 +93,7 @@ router.use(function (req, res, next) {
 var responderError = function (res, e, contexto) {
     if (e instanceof encuesta_publica_service_1.ErrorEncuesta)
         return error(res, e.status, e.codigo, e.message);
-    console.error("[encuesta-publica] ".concat(contexto, ":"), e);
+    logger_1.logger.error("[encuesta-publica] ".concat(contexto, ":"), e);
     return error(res, 500, 'NO_DISPONIBLE', 'No se pudo procesar la encuesta. Intenta de nuevo.');
 };
 /** Venta del link de comprobante (?v=), o null si el link es de tablet / QR fijo. Lanza si es invalida. */

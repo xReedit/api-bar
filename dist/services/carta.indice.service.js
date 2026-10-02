@@ -54,6 +54,7 @@ exports.construirIndice = exports.guardarIndice = exports.leerIndice = exports.u
 var client_s3_1 = require("@aws-sdk/client-s3");
 var carta_ocr_service_1 = require("./carta.ocr.service");
 var carta_match_service_1 = require("./carta.match.service");
+var logger_1 = require("../utils/logger");
 var bucket = function () { return process.env.AWS_BUCKET_NAME || 'papaya-comercio-files'; };
 var region = function () { return process.env.AWS_REGION || 'us-east-2'; };
 // El tachado es para cartas cortas (menú del día): con cartas grandes el OCR y el
@@ -106,7 +107,7 @@ var guardarIndice = function (idsede, idx) { return __awaiter(void 0, void 0, vo
                 return [2 /*return*/, true];
             case 2:
                 e_1 = _a.sent();
-                console.error('[carta-idx] guardar fallo', e_1);
+                logger_1.logger.error('[carta-idx] guardar fallo', e_1);
                 return [2 /*return*/, false];
             case 3: return [2 /*return*/];
         }
@@ -171,7 +172,7 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
             case 2:
                 etag = _a.sent();
                 if (!etag)
-                    console.warn('[carta-idx] sin etag de S3 (¿falta permiso HeadObject?), versionado de imagen degradado', idsede);
+                    logger_1.logger.warn('[carta-idx] sin etag de S3 (¿falta permiso HeadObject?), versionado de imagen degradado', idsede);
                 return [4 /*yield*/, (0, exports.leerIndice)(idsede)];
             case 3:
                 previo = _a.sent();
@@ -190,7 +191,7 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
                 // Carta demasiado larga: se borra el índice previo para que un índice de una
                 // carta anterior (corta) no tache posiciones equivocadas sobre la imagen nueva.
                 _a.sent();
-                console.warn("[carta-idx] carta demasiado larga (".concat(extraido.lineas.length, " lineas > ").concat(max, "), tachado desactivado"), idsede);
+                logger_1.logger.warn("[carta-idx] carta demasiado larga (".concat(extraido.lineas.length, " lineas > ").concat(max, "), tachado desactivado"), idsede);
                 return [2 /*return*/, { indice: null, motivo: 'carta_demasiado_larga', lineas: extraido.lineas.length, max: max }];
             case 6: return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT DISTINCT i.iditem, i.descripcion\n             FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem\n             WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0", Number(idsede))];
             case 7:
@@ -209,7 +210,7 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
                 return [2 /*return*/, { indice: idx }];
             case 9:
                 e_2 = _a.sent();
-                console.error('[carta-idx] construir fallo', e_2);
+                logger_1.logger.error('[carta-idx] construir fallo', e_2);
                 return [2 /*return*/, { indice: null }];
             case 10: return [2 /*return*/];
         }

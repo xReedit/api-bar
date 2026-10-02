@@ -62,77 +62,82 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 exports.__esModule = true;
-var express = __importStar(require("express"));
+exports.costoPersonal = void 0;
+var axios_1 = __importDefault(require("axios"));
+var jwt = __importStar(require("jsonwebtoken"));
 var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
-var dash_util_1 = require("../../services/dash.util");
-var utils_1 = require("../../utils/utils");
 var logger_1 = require("../../utils/logger");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
-var router = express.Router();
-router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        res.status(200).json({ message: 'Estás conectado al api dash CLIENTES' });
-        return [2 /*return*/];
+/**
+ * Costo de personal, para el asistente.
+ *
+ * El costo NO se calcula aqui: vive en el API de Recursos Humanos, que es el
+ * mismo motor con el que se arma la boleta. Si el asistente lo calculara por su
+ * lado, tarde o temprano diria un numero distinto al de la planilla y no habria
+ * forma de saber cual es el bueno.
+ *
+ * Es el unico dato del asistente que sale de otro servicio, asi que puede no
+ * estar: se devuelve `null` y quien llama lo cuenta como "no disponible", en vez
+ * de romper la consulta entera.
+ */
+var API_RRHH = process.env.API_RRHH_URL || 'http://localhost:10323/api-rrhh';
+var SECRET_POS = process.env.POS_SHARED_SECRET || '';
+function orgDeLaSede(idsede) {
+    return __awaiter(this, void 0, void 0, function () {
+        var filas;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, prisma.$queryRawUnsafe('SELECT idorg FROM sede WHERE idsede = ? LIMIT 1', idsede)];
+                case 1:
+                    filas = _a.sent();
+                    return [2 /*return*/, filas.length ? Number(filas[0].idorg) : null];
+            }
+        });
     });
-}); });
-// obtener dashboard de clientes
-router.post("/get-dash-clientes", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, params, clienteResultados, p_tipo_consulta, fechasLimitadas, p_fecha_inicio, p_fecha_fin, clienteResultadosFormateados, error_1;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                _a = req.body, idsede = _a.idsede, params = _a.params;
-                p_tipo_consulta = params.tipo_consulta;
-                fechasLimitadas = (0, utils_1.limitarRangoFechasDashboard)(params.rango_start_date, params.rango_end_date);
-                p_fecha_inicio = fechasLimitadas.fecha_inicio;
-                p_fecha_fin = fechasLimitadas.fecha_fin;
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                        var result, error_2;
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @xidsede = ".concat(idsede))];
-                                case 1:
-                                    _a.sent();
-                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @tipo_consulta = '".concat(p_tipo_consulta, "'"))];
-                                case 2:
-                                    _a.sent();
-                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_inicio = '".concat(p_fecha_inicio, "'"))];
-                                case 3:
-                                    _a.sent();
-                                    return [4 /*yield*/, tx.$executeRawUnsafe("SET @fecha_fin = '".concat(p_fecha_fin, "'"))];
-                                case 4:
-                                    _a.sent();
-                                    _a.label = 5;
-                                case 5:
-                                    _a.trys.push([5, 7, , 8]);
-                                    return [4 /*yield*/, tx.$queryRawUnsafe("CALL procedure_module_dash_clientes(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)")];
-                                case 6:
-                                    result = _a.sent();
-                                    return [2 /*return*/, result];
-                                case 7:
-                                    error_2 = _a.sent();
-                                    logger_1.logger.error('Error al ejecutar el stored procedure:', error_2);
-                                    throw error_2;
-                                case 8: return [2 /*return*/];
-                            }
-                        });
-                    }); })];
-            case 2:
-                clienteResultados = _b.sent();
-                clienteResultadosFormateados = (0, dash_util_1.normalizeResponseDashClientes)(clienteResultados, p_tipo_consulta);
-                res.status(200).json(clienteResultadosFormateados);
-                return [3 /*break*/, 4];
-            case 3:
-                error_1 = _b.sent();
-                res.status(500).json(error_1);
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
-        }
+}
+function tokenParaRrhh(idorg, idsede) {
+    if (!SECRET_POS)
+        throw new Error('falta POS_SHARED_SECRET');
+    return jwt.sign({ ido: idorg, idsede: idsede, idusuario: 0 }, SECRET_POS, {
+        algorithm: 'HS256',
+        expiresIn: '2m'
     });
-}); });
-exports["default"] = router;
+}
+/** `periodo` es YYYY-MM: Recursos Humanos razona por mes de planilla. */
+function costoPersonal(idsede, periodo) {
+    var _a, _b, _c, _d;
+    return __awaiter(this, void 0, void 0, function () {
+        var idorg, r, datos, error_1, detalle;
+        return __generator(this, function (_e) {
+            switch (_e.label) {
+                case 0:
+                    _e.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, orgDeLaSede(idsede)];
+                case 1:
+                    idorg = _e.sent();
+                    if (!idorg)
+                        return [2 /*return*/, null];
+                    return [4 /*yield*/, axios_1["default"].post("".concat(API_RRHH, "/asistencia/costo"), { periodo: periodo }, {
+                            headers: { Authorization: 'Bearer ' + tokenParaRrhh(idorg, idsede) },
+                            // Que Recursos Humanos tarde no puede dejar colgado un turno del chat.
+                            timeout: 15000
+                        })];
+                case 2:
+                    r = _e.sent();
+                    datos = (_b = (_a = r.data) === null || _a === void 0 ? void 0 : _a.datos) !== null && _b !== void 0 ? _b : r.data;
+                    if (!datos || datos.sin_rrhh)
+                        return [2 /*return*/, null];
+                    return [2 /*return*/, { periodo: periodo, datos: datos }];
+                case 3:
+                    error_1 = _e.sent();
+                    detalle = ((_d = (_c = error_1 === null || error_1 === void 0 ? void 0 : error_1.response) === null || _c === void 0 ? void 0 : _c.data) === null || _d === void 0 ? void 0 : _d.error) || (error_1 === null || error_1 === void 0 ? void 0 : error_1.message) || 'error desconocido';
+                    logger_1.logger.error('[asistente] Recursos Humanos no respondio:', detalle);
+                    return [2 /*return*/, null];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.costoPersonal = costoPersonal;

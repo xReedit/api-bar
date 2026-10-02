@@ -19,6 +19,9 @@ import {
     TipoDetalle
 } from '../dash/alertas';
 import { ventasPorHorario, nombreDia } from '../dash/horarios';
+import { ventasPorCanal, canalPorDia } from '../dash/canales';
+import { costoPersonal } from '../dash/rrhh';
+import { repartidoresDeSede, totalRepartidores } from '../dash/repartidores';
 import { consultarModulo, MODULOS, NombreModulo } from '../dash/modulos';
 import * as encuestasDash from '../encuesta.dash.service';
 import { CATALOGO, definicionDe, listarReglas } from './reglas';
@@ -31,6 +34,10 @@ import {
     bloqueTablaGenerica,
     bloqueTablaInventario,
     bloqueDispersionMargen,
+    bloqueDonaCanales,
+    bloqueKpisAlertas,
+    bloqueKpisResumen,
+    bloqueRankingUsuarios,
     bloqueComboVentas,
     bloqueComparativaDias,
     bloqueMancuernaMetas,
@@ -824,7 +831,21 @@ const alertas: Herramienta = {
                 'Borrar items, anular pedidos y sacar dinero de caja son operaciones ' +
                 'normales. Lo que importa es que se disparen frente al periodo anterior o ' +
                 'que se concentren en una persona. Senala donde mirar; no acuses.',
-            link: `/caja?desde=${periodo.desde}&hasta=${periodo.hasta}`
+            link: `/caja?desde=${periodo.desde}&hasta=${periodo.hasta}`,
+            bloques: [
+                bloqueKpisAlertas('kpi_alertas', 'Senales del periodo', datos.indicadores),
+                // El reparto por usuario solo cuando hay algo disparado: si todo
+                // esta normal, senalar personas es ruido.
+                ...(disparadas.length
+                    ? [
+                          bloqueRankingUsuarios(
+                              'quien_borra',
+                              'Quien borra items',
+                              datos.borradosPorUsuario
+                          )
+                      ]
+                    : [])
+            ].filter(Boolean) as Bloque[]
         };
     }
 };
@@ -983,6 +1004,240 @@ const rentabilidadPlatos: Herramienta = {
     }
 };
 
+
+
+
+
+// ------------------------------------------------------------------ reparto
+
+const reparto: Herramienta = {
+    definicion: {
+        nombre: 'reparto_domicilio',
+        descripcion:
+            'Los repartidores: cuantos hay, cuantas entregas hizo cada uno, como los ' +
+            'califican los clientes y quien esta conectado. Usar para preguntas sobre ' +
+            'repartidores, motorizados, quien reparte, o si el equipo de reparto alcanza. ' +
+            'Para la PLATA del delivery es ventas_por_canal; esto es QUIEN la mueve.',
+        parametros: {
+            type: 'object',
+            properties: { sedes: PARAM_SEDES, ...PARAM_FECHAS },
+            additionalProperties: false
+        }
+    },
+
+    async ejecutar(args, ctx) {
+        const sedes = resolverSedes(args.sedes, ctx);
+        const periodo = periodoDe(args, ctx);
+
+        const lista = await repartidoresDeSede(sedes.ids, periodo.desde, periodo.hasta);
+        const totales = await totalRepartidores();
+        const entregas = lista.reduce((t, r) => t + r.entregas, 0);
+
+        return {
+            periodo: { desde: periodo.desde, hasta: periodo.hasta },
+            sedes: sedes.nombres,
+            // Dados de alta en la plataforma, repartan o no en este periodo.
+            registrados_en_la_plataforma: totales.registrados,
+            conectados_ahora: totales.conectados,
+            repartidores_con_entregas: lista.length,
+            entregas_totales: entregas,
+            repartidores: lista,
+            sin_calificar: lista.filter((r) => r.calificaciones === 0).map((r) => r.nombre),
+            como_leerlo:
+                'La calificacion la ponen los clientes y es del 1 al 5. Un repartidor sin ' +
+                'calificaciones no es malo: es que nadie lo califico.',
+            link: `/ventas?desde=${periodo.desde}&hasta=${periodo.hasta}`,
+            bloques: (lista.length
+                ? [
+                      bloqueRankingUsuarios(
+                          'ranking_repartidores',
+                          'Entregas por repartidor',
+                          lista.map((r) => ({
+                              usuario: r.nombre,
+                              cantidad: r.entregas,
+                              // El ranking dibuja la barra sobre "monto": aqui lo que
+                              // se compara son entregas, no soles.
+                              monto: r.entregas
+                          }))
+                      )
+                  ]
+                : []
+            ).filter(Boolean) as Bloque[]
+        };
+    }
+};
+
+// ------------------------------------------------------------------------ rrhh
+
+const planilla: Herramienta = {
+    definicion: {
+        nombre: 'personal_costo',
+        descripcion:
+            'Costo de personal del mes: planilla, asistencia y cuanto pesa sobre las ' +
+            'ventas. Usar para preguntas sobre planilla, sueldos, cuanto cuesta el ' +
+            'equipo, si sobra o falta gente, o recursos humanos.',
+        parametros: {
+            type: 'object',
+            properties: {
+                sedes: PARAM_SEDES,
+                mes: {
+                    type: 'string',
+                    description: 'Mes de planilla en formato YYYY-MM. Omitir para el actual.'
+                }
+            },
+            additionalProperties: false
+        }
+    },
+
+    async ejecutar(args, ctx) {
+        const sedes = resolverSedes(args.sedes, ctx);
+        const periodo = periodoDe(args, ctx);
+
+        const mes = /^\d{4}-\d{2}$/.test(String(args.mes ?? ''))
+            ? String(args.mes)
+            : periodo.hasta.slice(0, 7);
+
+        // Una sede por vez: Recursos Humanos razona por sede y mes de planilla.
+        const porSede = [];
+        for (let i = 0; i < sedes.ids.length; i++) {
+            const costo = await costoPersonal(sedes.ids[i], mes);
+            porSede.push({ sede: sedes.nombres[i], disponible: costo !== null, costo: costo?.datos ?? null });
+        }
+
+        // El peso sobre la venta es lo que convierte un costo en un juicio.
+        const desdeMes = `${mes}-01`;
+        const hastaMes = new Date(
+            Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0)
+        )
+            .toISOString()
+            .slice(0, 10);
+
+        let ventasMes = 0;
+        for (const idsede of sedes.ids) {
+            ventasMes += resumenVentas(
+                await filasDeVentas(idsede, rangoDe({ desde: desdeMes, hasta: hastaMes }))
+            ).total;
+        }
+
+        const sinDatos = porSede.filter((p) => !p.disponible).map((p) => p.sede);
+
+        return {
+            mes,
+            sedes: sedes.nombres,
+            ventas_del_mes: redondear(ventasMes),
+            costo_por_sede: porSede.filter((p) => p.disponible),
+            // Recursos Humanos es otro servicio: puede no contestar, y eso se dice.
+            sin_datos_de_rrhh: sinDatos,
+            como_leerlo:
+                'El costo sale del mismo motor con el que se arma la boleta, no de un ' +
+                'calculo aparte: si aqui dice una cifra, la planilla dice la misma. En ' +
+                'restaurantes el personal suele pesar entre 25% y 35% de la venta.',
+            link: '/rrhh',
+            bloques: [] as Bloque[]
+        };
+    }
+};
+
+// --------------------------------------------------------------------- canales
+
+const canales: Herramienta = {
+    definicion: {
+        nombre: 'ventas_por_canal',
+        descripcion:
+            'Ventas repartidas por canal: salon (consumir en el local), para llevar y ' +
+            'delivery, con su ticket promedio y como vienen contra el periodo anterior. ' +
+            'Usar cuando pregunten por delivery, por salon, por reparto, por como va un ' +
+            'canal, o de donde viene la venta.',
+        parametros: {
+            type: 'object',
+            properties: {
+                sedes: PARAM_SEDES,
+                ...PARAM_FECHAS,
+                canal: {
+                    type: 'string',
+                    description:
+                        'Para seguir UN canal dia a dia. Tal como viene en el reparto: ' +
+                        '"DELIVERY", "PARA LLEVAR", "CONSUMIR EN EL LOCAL". Omitir para ' +
+                        'ver todos.'
+                },
+                grafico: PARAM_GRAFICO(
+                    ['dona', 'barras', 'tendencia'],
+                    'dona = cuanto pesa cada canal. barras = comparar sus montos. ' +
+                        'tendencia = la serie diaria de UN canal, requiere el parametro canal.'
+                )
+            },
+            additionalProperties: false
+        }
+    },
+
+    async ejecutar(args, ctx) {
+        const sedes = resolverSedes(args.sedes, ctx);
+        const periodo = periodoDe(args, ctx);
+
+        const actual = await ventasPorCanal(sedes.ids, periodo.desde, periodo.hasta);
+        const antes = await ventasPorCanal(
+            sedes.ids,
+            rangoAnterior(periodo).rango_start_date,
+            rangoAnterior(periodo).rango_end_date
+        );
+
+        const total = actual.reduce((t, c) => t + c.total, 0);
+        const anterior = new Map(antes.map((c) => [c.canal, c]));
+
+        const canalesConPeso = actual.map((c) => ({
+            ...c,
+            participacion_pct: total ? redondear((c.total / total) * 100) : 0,
+            vs_anterior_pct: variacionPct(c.total, anterior.get(c.canal)?.total ?? 0)
+        }));
+
+        const pedido = String(args.canal ?? '').toUpperCase();
+        const serieCanal = pedido
+            ? await canalPorDia(sedes.ids, pedido, periodo.desde, periodo.hasta)
+            : [];
+
+        return {
+            periodo: { desde: periodo.desde, hasta: periodo.hasta },
+            sedes: sedes.nombres,
+            total_general: redondear(total),
+            canales: canalesConPeso,
+            serie_del_canal: serieCanal.length ? { canal: pedido, dias: serieCanal } : null,
+            como_leerlo:
+                'El canal sale de como se marco la venta en el POS (tipo de consumo). ' +
+                'Si un canal aparece en cero puede ser que no se este marcando, no que ' +
+                'no exista.',
+            link: `/ventas?desde=${periodo.desde}&hasta=${periodo.hasta}`,
+            bloques: (canalesConPeso.length
+                ? elegirVista(
+                      args.grafico,
+                      {
+                          dona: () => [bloqueDonaCanales('dona_canales', 'Reparto por canal', canalesConPeso)],
+                          barras: () => [
+                              bloqueTablaGenerica(
+                                  'tabla_canales',
+                                  'Ventas por canal',
+                                  canalesConPeso.map((c) => ({
+                                      canal: c.canal,
+                                      total: c.total,
+                                      ventas: c.ventas,
+                                      ticket: c.ticketPromedio
+                                  }))
+                              )
+                          ],
+                          tendencia: () =>
+                              serieCanal.length
+                                  ? [bloqueSerieDiaria('serie_canal', `${pedido} dia a dia`, serieCanal)]
+                                  : [bloqueDonaCanales('dona_canales', 'Reparto por canal', canalesConPeso)],
+                          auto: () => [
+                              bloqueDonaCanales('dona_canales', 'Reparto por canal', canalesConPeso)
+                          ]
+                      },
+                      'auto'
+                  )
+                : []
+            ).filter(Boolean) as Bloque[]
+        };
+    }
+};
 
 // -------------------------------------------------------------------- horarios
 
@@ -1180,13 +1435,19 @@ function herramientaDeModulo(
 
             // Se grafica el primer local: varias tablas apiladas no se leen.
             const primeras = porSede[0]?.datos;
-            const bloque = Array.isArray(primeras)
-                ? bloqueTablaGenerica(
-                      `tabla_${nombre}`,
-                      `${descripcionCorta} · ${titulizarTipo(tipo)}`,
-                      primeras as Array<Record<string, unknown>>
-                  )
-                : null;
+            const titulo = `${descripcionCorta} · ${titulizarTipo(tipo)}`;
+
+            // Tabla si son varias filas; KPIs si es un resumen. Sin el respaldo,
+            // preguntas como "cuanto gaste en compras" o "cuanto vendo para no
+            // perder" se contestaban sin un solo numero en pantalla.
+            const bloque =
+                (Array.isArray(primeras) && primeras.length > 1
+                    ? bloqueTablaGenerica(
+                          `tabla_${nombre}`,
+                          titulo,
+                          primeras as Array<Record<string, unknown>>
+                      )
+                    : null) ?? bloqueKpisResumen(`kpi_${nombre}`, titulo, primeras);
 
             return {
                 periodo: { desde: periodo.desde, hasta: periodo.hasta },
@@ -1291,6 +1552,13 @@ const encuestas: Herramienta = {
                 sede: sedes.nombres[i],
                 kpis: tablero?.kpis ?? null,
                 canales: tablero?.canales ?? [],
+                // El tablero ya traia todo esto y se estaba descartando aqui: por
+                // eso no sabia decir que mozo tiene mejor nota, ni a que hora se
+                // queja mas la gente, ni como se reparten las notas.
+                mozos: tablero?.mozos ?? [],
+                distribucion_notas: tablero?.distribucion ?? [],
+                por_hora: tablero?.horas ?? [],
+                preguntas: tablero?.preguntas ?? [],
                 hay_encuestas_activas: tablero?.hay_activas ?? false,
                 // Solo lo necesario para hablar de ellas: nada de datos del cliente.
                 malas_pendientes: malas.slice(0, 8).map((a: any) => ({
@@ -1573,6 +1841,9 @@ export const HERRAMIENTAS: Herramienta[] = [
     ventasResumen,
     ventasPorDiaHerramienta,
     horarios,
+    canales,
+    planilla,
+    reparto,
     localesComparar,
     productosTop,
     metasAvance,

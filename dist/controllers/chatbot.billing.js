@@ -87,6 +87,7 @@ var express_1 = __importDefault(require("express"));
 var billing_helpers_1 = require("../services/billing.helpers");
 var chatbotgo = __importStar(require("../services/chatbotgo.service"));
 var niubiz = __importStar(require("../services/niubiz.service"));
+var logger_1 = require("../utils/logger");
 var router = express_1["default"].Router();
 var prisma = new client_1.PrismaClient();
 /**
@@ -114,7 +115,7 @@ router.get('/saldo/:idsede', function (req, res) { return __awaiter(void 0, void
                 return [3 /*break*/, 3];
             case 2:
                 error_1 = _a.sent();
-                console.error('billing saldo:', error_1);
+                logger_1.logger.error('billing saldo:', error_1);
                 res.status(502).json({ success: false, error: 'saldo no disponible' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -135,7 +136,7 @@ router.get('/packs', function (_req, res) { return __awaiter(void 0, void 0, voi
                 return [3 /*break*/, 3];
             case 2:
                 error_2 = _a.sent();
-                console.error('billing packs:', error_2);
+                logger_1.logger.error('billing packs:', error_2);
                 res.status(500).json({ success: false, error: 'no se pudieron listar los paquetes' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -206,7 +207,7 @@ router.post('/pago/iniciar', function (req, res) { return __awaiter(void 0, void
                 return [3 /*break*/, 7];
             case 6:
                 error_3 = _a.sent();
-                console.error('billing iniciar:', detalle(error_3));
+                logger_1.logger.error('billing iniciar:', detalle(error_3));
                 res.status(500).json({ success: false, error: 'no se pudo iniciar el pago' });
                 return [3 /*break*/, 7];
             case 7: return [2 /*return*/];
@@ -287,7 +288,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
                 // que "no respondió": se libera el reclamo, es reintentable. Marcar
                 // 'fallido' aquí perdería el intento sin que hubiera un rechazo real.
                 _a.sent();
-                console.warn('billing: respuesta de Niubiz irreconocible, se libera el reclamo', { purchaseNumber: pago.id });
+                logger_1.logger.warn('billing: respuesta de Niubiz irreconocible, se libera el reclamo', { purchaseNumber: pago.id });
                 return [2 /*return*/, res.status(502).json({ success: false, error: 'pasarela no disponible, reintenta', retryable: true })];
             case 13:
                 if (!!auth.ok) return [3 /*break*/, 15];
@@ -296,7 +297,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
             case 14:
                 // Rechazo real: Niubiz contestó con un ACTION_CODE de rechazo. Terminal.
                 _a.sent();
-                console.warn('billing: pago rechazado', { purchaseNumber: pago.id, actionCode: auth.actionCode });
+                logger_1.logger.warn('billing: pago rechazado', { purchaseNumber: pago.id, actionCode: auth.actionCode });
                 return [2 /*return*/, res.status(402).json({
                         success: false,
                         error: auth.descripcion || 'pago rechazado',
@@ -307,14 +308,14 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
                 return [4 /*yield*/, prisma.$executeRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ", "\n                WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ", "\n                WHERE id = ", " AND estado = 'procesando'"])), auth.transactionId, pago.id)];
             case 16:
                 _a.sent();
-                console.log('billing: pago aprobado', { purchaseNumber: pago.id, tx: auth.transactionId });
+                logger_1.logger.info('billing: pago aprobado', { purchaseNumber: pago.id, tx: auth.transactionId });
                 return [4 /*yield*/, acreditar(__assign(__assign({}, pago), { niubiz_tx: auth.transactionId }))];
             case 17:
                 resultado = _a.sent();
                 return [2 /*return*/, res.status(200).json(__assign({ success: true }, resultado))];
             case 18:
                 dbError_1 = _a.sent();
-                console.error('billing: PAGO APROBADO POR NIUBIZ PERO NO REGISTRADO EN BD (revisar manualmente)', {
+                logger_1.logger.error('billing: PAGO APROBADO POR NIUBIZ PERO NO REGISTRADO EN BD (revisar manualmente)', {
                     purchaseNumber: pago.id,
                     transactionId: auth.transactionId,
                     actionCode: auth.actionCode,
@@ -328,7 +329,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
             case 19: return [3 /*break*/, 21];
             case 20:
                 error_4 = _a.sent();
-                console.error('billing confirmar:', detalle(error_4));
+                logger_1.logger.error('billing confirmar:', detalle(error_4));
                 res.status(500).json({ success: false, error: 'no se pudo confirmar el pago' });
                 return [3 /*break*/, 21];
             case 21: return [2 /*return*/];
@@ -357,7 +358,7 @@ var acreditar = function (pago) { return __awaiter(void 0, void 0, void 0, funct
                 return [3 /*break*/, 3];
             case 2:
                 error_5 = _b.sent();
-                console.error('billing: pago cobrado pero NO acreditado (reintentar confirmar)', error_5);
+                logger_1.logger.error('billing: pago cobrado pero NO acreditado (reintentar confirmar)', error_5);
                 return [2 /*return*/, { acreditado: false }];
             case 3:
                 _b.trys.push([3, 5, , 6]);

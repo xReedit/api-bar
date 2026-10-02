@@ -109,7 +109,7 @@ router.post("/get-productos-bodega", function (req, res) { return __awaiter(void
         switch (_b.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, idproducto_stock = _a.idproducto_stock, params = _a.params;
-                //console.log('idproducto_stock', idproducto_stock);
+                //logger.debug('idproducto_stock', idproducto_stock);
                 if (idproducto_stock === '') {
                     res.status(200).json([]);
                 }
@@ -126,7 +126,7 @@ router.post("/get-productos-bodega", function (req, res) { return __awaiter(void
                     element.costo = 0;
                     element.rentabilidad = 0;
                 });
-                //console.log('productos', productos);
+                //logger.debug('productos', productos);
                 res.status(200).json(productos);
                 return [3 /*break*/, 4];
             case 3:

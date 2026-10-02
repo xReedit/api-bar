@@ -41,6 +41,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 exports.__esModule = true;
 exports.GeocodingService = exports.esSoloCiudad = exports.clasificarConfianza = exports.estimarKmRuta = void 0;
 var axios_1 = __importDefault(require("axios"));
+var logger_1 = require("../utils/logger");
 var getApiKey = function () { return process.env.GOOGLE_MAPS_API_KEY || ''; };
 /**
  * La línea recta (haversine) subestima la ruta real de reparto. Factor de
@@ -127,7 +128,7 @@ var GeocodingService = /** @class */ (function () {
                             }];
                     case 2:
                         error_1 = _a.sent();
-                        console.error('Error en geocodificación:', error_1);
+                        logger_1.logger.error('Error en geocodificación:', error_1);
                         return [2 /*return*/, {
                                 success: false,
                                 error: error_1.message || 'Error al obtener coordenadas'
@@ -184,7 +185,7 @@ var GeocodingService = /** @class */ (function () {
                             }];
                     case 2:
                         error_2 = _b.sent();
-                        console.error('Error en reverse geocoding:', error_2);
+                        logger_1.logger.error('Error en reverse geocoding:', error_2);
                         return [2 /*return*/, { success: false, error: error_2.message || 'Error al obtener dirección' }];
                     case 3: return [2 /*return*/];
                 }
@@ -230,7 +231,7 @@ var GeocodingService = /** @class */ (function () {
                                         direccionCompleta = ciudad
                                             ? "".concat(direccion, ", ").concat(ciudad, ", Peru")
                                             : "".concat(direccion, ", Peru");
-                                        console.log('Geocodificando:', direccionCompleta);
+                                        logger_1.logger.debug('Geocodificando:', direccionCompleta);
                                         return [4 /*yield*/, axios_1["default"].get(url, {
                                                 params: {
                                                     address: direccionCompleta,
@@ -249,9 +250,9 @@ var GeocodingService = /** @class */ (function () {
                                             // Distinguir "no existe" de errores de API (key, billing, etc.):
                                             // antes REQUEST_DENIED se logueaba igual que dirección no hallada.
                                             if (!['OK', 'ZERO_RESULTS'].includes(response.data.status)) {
-                                                console.error('Geocoding API:', response.data.status, response.data.error_message || '');
+                                                logger_1.logger.error('Geocoding API:', response.data.status, response.data.error_message || '');
                                             }
-                                            console.log("No se encontr\u00F3 direcci\u00F3n con ciudad \"".concat(ciudad, "\""));
+                                            logger_1.logger.debug("No se encontr\u00F3 direcci\u00F3n con ciudad \"".concat(ciudad, "\""));
                                             return [2 /*return*/, "continue"];
                                         }
                                         candidatos = response.data.results;
@@ -268,7 +269,7 @@ var GeocodingService = /** @class */ (function () {
                                             }
                                         }
                                         if (candidatos.length > 1) {
-                                            console.log("Geocoding devolvi\u00F3 ".concat(candidatos.length, " candidatos; elegido: ").concat(elegido.formatted_address));
+                                            logger_1.logger.debug("Geocoding devolvi\u00F3 ".concat(candidatos.length, " candidatos; elegido: ").concat(elegido.formatted_address));
                                         }
                                         location = elegido.geometry.location;
                                         addressComponents = elegido.address_components;
@@ -295,12 +296,12 @@ var GeocodingService = /** @class */ (function () {
                                             }
                                         });
                                         distanciaKm = (0, exports.estimarKmRuta)(this_1.calcularDistanciaHaversine(latComercio, lngComercio, location.lat, location.lng));
-                                        console.log("Encontrado con ciudad \"".concat(ciudad, "\": ").concat(distanciaKm, " km (ruta estimada = recta \u00D7 factor)"));
+                                        logger_1.logger.debug("Encontrado con ciudad \"".concat(ciudad, "\": ").concat(distanciaKm, " km (ruta estimada = recta \u00D7 factor)"));
                                         // Match a nivel ciudad (sin calle): NO sirve ni para confirmar
                                         // — se sigue buscando (Places) y si nada da calle, el caller
                                         // cae al costo base sin preguntarle nada al cliente.
                                         if ((0, exports.esSoloCiudad)(elegido.types)) {
-                                            console.log("Match solo-ciudad para \"".concat(direccion, "\" \u2014 se descarta y sigue el fallback"));
+                                            logger_1.logger.debug("Match solo-ciudad para \"".concat(direccion, "\" \u2014 se descarta y sigue el fallback"));
                                             return [2 /*return*/, "continue"];
                                         }
                                         confianza = (0, exports.clasificarConfianza)(elegido);
@@ -347,7 +348,7 @@ var GeocodingService = /** @class */ (function () {
                         lugar = _b.sent();
                         if (lugar.success && lugar.lat !== undefined && lugar.lng !== undefined) {
                             distanciaKm = (0, exports.estimarKmRuta)(this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng));
-                            console.log("Places fallback encontr\u00F3 \"".concat(lugar.direccion, "\": ").concat(distanciaKm, " km (ruta estimada)"));
+                            logger_1.logger.debug("Places fallback encontr\u00F3 \"".concat(lugar.direccion, "\": ").concat(distanciaKm, " km (ruta estimada)"));
                             return [2 /*return*/, {
                                     success: true,
                                     lat: lugar.lat,
@@ -363,7 +364,7 @@ var GeocodingService = /** @class */ (function () {
                             }];
                     case 6:
                         error_3 = _b.sent();
-                        console.error('Error al geocodificar:', error_3);
+                        logger_1.logger.error('Error al geocodificar:', error_3);
                         return [2 /*return*/, {
                                 success: false,
                                 error: error_3.message || 'Error al calcular distancia'
@@ -396,7 +397,7 @@ var GeocodingService = /** @class */ (function () {
                             }];
                     case 2:
                         error_4 = _a.sent();
-                        console.error('Error al calcular distancia:', error_4);
+                        logger_1.logger.error('Error al calcular distancia:', error_4);
                         return [2 /*return*/, {
                                 success: false,
                                 error: error_4.message || 'Error al calcular distancia'
@@ -425,13 +426,13 @@ var GeocodingService = /** @class */ (function () {
                         r = (_b = (_a = response.data) === null || _a === void 0 ? void 0 : _a.results) === null || _b === void 0 ? void 0 : _b[0];
                         if (((_c = response.data) === null || _c === void 0 ? void 0 : _c.status) !== 'OK' || !((_d = r === null || r === void 0 ? void 0 : r.geometry) === null || _d === void 0 ? void 0 : _d.location)) {
                             if (!['OK', 'ZERO_RESULTS'].includes((_e = response.data) === null || _e === void 0 ? void 0 : _e.status)) {
-                                console.error('Places API:', (_f = response.data) === null || _f === void 0 ? void 0 : _f.status, ((_g = response.data) === null || _g === void 0 ? void 0 : _g.error_message) || '');
+                                logger_1.logger.error('Places API:', (_f = response.data) === null || _f === void 0 ? void 0 : _f.status, ((_g = response.data) === null || _g === void 0 ? void 0 : _g.error_message) || '');
                             }
                             return [2 /*return*/, { success: false }];
                         }
                         tiposDireccion_1 = ['street_address', 'route', 'premise', 'subpremise', 'intersection'];
                         if (!Array.isArray(r.types) || !r.types.some(function (t) { return tiposDireccion_1.includes(t); })) {
-                            console.log("Places devolvi\u00F3 algo que no es direcci\u00F3n (".concat((r.types || []).join(','), ") para \"").concat(direccion, "\" \u2014 descartado"));
+                            logger_1.logger.debug("Places devolvi\u00F3 algo que no es direcci\u00F3n (".concat((r.types || []).join(','), ") para \"").concat(direccion, "\" \u2014 descartado"));
                             return [2 /*return*/, { success: false }];
                         }
                         return [2 /*return*/, {
@@ -442,7 +443,7 @@ var GeocodingService = /** @class */ (function () {
                             }];
                     case 2:
                         error_5 = _h.sent();
-                        console.error('Error en Places fallback:', error_5.message);
+                        logger_1.logger.error('Error en Places fallback:', error_5.message);
                         return [2 /*return*/, { success: false }];
                     case 3: return [2 /*return*/];
                 }

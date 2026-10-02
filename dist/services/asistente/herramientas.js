@@ -89,6 +89,9 @@ var clima_1 = require("./clima");
 var metas_1 = require("../dash/metas");
 var alertas_1 = require("../dash/alertas");
 var horarios_1 = require("../dash/horarios");
+var canales_1 = require("../dash/canales");
+var rrhh_1 = require("../dash/rrhh");
+var repartidores_1 = require("../dash/repartidores");
 var modulos_1 = require("../dash/modulos");
 var encuestasDash = __importStar(require("../encuesta.dash.service"));
 var reglas_1 = require("./reglas");
@@ -827,7 +830,14 @@ var alertas = {
                                 como_leerlo: 'Borrar items, anular pedidos y sacar dinero de caja son operaciones ' +
                                     'normales. Lo que importa es que se disparen frente al periodo anterior o ' +
                                     'que se concentren en una persona. Senala donde mirar; no acuses.',
-                                link: "/caja?desde=".concat(periodo.desde, "&hasta=").concat(periodo.hasta)
+                                link: "/caja?desde=".concat(periodo.desde, "&hasta=").concat(periodo.hasta),
+                                bloques: __spreadArray([
+                                    (0, bloques_1.bloqueKpisAlertas)('kpi_alertas', 'Senales del periodo', datos.indicadores)
+                                ], (disparadas.length
+                                    ? [
+                                        (0, bloques_1.bloqueRankingUsuarios)('quien_borra', 'Quien borra items', datos.borradosPorUsuario)
+                                    ]
+                                    : []), true).filter(Boolean)
                             }];
                 }
             });
@@ -968,6 +978,238 @@ var rentabilidadPlatos = {
                                         }
                                     }, 'auto')
                                     : [])
+                            }];
+                }
+            });
+        });
+    }
+};
+// ------------------------------------------------------------------ reparto
+var reparto = {
+    definicion: {
+        nombre: 'reparto_domicilio',
+        descripcion: 'Los repartidores: cuantos hay, cuantas entregas hizo cada uno, como los ' +
+            'califican los clientes y quien esta conectado. Usar para preguntas sobre ' +
+            'repartidores, motorizados, quien reparte, o si el equipo de reparto alcanza. ' +
+            'Para la PLATA del delivery es ventas_por_canal; esto es QUIEN la mueve.',
+        parametros: {
+            type: 'object',
+            properties: __assign({ sedes: PARAM_SEDES }, PARAM_FECHAS),
+            additionalProperties: false
+        }
+    },
+    ejecutar: function (args, ctx) {
+        return __awaiter(this, void 0, void 0, function () {
+            var sedes, periodo, lista, totales, entregas;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        sedes = (0, sedes_1.resolverSedes)(args.sedes, ctx);
+                        periodo = periodoDe(args, ctx);
+                        return [4 /*yield*/, (0, repartidores_1.repartidoresDeSede)(sedes.ids, periodo.desde, periodo.hasta)];
+                    case 1:
+                        lista = _a.sent();
+                        return [4 /*yield*/, (0, repartidores_1.totalRepartidores)()];
+                    case 2:
+                        totales = _a.sent();
+                        entregas = lista.reduce(function (t, r) { return t + r.entregas; }, 0);
+                        return [2 /*return*/, {
+                                periodo: { desde: periodo.desde, hasta: periodo.hasta },
+                                sedes: sedes.nombres,
+                                // Dados de alta en la plataforma, repartan o no en este periodo.
+                                registrados_en_la_plataforma: totales.registrados,
+                                conectados_ahora: totales.conectados,
+                                repartidores_con_entregas: lista.length,
+                                entregas_totales: entregas,
+                                repartidores: lista,
+                                sin_calificar: lista.filter(function (r) { return r.calificaciones === 0; }).map(function (r) { return r.nombre; }),
+                                como_leerlo: 'La calificacion la ponen los clientes y es del 1 al 5. Un repartidor sin ' +
+                                    'calificaciones no es malo: es que nadie lo califico.',
+                                link: "/ventas?desde=".concat(periodo.desde, "&hasta=").concat(periodo.hasta),
+                                bloques: (lista.length
+                                    ? [
+                                        (0, bloques_1.bloqueRankingUsuarios)('ranking_repartidores', 'Entregas por repartidor', lista.map(function (r) { return ({
+                                            usuario: r.nombre,
+                                            cantidad: r.entregas,
+                                            // El ranking dibuja la barra sobre "monto": aqui lo que
+                                            // se compara son entregas, no soles.
+                                            monto: r.entregas
+                                        }); }))
+                                    ]
+                                    : []).filter(Boolean)
+                            }];
+                }
+            });
+        });
+    }
+};
+// ------------------------------------------------------------------------ rrhh
+var planilla = {
+    definicion: {
+        nombre: 'personal_costo',
+        descripcion: 'Costo de personal del mes: planilla, asistencia y cuanto pesa sobre las ' +
+            'ventas. Usar para preguntas sobre planilla, sueldos, cuanto cuesta el ' +
+            'equipo, si sobra o falta gente, o recursos humanos.',
+        parametros: {
+            type: 'object',
+            properties: {
+                sedes: PARAM_SEDES,
+                mes: {
+                    type: 'string',
+                    description: 'Mes de planilla en formato YYYY-MM. Omitir para el actual.'
+                }
+            },
+            additionalProperties: false
+        }
+    },
+    ejecutar: function (args, ctx) {
+        var _a, _b;
+        return __awaiter(this, void 0, void 0, function () {
+            var sedes, periodo, mes, porSede, i, costo, desdeMes, hastaMes, ventasMes, _i, _c, idsede, _d, _e, sinDatos;
+            return __generator(this, function (_f) {
+                switch (_f.label) {
+                    case 0:
+                        sedes = (0, sedes_1.resolverSedes)(args.sedes, ctx);
+                        periodo = periodoDe(args, ctx);
+                        mes = /^\d{4}-\d{2}$/.test(String((_a = args.mes) !== null && _a !== void 0 ? _a : ''))
+                            ? String(args.mes)
+                            : periodo.hasta.slice(0, 7);
+                        porSede = [];
+                        i = 0;
+                        _f.label = 1;
+                    case 1:
+                        if (!(i < sedes.ids.length)) return [3 /*break*/, 4];
+                        return [4 /*yield*/, (0, rrhh_1.costoPersonal)(sedes.ids[i], mes)];
+                    case 2:
+                        costo = _f.sent();
+                        porSede.push({ sede: sedes.nombres[i], disponible: costo !== null, costo: (_b = costo === null || costo === void 0 ? void 0 : costo.datos) !== null && _b !== void 0 ? _b : null });
+                        _f.label = 3;
+                    case 3:
+                        i++;
+                        return [3 /*break*/, 1];
+                    case 4:
+                        desdeMes = "".concat(mes, "-01");
+                        hastaMes = new Date(Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0))
+                            .toISOString()
+                            .slice(0, 10);
+                        ventasMes = 0;
+                        _i = 0, _c = sedes.ids;
+                        _f.label = 5;
+                    case 5:
+                        if (!(_i < _c.length)) return [3 /*break*/, 8];
+                        idsede = _c[_i];
+                        _d = ventasMes;
+                        _e = agregados_1.resumenVentas;
+                        return [4 /*yield*/, filasDeVentas(idsede, rangoDe({ desde: desdeMes, hasta: hastaMes }))];
+                    case 6:
+                        ventasMes = _d + _e.apply(void 0, [_f.sent()]).total;
+                        _f.label = 7;
+                    case 7:
+                        _i++;
+                        return [3 /*break*/, 5];
+                    case 8:
+                        sinDatos = porSede.filter(function (p) { return !p.disponible; }).map(function (p) { return p.sede; });
+                        return [2 /*return*/, {
+                                mes: mes,
+                                sedes: sedes.nombres,
+                                ventas_del_mes: (0, agregados_1.redondear)(ventasMes),
+                                costo_por_sede: porSede.filter(function (p) { return p.disponible; }),
+                                // Recursos Humanos es otro servicio: puede no contestar, y eso se dice.
+                                sin_datos_de_rrhh: sinDatos,
+                                como_leerlo: 'El costo sale del mismo motor con el que se arma la boleta, no de un ' +
+                                    'calculo aparte: si aqui dice una cifra, la planilla dice la misma. En ' +
+                                    'restaurantes el personal suele pesar entre 25% y 35% de la venta.',
+                                link: '/rrhh',
+                                bloques: []
+                            }];
+                }
+            });
+        });
+    }
+};
+// --------------------------------------------------------------------- canales
+var canales = {
+    definicion: {
+        nombre: 'ventas_por_canal',
+        descripcion: 'Ventas repartidas por canal: salon (consumir en el local), para llevar y ' +
+            'delivery, con su ticket promedio y como vienen contra el periodo anterior. ' +
+            'Usar cuando pregunten por delivery, por salon, por reparto, por como va un ' +
+            'canal, o de donde viene la venta.',
+        parametros: {
+            type: 'object',
+            properties: __assign(__assign({ sedes: PARAM_SEDES }, PARAM_FECHAS), { canal: {
+                    type: 'string',
+                    description: 'Para seguir UN canal dia a dia. Tal como viene en el reparto: ' +
+                        '"DELIVERY", "PARA LLEVAR", "CONSUMIR EN EL LOCAL". Omitir para ' +
+                        'ver todos.'
+                }, grafico: PARAM_GRAFICO(['dona', 'barras', 'tendencia'], 'dona = cuanto pesa cada canal. barras = comparar sus montos. ' +
+                    'tendencia = la serie diaria de UN canal, requiere el parametro canal.') }),
+            additionalProperties: false
+        }
+    },
+    ejecutar: function (args, ctx) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var sedes, periodo, actual, antes, total, anterior, canalesConPeso, pedido, serieCanal, _b;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        sedes = (0, sedes_1.resolverSedes)(args.sedes, ctx);
+                        periodo = periodoDe(args, ctx);
+                        return [4 /*yield*/, (0, canales_1.ventasPorCanal)(sedes.ids, periodo.desde, periodo.hasta)];
+                    case 1:
+                        actual = _c.sent();
+                        return [4 /*yield*/, (0, canales_1.ventasPorCanal)(sedes.ids, rangoAnterior(periodo).rango_start_date, rangoAnterior(periodo).rango_end_date)];
+                    case 2:
+                        antes = _c.sent();
+                        total = actual.reduce(function (t, c) { return t + c.total; }, 0);
+                        anterior = new Map(antes.map(function (c) { return [c.canal, c]; }));
+                        canalesConPeso = actual.map(function (c) {
+                            var _a, _b;
+                            return (__assign(__assign({}, c), { participacion_pct: total ? (0, agregados_1.redondear)((c.total / total) * 100) : 0, vs_anterior_pct: (0, agregados_1.variacionPct)(c.total, (_b = (_a = anterior.get(c.canal)) === null || _a === void 0 ? void 0 : _a.total) !== null && _b !== void 0 ? _b : 0) }));
+                        });
+                        pedido = String((_a = args.canal) !== null && _a !== void 0 ? _a : '').toUpperCase();
+                        if (!pedido) return [3 /*break*/, 4];
+                        return [4 /*yield*/, (0, canales_1.canalPorDia)(sedes.ids, pedido, periodo.desde, periodo.hasta)];
+                    case 3:
+                        _b = _c.sent();
+                        return [3 /*break*/, 5];
+                    case 4:
+                        _b = [];
+                        _c.label = 5;
+                    case 5:
+                        serieCanal = _b;
+                        return [2 /*return*/, {
+                                periodo: { desde: periodo.desde, hasta: periodo.hasta },
+                                sedes: sedes.nombres,
+                                total_general: (0, agregados_1.redondear)(total),
+                                canales: canalesConPeso,
+                                serie_del_canal: serieCanal.length ? { canal: pedido, dias: serieCanal } : null,
+                                como_leerlo: 'El canal sale de como se marco la venta en el POS (tipo de consumo). ' +
+                                    'Si un canal aparece en cero puede ser que no se este marcando, no que ' +
+                                    'no exista.',
+                                link: "/ventas?desde=".concat(periodo.desde, "&hasta=").concat(periodo.hasta),
+                                bloques: (canalesConPeso.length
+                                    ? elegirVista(args.grafico, {
+                                        dona: function () { return [(0, bloques_1.bloqueDonaCanales)('dona_canales', 'Reparto por canal', canalesConPeso)]; },
+                                        barras: function () { return [
+                                            (0, bloques_1.bloqueTablaGenerica)('tabla_canales', 'Ventas por canal', canalesConPeso.map(function (c) { return ({
+                                                canal: c.canal,
+                                                total: c.total,
+                                                ventas: c.ventas,
+                                                ticket: c.ticketPromedio
+                                            }); }))
+                                        ]; },
+                                        tendencia: function () {
+                                            return serieCanal.length
+                                                ? [(0, bloques_1.bloqueSerieDiaria)('serie_canal', "".concat(pedido, " dia a dia"), serieCanal)]
+                                                : [(0, bloques_1.bloqueDonaCanales)('dona_canales', 'Reparto por canal', canalesConPeso)];
+                                        },
+                                        auto: function () { return [
+                                            (0, bloques_1.bloqueDonaCanales)('dona_canales', 'Reparto por canal', canalesConPeso)
+                                        ]; }
+                                    }, 'auto')
+                                    : []).filter(Boolean)
                             }];
                 }
             });
@@ -1152,37 +1394,38 @@ function herramientaDeModulo(modulo, nombre, descripcion, enlace, descripcionCor
             }
         },
         ejecutar: function (args, ctx) {
-            var _a, _b;
+            var _a, _b, _c;
             return __awaiter(this, void 0, void 0, function () {
-                var sedes, periodo, tipo, porSede, i, datos, primeras, bloque;
-                return __generator(this, function (_c) {
-                    switch (_c.label) {
+                var sedes, periodo, tipo, porSede, i, datos, primeras, titulo, bloque;
+                return __generator(this, function (_d) {
+                    switch (_d.label) {
                         case 0:
                             sedes = (0, sedes_1.resolverSedes)(args.sedes, ctx);
                             periodo = periodoDe(args, ctx);
                             tipo = String((_a = args.tipo) !== null && _a !== void 0 ? _a : tipos[0]);
                             porSede = [];
                             i = 0;
-                            _c.label = 1;
+                            _d.label = 1;
                         case 1:
                             if (!(i < sedes.ids.length)) return [3 /*break*/, 4];
                             return [4 /*yield*/, (0, modulos_1.consultarModulo)(modulo, sedes.ids[i], tipo, periodo.desde, periodo.hasta)];
                         case 2:
-                            datos = _c.sent();
+                            datos = _d.sent();
                             porSede.push({
                                 sede: sedes.nombres[i],
                                 datos: Array.isArray(datos) ? datos.slice(0, MAX_FILAS_MODULO) : datos,
                                 filas_totales: Array.isArray(datos) ? datos.length : undefined
                             });
-                            _c.label = 3;
+                            _d.label = 3;
                         case 3:
                             i++;
                             return [3 /*break*/, 1];
                         case 4:
                             primeras = (_b = porSede[0]) === null || _b === void 0 ? void 0 : _b.datos;
-                            bloque = Array.isArray(primeras)
-                                ? (0, bloques_1.bloqueTablaGenerica)("tabla_".concat(nombre), "".concat(descripcionCorta, " \u00B7 ").concat(titulizarTipo(tipo)), primeras)
-                                : null;
+                            titulo = "".concat(descripcionCorta, " \u00B7 ").concat(titulizarTipo(tipo));
+                            bloque = (_c = (Array.isArray(primeras) && primeras.length > 1
+                                ? (0, bloques_1.bloqueTablaGenerica)("tabla_".concat(nombre), titulo, primeras)
+                                : null)) !== null && _c !== void 0 ? _c : (0, bloques_1.bloqueKpisResumen)("kpi_".concat(nombre), titulo, primeras);
                             return [2 /*return*/, {
                                     periodo: { desde: periodo.desde, hasta: periodo.hasta },
                                     tipo: tipo,
@@ -1228,38 +1471,45 @@ var encuestas = {
         }
     },
     ejecutar: function (args, ctx) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         return __awaiter(this, void 0, void 0, function () {
-            var sedes, periodo, rango, porSede, i, tablero, malas, _f, k, bloques, csat, canales, tabla;
-            return __generator(this, function (_g) {
-                switch (_g.label) {
+            var sedes, periodo, rango, porSede, i, tablero, malas, _k, k, bloques, csat, canales, tabla;
+            return __generator(this, function (_l) {
+                switch (_l.label) {
                     case 0:
                         sedes = (0, sedes_1.resolverSedes)(args.sedes, ctx);
                         periodo = periodoDe(args, ctx);
                         rango = { inicio: periodo.desde, fin: periodo.hasta };
                         porSede = [];
                         i = 0;
-                        _g.label = 1;
+                        _l.label = 1;
                     case 1:
                         if (!(i < sedes.ids.length)) return [3 /*break*/, 7];
                         return [4 /*yield*/, encuestasDash.tablero(sedes.ids[i], rango)];
                     case 2:
-                        tablero = _g.sent();
+                        tablero = _l.sent();
                         if (!(args.incluir_malas === true)) return [3 /*break*/, 4];
                         return [4 /*yield*/, encuestasDash.alertas(sedes.ids[i], rango, 'pendientes')];
                     case 3:
-                        _f = (_g.sent());
+                        _k = (_l.sent());
                         return [3 /*break*/, 5];
                     case 4:
-                        _f = [];
-                        _g.label = 5;
+                        _k = [];
+                        _l.label = 5;
                     case 5:
-                        malas = _f;
+                        malas = _k;
                         porSede.push({
                             sede: sedes.nombres[i],
                             kpis: (_a = tablero === null || tablero === void 0 ? void 0 : tablero.kpis) !== null && _a !== void 0 ? _a : null,
                             canales: (_b = tablero === null || tablero === void 0 ? void 0 : tablero.canales) !== null && _b !== void 0 ? _b : [],
-                            hay_encuestas_activas: (_c = tablero === null || tablero === void 0 ? void 0 : tablero.hay_activas) !== null && _c !== void 0 ? _c : false,
+                            // El tablero ya traia todo esto y se estaba descartando aqui: por
+                            // eso no sabia decir que mozo tiene mejor nota, ni a que hora se
+                            // queja mas la gente, ni como se reparten las notas.
+                            mozos: (_c = tablero === null || tablero === void 0 ? void 0 : tablero.mozos) !== null && _c !== void 0 ? _c : [],
+                            distribucion_notas: (_d = tablero === null || tablero === void 0 ? void 0 : tablero.distribucion) !== null && _d !== void 0 ? _d : [],
+                            por_hora: (_e = tablero === null || tablero === void 0 ? void 0 : tablero.horas) !== null && _e !== void 0 ? _e : [],
+                            preguntas: (_f = tablero === null || tablero === void 0 ? void 0 : tablero.preguntas) !== null && _f !== void 0 ? _f : [],
+                            hay_encuestas_activas: (_g = tablero === null || tablero === void 0 ? void 0 : tablero.hay_activas) !== null && _g !== void 0 ? _g : false,
                             // Solo lo necesario para hablar de ellas: nada de datos del cliente.
                             malas_pendientes: malas.slice(0, 8).map(function (a) { return ({
                                 id: a.id,
@@ -1270,12 +1520,12 @@ var encuestas = {
                                 mozo: a.mozo
                             }); })
                         });
-                        _g.label = 6;
+                        _l.label = 6;
                     case 6:
                         i++;
                         return [3 /*break*/, 1];
                     case 7:
-                        k = (_d = porSede[0]) === null || _d === void 0 ? void 0 : _d.kpis;
+                        k = (_h = porSede[0]) === null || _h === void 0 ? void 0 : _h.kpis;
                         bloques = [];
                         if (k) {
                             csat = Number(k.csat_prom) || 0;
@@ -1307,7 +1557,7 @@ var encuestas = {
                                 bloques.push((0, bloques_1.bloqueMedidor)('medidor_csat', 'Satisfaccion del cliente', 'Nota media', csat, 1, 5));
                             }
                         }
-                        canales = (_e = porSede[0]) === null || _e === void 0 ? void 0 : _e.canales;
+                        canales = (_j = porSede[0]) === null || _j === void 0 ? void 0 : _j.canales;
                         if (Array.isArray(canales) && canales.length > 1) {
                             tabla = (0, bloques_1.bloqueTablaGenerica)('tabla_canales', 'Por canal', canales);
                             if (tabla)
@@ -1498,6 +1748,9 @@ exports.HERRAMIENTAS = [
     ventasResumen,
     ventasPorDiaHerramienta,
     horarios,
+    canales,
+    planilla,
+    reparto,
     localesComparar,
     productosTop,
     metasAvance,

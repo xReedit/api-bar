@@ -84,6 +84,7 @@ var s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 var carta_indice_service_1 = require("../services/carta.indice.service");
 var carta_tachado_service_1 = require("../services/carta.tachado.service");
 var auth_1 = require("../middleware/auth");
+var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -113,7 +114,7 @@ router.post('/presign-upload', auth_1.auth, function (req, res) { return __await
                     return [2 /*return*/, res.status(400).json({ success: false, error: 'fileName inválido' })];
                 }
                 if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-                    console.error('presign-upload: faltan AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY en el env');
+                    logger_1.logger.error('presign-upload: faltan AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY en el env');
                     return [2 /*return*/, res.status(500).json({ success: false, error: 'S3 no configurado en el servidor' })];
                 }
                 bucket = process.env.AWS_BUCKET_NAME || 'papaya-comercio-files';
@@ -131,7 +132,7 @@ router.post('/presign-upload', auth_1.auth, function (req, res) { return __await
                 return [3 /*break*/, 3];
             case 2:
                 error_1 = _b.sent();
-                console.error('Error en presign-upload:', error_1);
+                logger_1.logger.error('Error en presign-upload:', error_1);
                 res.status(500).json({ success: false, error: 'No se pudo generar la URL de subida' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -217,12 +218,12 @@ router.post("/activar-chatbot", function (req, res) { return __awaiter(void 0, v
                 return [4 /*yield*/, prisma.$executeRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n            INSERT INTO chatbot_solicitud (idsede, estado, atendido_en)\n            VALUES (", ", 'atendida', NOW())"], ["\n            INSERT INTO chatbot_solicitud (idsede, estado, atendido_en)\n            VALUES (", ", 'atendida', NOW())"])), idsede)];
             case 4:
                 _b.sent();
-                console.log('chatbot activado (autoservicio)', { idsede: idsede });
+                logger_1.logger.info('chatbot activado (autoservicio)', { idsede: idsede });
                 res.status(200).json({ success: true, activado: true });
                 return [3 /*break*/, 6];
             case 5:
                 error_2 = _b.sent();
-                console.error('activar-chatbot:', error_2);
+                logger_1.logger.error('activar-chatbot:', error_2);
                 res.status(500).json({ success: false, error: 'no se pudo activar el chatbot' });
                 return [3 /*break*/, 6];
             case 6: return [2 /*return*/];
@@ -1520,7 +1521,7 @@ router.post('/carta-indexar/:idsede', auth_1.auth, auth_1.authSede, function (re
                 return [3 /*break*/, 3];
             case 2:
                 error_11 = _a.sent();
-                console.error('Error en carta-indexar', error_11);
+                logger_1.logger.error('Error en carta-indexar', error_11);
                 res.status(500).send({ error: 'Error al indexar la carta' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -1543,7 +1544,7 @@ router.get('/carta-indice/:idsede', auth_1.auth, auth_1.authSede, function (req,
                 return [3 /*break*/, 3];
             case 2:
                 error_12 = _a.sent();
-                console.error('Error en carta-indice', error_12);
+                logger_1.logger.error('Error en carta-indice', error_12);
                 res.status(500).send({ error: 'Error al leer el indice' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -1580,7 +1581,7 @@ router.put('/carta-agotados/:idsede', auth_1.auth, auth_1.authSede, function (re
                 return [3 /*break*/, 4];
             case 3:
                 error_13 = _b.sent();
-                console.error('Error en carta-agotados', error_13);
+                logger_1.logger.error('Error en carta-agotados', error_13);
                 res.status(500).send({ error: 'Error al guardar agotados' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
@@ -1605,7 +1606,7 @@ router.get('/carta-preview/:idsede', auth_1.auth, auth_1.authSede, function (req
                 return [3 /*break*/, 3];
             case 2:
                 error_14 = _a.sent();
-                console.error('Error en carta-preview', error_14);
+                logger_1.logger.error('Error en carta-preview', error_14);
                 res.status(500).send({ error: 'Error al generar preview' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

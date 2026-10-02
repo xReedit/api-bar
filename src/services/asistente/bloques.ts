@@ -268,6 +268,134 @@ export function bloqueTreemap(
     };
 }
 
+/**
+ * KPIs a partir de un resumen: un objeto, o una lista de una sola fila.
+ *
+ * Los modulos genericos devuelven dos formas distintas: una lista de filas
+ * (compras por proveedor) o un resumen con totales (punto de equilibrio). La
+ * tabla generica solo sabe dibujar la primera, asi que la mitad de los modulos
+ * respondia sin un solo numero en pantalla. Esto cubre la otra mitad.
+ */
+export function bloqueKpisResumen(
+    id: string,
+    titulo: string,
+    datos: unknown
+): Bloque | null {
+    const fila =
+        Array.isArray(datos) && datos.length === 1
+            ? datos[0]
+            : !Array.isArray(datos) && datos && typeof datos === 'object'
+              ? datos
+              : null;
+    if (!fila) return null;
+
+    const kpis = Object.entries(fila as Record<string, unknown>)
+        .filter(([, v]) => typeof v === 'number' || (typeof v === 'string' && v !== '' && !isNaN(Number(v))))
+        .map(([clave, v]) => ({
+            etiqueta: clave.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()),
+            valor: Number(v),
+            // El nombre de la columna es lo unico que dice si son soles o unidades.
+            formato: /total|monto|importe|venta|costo|gasto|precio|ingreso|utilidad/i.test(clave)
+                ? ('moneda' as const)
+                : /pct|porcentaje|margen/i.test(clave)
+                  ? ('porcentaje' as const)
+                  : ('entero' as const)
+        }))
+        .slice(0, 6);
+
+    return kpis.length ? { id, tipo: 'kpi', titulo, kpis } : null;
+}
+
+/**
+ * Indicadores de alerta como KPIs, con su peso sobre la venta.
+ *
+ * Era el modulo que mas importa mirar y el unico que respondia sin un solo
+ * numero en pantalla: "hay algo raro este mes" se contestaba en prosa. El delta
+ * es la variacion contra el periodo anterior, que es lo que convierte una cifra
+ * suelta en una senal.
+ */
+export function bloqueKpisAlertas(
+    id: string,
+    titulo: string,
+    indicadores: Array<{
+        etiqueta: string;
+        monto: number;
+        variacionPct: number | null;
+        anomalo: boolean;
+    }>
+): Bloque | null {
+    const conDatos = indicadores.filter((i) => i.monto > 0);
+    if (conDatos.length === 0) return null;
+
+    return {
+        id,
+        tipo: 'kpi',
+        titulo,
+        kpis: conDatos.slice(0, 6).map((i) => ({
+            // La marca deja el ojo donde hay que mirar sin leer los seis.
+            etiqueta: i.anomalo ? `${i.etiqueta} !` : i.etiqueta,
+            valor: i.monto,
+            delta: i.variacionPct,
+            formato: 'moneda' as const
+        }))
+    };
+}
+
+/** Quien borra, quien anula, quien saca de caja: ranking con barra de proporcion. */
+export function bloqueRankingUsuarios(
+    id: string,
+    titulo: string,
+    usuarios: Array<{ usuario: string; cantidad: number; monto: number }>
+): Bloque | null {
+    if (usuarios.length === 0) return null;
+
+    return {
+        id,
+        tipo: 'ranking',
+        titulo,
+        columnas: [
+            { clave: 'usuario', titulo: 'Usuario' },
+            { clave: 'monto', titulo: 'Monto', formato: 'moneda' },
+            { clave: 'cantidad', titulo: 'Veces', formato: 'entero' }
+        ],
+        filas: usuarios.slice(0, 8).map((u) => ({
+            usuario: u.usuario,
+            monto: u.monto,
+            cantidad: u.cantidad
+        })),
+        claveProporcion: 'monto',
+        filasVisiblesMovil: 5
+    };
+}
+
+/**
+ * Reparto por canal en dona.
+ *
+ * Tres o cuatro partes que suman el total: es el caso para el que sirve una
+ * dona. Con mas categorias no se distinguen los sectores y gana una tabla.
+ */
+export function bloqueDonaCanales(
+    id: string,
+    titulo: string,
+    canales: Array<{ canal: string; total: number }>
+): Bloque {
+    return {
+        id,
+        tipo: 'grafico',
+        titulo,
+        grafico: {
+            apex: 'donut',
+            categorias: canales.map((c) => c.canal),
+            etiquetas: canales.map((c) => c.canal),
+            series: [{ name: 'Vendido', data: canales.map((c) => c.total) }],
+            formatoValor: 'moneda',
+            altoMovil: 260,
+            altoEscritorio: 300,
+            leyenda: true
+        }
+    };
+}
+
 const DIA_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 /**

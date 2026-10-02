@@ -84,6 +84,7 @@ var axios_1 = __importDefault(require("axios"));
 var jwt = __importStar(require("jsonwebtoken"));
 var client_1 = require("@prisma/client");
 var dotenv_1 = __importDefault(require("dotenv"));
+var logger_1 = require("../../utils/logger");
 dotenv_1["default"].config();
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -170,7 +171,7 @@ router.post("/get-dash-rrhh-costo", function (req, res) { return __awaiter(void 
             case 4:
                 error_1 = _f.sent();
                 detalle = ((_e = (_d = error_1 === null || error_1 === void 0 ? void 0 : error_1.response) === null || _d === void 0 ? void 0 : _d.data) === null || _e === void 0 ? void 0 : _e.error) || (error_1 === null || error_1 === void 0 ? void 0 : error_1.message) || 'error desconocido';
-                console.error('[dash-rrhh] no se pudo consultar Recursos Humanos:', detalle);
+                logger_1.logger.error('[dash-rrhh] no se pudo consultar Recursos Humanos:', detalle);
                 res.status(200).json({
                     sin_rrhh: true,
                     no_disponible: true,
@@ -225,7 +226,7 @@ router.post("/get-dash-rrhh-sedes", function (req, res) { return __awaiter(void 
             case 4:
                 error_2 = _f.sent();
                 detalle = ((_e = (_d = error_2 === null || error_2 === void 0 ? void 0 : error_2.response) === null || _d === void 0 ? void 0 : _d.data) === null || _e === void 0 ? void 0 : _e.error) || (error_2 === null || error_2 === void 0 ? void 0 : error_2.message) || 'error desconocido';
-                console.error('[dash-rrhh] no se pudieron comparar las sedes:', detalle);
+                logger_1.logger.error('[dash-rrhh] no se pudieron comparar las sedes:', detalle);
                 res.status(200).json({ sin_rrhh: true, no_disponible: true, motivo: detalle, sedes: [] });
                 return [3 /*break*/, 5];
             case 5: return [2 /*return*/];

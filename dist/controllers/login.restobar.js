@@ -75,6 +75,7 @@ var express_rate_limit_1 = require("express-rate-limit");
 var errors_util_1 = require("../utils/errors.util");
 var usuario_1 = require("./usuario");
 var client_1 = require("@prisma/client");
+var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
 // Freno a la enumeración: login-bot emite tokens a partir de ids numéricos
@@ -143,7 +144,7 @@ router.post('/login', limiteLogin, function (req, res) { return __awaiter(void 0
                 userRestobar = userRestobar[0];
                 prisma.$disconnect();
                 // userRestobar.idsede_restobar = _data.sede.idsede_restobar
-                //////console.log('0userRestobar', userRestobar);
+                //////logger.debug('0userRestobar', userRestobar);
                 (0, usuario_1.loginRestobar)(req, res, userRestobar);
                 return [3 /*break*/, 4];
             case 3:
@@ -206,7 +207,7 @@ router.post('/login-bot', limiteLogin, function (req, res) { return __awaiter(vo
                 error_2 = _a.sent();
                 // Sin este catch, un throw en los await dejaba la request colgada
                 // (rechazo de promesa sin manejar en express 4).
-                console.error('login-bot:', error_2);
+                logger_1.logger.error('login-bot:', error_2);
                 return [2 /*return*/, res.status(500).send((0, errors_util_1.getErrorMessage)(error_2))];
             case 10: return [2 /*return*/];
         }

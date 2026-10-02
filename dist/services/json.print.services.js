@@ -1,6 +1,7 @@
 "use strict";
 exports.__esModule = true;
 exports.JsonPrintService = void 0;
+var logger_1 = require("../utils/logger");
 var JsonPrintService = /** @class */ (function () {
     function JsonPrintService() {
     }
@@ -43,7 +44,7 @@ var JsonPrintService = /** @class */ (function () {
         var listTPCPrinter = _tpcPrinter;
         listTPCPrinter = listTPCPrinter.filter(function (p) { return p.idimpresora !== 0; });
         isTpcPrinter = listTPCPrinter.length > 0;
-        console.log('isTpcPrinter', isTpcPrinter);
+        logger_1.logger.debug('isTpcPrinter', isTpcPrinter);
         if (isTpcPrinter) {
             listTPCPrinter.map(function (p) {
                 var _tpcPrint = p.idtipo_consumo;
@@ -218,8 +219,8 @@ var JsonPrintService = /** @class */ (function () {
                 childPrinter.pie_pagina = pie_pagina;
                 childPrinter.pie_pagina_comprobante = pie_pagina_comprobante;
                 xImpresoraPrint.push(childPrinter);
-                // console.log('xArrayBodyPrint', xArrayBodyPrint);
-                // console.log('xImpresoraPrint', xImpresoraPrint);
+                // logger.debug('xArrayBodyPrint', xArrayBodyPrint);
+                // logger.debug('xImpresoraPrint', xImpresoraPrint);
                 xRptPrint.push({
                     arrBodyPrint: xArrayBodyPrint,
                     arrPrinters: xImpresoraPrint
@@ -228,7 +229,7 @@ var JsonPrintService = /** @class */ (function () {
             });
         }
         xRptPrint.listPrinters = listOnlyPrinters;
-        // console.log('xRptPrint', xRptPrint);
+        // logger.debug('xRptPrint', xRptPrint);
         return xRptPrint;
     };
     // recuepra la primera impresora para imprimir cuando manda el cliente y si la seccion no tiene impresora
@@ -249,14 +250,14 @@ var JsonPrintService = /** @class */ (function () {
         _objMiPedido.tipoconsumo
             .map(function (tpc) {
             firtsIdPrinter = tpc.secciones.filter(function (s) { return s.idimpresora !== 0; })[0];
-            // console.log('impresora por tipo de consumo', firtsIdPrinter);
+            // logger.debug('impresora por tipo de consumo', firtsIdPrinter);
             if (firtsIdPrinter) {
                 return;
             }
         });
         // sino encontro ningun impresora asigna impresora de la lista de impresoras
         if (!firtsIdPrinter) {
-            console.log('selecciona primera impresora');
+            logger_1.logger.debug('selecciona primera impresora');
             firtsIdPrinter = this.GetFirstPrinter(listPrinter);
         }
         if (!firtsIdPrinter) {

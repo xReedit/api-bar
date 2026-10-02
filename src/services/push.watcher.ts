@@ -22,6 +22,7 @@ import {
     notifyAnulacionGrande,
     shouldSendOncePerDay
 } from './push.sender';
+import { logger } from '../utils/logger';
 
 dotenv.config();
 
@@ -43,11 +44,11 @@ const cursorAnulacionPorSede = new Map<number, number>();
 // =============================================================================
 export function startPushWatcher(): void {
     if (process.env.PUSH_WATCHER_ENABLED !== 'true') {
-        console.log('[push-watcher] Deshabilitado (PUSH_WATCHER_ENABLED != true)');
+        logger.info('[push-watcher] Deshabilitado (PUSH_WATCHER_ENABLED != true)');
         return;
     }
 
-    console.log('[push-watcher] Iniciado');
+    logger.info('[push-watcher] Iniciado');
 
     // Ejecutar una vez al arrancar y luego cada N ms
     void runAnulaciones();
@@ -107,7 +108,7 @@ async function runAnulaciones(): Promise<void> {
             cursorAnulacionPorSede.set(row.idsede, row.idregistro_pago);
         }
     } catch (err) {
-        console.error('[push-watcher] runAnulaciones error:', err);
+        logger.error('[push-watcher] runAnulaciones error:', err);
     }
 }
 
@@ -157,7 +158,7 @@ async function runStock(): Promise<void> {
             });
         }
     } catch (err) {
-        console.error('[push-watcher] runStock error:', err);
+        logger.error('[push-watcher] runStock error:', err);
     }
 }
 
@@ -196,7 +197,7 @@ async function runMeta(): Promise<void> {
             }
         }
     } catch (err) {
-        console.error('[push-watcher] runMeta error:', err);
+        logger.error('[push-watcher] runMeta error:', err);
     }
 }
 

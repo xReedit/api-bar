@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 
 interface Coordenadas {
     lat: number;
@@ -110,7 +111,7 @@ export class GeocodingService {
             };
 
         } catch (error: any) {
-            console.error('Error en geocodificación:', error);
+            logger.error('Error en geocodificación:', error);
             return {
                 success: false,
                 error: error.message || 'Error al obtener coordenadas'
@@ -152,7 +153,7 @@ export class GeocodingService {
             };
 
         } catch (error: any) {
-            console.error('Error en reverse geocoding:', error);
+            logger.error('Error en reverse geocoding:', error);
             return { success: false, error: error.message || 'Error al obtener dirección' };
         }
     }
@@ -200,7 +201,7 @@ export class GeocodingService {
                     ? `${direccion}, ${ciudad}, Peru` 
                     : `${direccion}, Peru`;
 
-                console.log('Geocodificando:', direccionCompleta);
+                logger.debug('Geocodificando:', direccionCompleta);
                 
                 const response = await axios.get(url, {
                     params: {
@@ -219,9 +220,9 @@ export class GeocodingService {
                     // Distinguir "no existe" de errores de API (key, billing, etc.):
                     // antes REQUEST_DENIED se logueaba igual que dirección no hallada.
                     if (!['OK', 'ZERO_RESULTS'].includes(response.data.status)) {
-                        console.error('Geocoding API:', response.data.status, response.data.error_message || '');
+                        logger.error('Geocoding API:', response.data.status, response.data.error_message || '');
                     }
-                    console.log(`No se encontró dirección con ciudad "${ciudad}"`);
+                    logger.debug(`No se encontró dirección con ciudad "${ciudad}"`);
                     continue;
                 }
 
@@ -242,7 +243,7 @@ export class GeocodingService {
                     }
                 }
                 if (candidatos.length > 1) {
-                    console.log(`Geocoding devolvió ${candidatos.length} candidatos; elegido: ${elegido.formatted_address}`);
+                    logger.debug(`Geocoding devolvió ${candidatos.length} candidatos; elegido: ${elegido.formatted_address}`);
                 }
 
                 const location = elegido.geometry.location;
@@ -282,13 +283,13 @@ export class GeocodingService {
                     location.lng
                 ));
 
-                console.log(`Encontrado con ciudad "${ciudad}": ${distanciaKm} km (ruta estimada = recta × factor)`);
+                logger.debug(`Encontrado con ciudad "${ciudad}": ${distanciaKm} km (ruta estimada = recta × factor)`);
 
                 // Match a nivel ciudad (sin calle): NO sirve ni para confirmar
                 // — se sigue buscando (Places) y si nada da calle, el caller
                 // cae al costo base sin preguntarle nada al cliente.
                 if (esSoloCiudad(elegido.types)) {
-                    console.log(`Match solo-ciudad para "${direccion}" — se descarta y sigue el fallback`);
+                    logger.debug(`Match solo-ciudad para "${direccion}" — se descarta y sigue el fallback`);
                     continue;
                 }
 
@@ -323,7 +324,7 @@ export class GeocodingService {
             const lugar = await this.buscarConPlaces(direccion, ciudadesABuscar[0] || '', latComercio, lngComercio);
             if (lugar.success && lugar.lat !== undefined && lugar.lng !== undefined) {
                 const distanciaKm = estimarKmRuta(this.calcularDistanciaHaversine(latComercio, lngComercio, lugar.lat, lugar.lng));
-                console.log(`Places fallback encontró "${lugar.direccion}": ${distanciaKm} km (ruta estimada)`);
+                logger.debug(`Places fallback encontró "${lugar.direccion}": ${distanciaKm} km (ruta estimada)`);
                 return {
                     success: true,
                     lat: lugar.lat,
@@ -340,7 +341,7 @@ export class GeocodingService {
             };
 
         } catch (error: any) {
-            console.error('Error al geocodificar:', error);
+            logger.error('Error al geocodificar:', error);
             return {
                 success: false,
                 error: error.message || 'Error al calcular distancia'
@@ -377,7 +378,7 @@ export class GeocodingService {
             };
 
         } catch (error: any) {
-            console.error('Error al calcular distancia:', error);
+            logger.error('Error al calcular distancia:', error);
             return {
                 success: false,
                 error: error.message || 'Error al calcular distancia'
@@ -401,7 +402,7 @@ export class GeocodingService {
             const r = response.data?.results?.[0];
             if (response.data?.status !== 'OK' || !r?.geometry?.location) {
                 if (!['OK', 'ZERO_RESULTS'].includes(response.data?.status)) {
-                    console.error('Places API:', response.data?.status, response.data?.error_message || '');
+                    logger.error('Places API:', response.data?.status, response.data?.error_message || '');
                 }
                 return { success: false };
             }
@@ -412,7 +413,7 @@ export class GeocodingService {
             // cae al costo base sin preguntar nada raro al cliente).
             const tiposDireccion = ['street_address', 'route', 'premise', 'subpremise', 'intersection'];
             if (!Array.isArray(r.types) || !r.types.some((t: string) => tiposDireccion.includes(t))) {
-                console.log(`Places devolvió algo que no es dirección (${(r.types || []).join(',')}) para "${direccion}" — descartado`);
+                logger.debug(`Places devolvió algo que no es dirección (${(r.types || []).join(',')}) para "${direccion}" — descartado`);
                 return { success: false };
             }
             return {
@@ -422,7 +423,7 @@ export class GeocodingService {
                 lng: r.geometry.location.lng
             };
         } catch (error: any) {
-            console.error('Error en Places fallback:', error.message);
+            logger.error('Error en Places fallback:', error.message);
             return { success: false };
         }
     }

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 
 export interface Subtotal {
     "id": 0,
@@ -148,7 +149,7 @@ class PedidoServices {
         // reset precio_total_calc -> precio_total;
         // seccionMasItems.map((z: any) => {
         //     z.items.map((n: any) => {
-        //         console.log('=== 1 item ===', n);
+        //         logger.debug('=== 1 item ===', n);
         //     });
         // });            
         
@@ -168,15 +169,15 @@ class PedidoServices {
                         .map((z: any) => {
                             z.items
                                 .map((n: any) => {
-                                    // console.log('=== init item ===', n);
+                                    // logger.debug('=== init item ===', n);
                                     const precioUnitario_item = parseFloat(n.precio);
                                     const cant_item = n.cantidad_seleccionada;
 
                                     xPrecio_mostrado = n.precio_total_calc !== null ? n.precio_total_calc : n.precio_total;
                                     xPrecio_item_bus = xPrecio_mostrado;
 
-                                    // console.log('=== xCantidadBuscar ===', xCantidadBuscar);
-                                    // console.log('=== xCantidadBuscarSecc_detalle ===', xCantidadBuscarSecc_detalle);                                    
+                                    // logger.debug('=== xCantidadBuscar ===', xCantidadBuscar);
+                                    // logger.debug('=== xCantidadBuscarSecc_detalle ===', xCantidadBuscarSecc_detalle);                                    
 
                                     if (xCantidadBuscar >= xCantidadBuscarSecc_detalle) {
                                         xPrecio_item_bus = 0;
@@ -188,20 +189,20 @@ class PedidoServices {
                                         diferencia = diferencia - cant_item < 0 ? 0 : diferencia - cant_item;
                                     }
 
-                                    // console.log('=== xPrecio_item_bus ===', xPrecio_item_bus);
-                                    // console.log('=== cant_item ===', cant_item);
+                                    // logger.debug('=== xPrecio_item_bus ===', xPrecio_item_bus);
+                                    // logger.debug('=== cant_item ===', cant_item);
 
                                     n.precio_total_calc = parseFloat(xPrecio_item_bus.toString()); //
                                     n.precio_print = parseFloat(xPrecio_item_bus.toString()); //
                                     n.cantidad_descontado = cant_item;
 
-                                    // console.log('=== final item ===', n);
+                                    // logger.debug('=== final item ===', n);
                                 });
                         });
 
             // seccionMasItems.map((z: any) => {
             //     z.items.map((n: any) => {
-            //         console.log('=== item ===', n);
+            //         logger.debug('=== item ===', n);
             //     });
             // })
         });
@@ -293,8 +294,8 @@ class PedidoServices {
             let costosAdicionales = this.getCostosAdicionalesPorSeccion(item.idseccion, idtipo_consumo)            
             costosAdicionales.map((c: any) => {
                 // si el nivel es 0 se multiplica por la cantidad de items de la seccion
-                // console.log('c', c);
-                // console.log('seccion', item);
+                // logger.debug('c', c);
+                // logger.debug('seccion', item);
                 const _idSubtotal = `${c.tipo}${c.id}`
                 const _totalItemsSeccion = item.items.reduce((a: any, b: any) => a + parseFloat(b.cantidad_seleccionada), 0)
                 const _costoXcantidad = c.nivel === 0 ? parseFloat(c.monto) * _totalItemsSeccion : parseFloat(c.monto)
@@ -326,7 +327,7 @@ class PedidoServices {
        
 
        
-        // console.log('importeSubTotal', importeSubTotal);
+        // logger.debug('importeSubTotal', importeSubTotal);
 
         // total en productos
         let rowSubtotalProductos = {
@@ -337,7 +338,7 @@ class PedidoServices {
             visible_cpe: true
         }
 
-        // console.log('rowSubtotalProductos',rowSubtotalProductos);
+        // logger.debug('rowSubtotalProductos',rowSubtotalProductos);
 
         arrSubtotales.unshift(rowSubtotalProductos)
 
@@ -358,10 +359,10 @@ class PedidoServices {
         
         
         // totoal arrSubtotales antes de impuestos
-        // console.log('arrSubtotales', arrSubtotales);
+        // logger.debug('arrSubtotales', arrSubtotales);
         let totalSubtotales = arrSubtotales.map((x: any) => parseFloat(x.importe)).reduce((a: number, b: number) => a + b, 0)
 
-        // console.log('totalSubtotales', totalSubtotales);
+        // logger.debug('totalSubtotales', totalSubtotales);
         
 
 
@@ -414,7 +415,7 @@ class PedidoServices {
         
         let stringFormatted = '';
         let totalItemsPedido = arrSubtotales.length ? arrSubtotales[arrSubtotales.length - 1].importe : '0.00';
-        // console.log('totalItemsPedido', totalItemsPedido);
+        // logger.debug('totalItemsPedido', totalItemsPedido);
         // let importeSubTotal = totalItemsPedido;
         
         // canal de consumo
@@ -463,7 +464,7 @@ class PedidoServices {
         stringFormatted += '\n'
         let listItemSubtotales: any = []
         arrSubtotales.map((item: any) => {
-            // console.log('item subtotal', item);
+            // logger.debug('item subtotal', item);
             const _newItem = { descripcion: `${item.descripcion}`, importe: parseFloat(item.importe).toFixed(2).toString() } 
             listItemSubtotales.push(_newItem)
         })

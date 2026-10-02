@@ -1,6 +1,7 @@
 // OCR de la imagen de la carta con Google Cloud Vision (REST + API key).
 // Se llama UNA vez por imagen subida (indexado), nunca por request de cliente.
 import axios from 'axios';
+import { logger } from '../utils/logger';
 
 export type Caja = { x: number; y: number; w: number; h: number }; // relativas 0-1
 export type LineaCarta = { texto: string; box: Caja };
@@ -11,7 +12,7 @@ const VISION_URL = 'https://vision.googleapis.com/v1/images:annotate';
 export const detectarTexto = async (imageUrl: string): Promise<any | null> => {
     const key = process.env.GOOGLE_VISION_API_KEY;
     if (!key) {
-        console.warn('[carta-ocr] GOOGLE_VISION_API_KEY no configurada, indexado omitido');
+        logger.warn('[carta-ocr] GOOGLE_VISION_API_KEY no configurada, indexado omitido');
         return null;
     }
     try {
@@ -22,7 +23,7 @@ export const detectarTexto = async (imageUrl: string): Promise<any | null> => {
         );
         return data?.responses?.[0] ?? null;
     } catch (e: any) {
-        console.error('[carta-ocr] Vision fallo:', e?.response?.data?.error?.message || e?.message);
+        logger.error('[carta-ocr] Vision fallo:', e?.response?.data?.error?.message || e?.message);
         return null;
     }
 };

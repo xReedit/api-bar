@@ -2,6 +2,7 @@ import * as express from "express";
 import { PrismaClient } from "@prisma/client";
 import { fechaGuionASlash } from "../utils/utils";
 import SocketService from "../services/socket.services";
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -332,7 +333,7 @@ router.post('/marcar-pedido-entregado', async (req: any, res) => {
         // await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
         await prisma.$queryRaw`CALL procedure_pwa_delivery_pedido_entregado(${JSON.stringify(_dataSend)})`;
     } catch (error) {
-        console.error('error', error);
+        logger.error('error', error);
         res.status(500).json({ message: 'Error al marcar pedido entregado' });        
     }
 

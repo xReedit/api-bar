@@ -1,6 +1,7 @@
 import webpush from 'web-push';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
+import { logger } from '../utils/logger';
 
 dotenv.config();
 
@@ -17,7 +18,7 @@ let vapidConfigured = false;
 function ensureVapidConfigured(): boolean {
     if (vapidConfigured) return true;
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-        console.warn(
+        logger.warn(
             '[push] VAPID keys no configuradas. Define VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en .env. ' +
             'Genera unas con: npx web-push generate-vapid-keys'
         );

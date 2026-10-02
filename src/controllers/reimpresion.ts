@@ -1,5 +1,6 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -11,7 +12,7 @@ router.get('/', function (req, res) {
 // reimprimir comprobante por idcomprobante
 router.get('/reimprimir-comprobante/:idregistro_pago', async (req: any, res) => {
     const { idregistro_pago } = req.params  
-    // console.log('idregistro_pago', idregistro_pago);  
+    // logger.debug('idregistro_pago', idregistro_pago);  
     // obtener idce de registro de pagos
     const _registro_pago: any = await prisma.registro_pago.findFirst({
         select: { idce: true },

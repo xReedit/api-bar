@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
 import { normalizeResponseDashPuntoEquilibrio } from "../../services/dash.util";
 import { limitarRangoFechasDashboard } from "../../utils/utils";
+import { logger } from '../../utils/logger';
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -39,7 +40,7 @@ router.post("/get-datos", async (req, res) => {
                 const result = await tx.$queryRawUnsafe(`CALL module_dash_punto_equilibrio(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)`);
                 return result;
             } catch (error) {
-                console.error('Error al ejecutar el stored procedure:', error);
+                logger.error('Error al ejecutar el stored procedure:', error);
                 throw error;
             }
         });
@@ -47,7 +48,7 @@ router.post("/get-datos", async (req, res) => {
         const resultadosFormateados = normalizeResponseDashPuntoEquilibrio(resultados, p_tipo_consulta);       
         res.status(200).json(resultadosFormateados);
     } catch (error) {
-        console.error('Error en punto equilibrio:', error);
+        logger.error('Error en punto equilibrio:', error);
         res.status(500).json({ 
             error: error instanceof Error ? error.message : 'Error desconocido',
             details: String(error)
@@ -90,7 +91,7 @@ router.post("/set-datos-punto-equilibrio", async (req, res) => {
 
         res.status(200).json({ message: 'Datos guardados correctamente' });
     } catch (error) {
-        console.error('Error en punto equilibrio:', error);
+        logger.error('Error en punto equilibrio:', error);
         res.status(500).json({ 
             error: error instanceof Error ? error.message : 'Error desconocido',
             details: String(error)

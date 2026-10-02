@@ -318,9 +318,9 @@ export function bloqueComparativaDias(
         tipo: 'grafico',
         titulo,
         grafico: {
-            // Linea y no area: dos rellenos superpuestos se ensucian y tapan el
-            // cruce, que es justo lo que hay que ver.
-            apex: 'line',
+            // Area, con el relleno a baja opacidad: da el volumen de cada periodo
+            // sin tapar el cruce de los trazos, que es lo que hay que leer.
+            apex: 'area',
             categorias,
             series: [
                 { name: etiquetaActual, data: serie(actual) },

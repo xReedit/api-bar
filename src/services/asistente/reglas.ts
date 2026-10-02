@@ -4,6 +4,7 @@ import { redondear, resumenVentas, FilaVenta } from '../dash/agregados';
 import { avanceDeMeta, metaDeSede } from '../dash/metas';
 import { alertasOperativas } from '../dash/alertas';
 import * as dashVentas from '../dash/ventas';
+import { logger } from '../../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -251,7 +252,7 @@ export async function evaluarSede(idsede: number, fecha: string): Promise<ReglaD
             const d = await evaluar(regla, fecha);
             if (d) disparadas.push(d);
         } catch (err) {
-            console.error(`[reglas] regla ${regla.id}:`, err);
+            logger.error(`[reglas] regla ${regla.id}:`, err);
         }
     }
     return disparadas;

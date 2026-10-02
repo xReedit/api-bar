@@ -5,6 +5,7 @@
 // checkout.js sin ?qa=true).
 import axios from 'axios';
 import { AuthResult, parseAuthorizationResponse } from './billing.helpers';
+import { logger } from '../utils/logger';
 
 // Solo el host: pegar la URL completa de un endpoint en NIUBIZ_BASE_URL es el
 // error fácil de cometer y produce un 404 con la ruta duplicada.
@@ -84,7 +85,7 @@ export const authorize = async (
         // Rechazo real o respuesta irreconocible (5xx, HTML, token expirado): dejamos
         // rastro forense — sin esto, un 5xx de Niubiz se pierde y no hay forma de
         // diagnosticar por qué un pago quedó en 'procesando' o se marcó 'fallido'.
-        console.error('niubiz: authorize sin aprobación', {
+        logger.error('niubiz: authorize sin aprobación', {
             status: resp.status,
             reconocido: resultado.reconocido,
             actionCode: resultado.actionCode,

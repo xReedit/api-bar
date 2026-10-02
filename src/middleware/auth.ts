@@ -1,6 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 import { Secret, JwtPayload } from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger';
 
 // La clave sale del env. El literal viejo queda SOLO como fallback de transición
 // para no invalidar sesiones al deployar este cambio; rotar = setear JWT_SECRET
@@ -12,7 +13,7 @@ export const secretKey = (): Secret => {
     const s = process.env.JWT_SECRET;
     if (s && s.length >= 16) return s;
     if (!avisoClaveLegacy) {
-        console.warn('[auth] JWT_SECRET no configurada (o muy corta): usando clave legacy hardcodeada. Configurala y rotala en produccion.');
+        logger.warn('[auth] JWT_SECRET no configurada (o muy corta): usando clave legacy hardcodeada. Configurala y rotala en produccion.');
         avisoClaveLegacy = true;
     }
     return CLAVE_LEGACY;
@@ -95,7 +96,7 @@ export const apiKeyAuth = (req: Request, res: Response, next: NextFunction) => {
     const expected = process.env.CHATBOT_API_KEY;
     if (!expected) {
         if (!warnedNoApiKey) {
-            console.warn('CHATBOT_API_KEY no configurada: /chatbot/* queda SIN protección');
+            logger.warn('CHATBOT_API_KEY no configurada: /chatbot/* queda SIN protección');
             warnedNoApiKey = true;
         }
         return next();

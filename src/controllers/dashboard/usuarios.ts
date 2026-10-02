@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
 import { normalizeResponseDashUsuarios } from "../../services/dash.util";
 import { limitarRangoFechasDashboard } from "../../utils/utils";
+import { logger } from '../../utils/logger';
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -39,7 +40,7 @@ router.post("/get-dash-usuarios", async (req, res) => {
                 const result = await tx.$queryRawUnsafe(`CALL procedure_module_dash_usuarios(@xidsede, @tipo_consulta, @fecha_inicio, @fecha_fin)`);
                 return result;
             } catch (error) {
-                console.error('Error al ejecutar el stored procedure:', error);
+                logger.error('Error al ejecutar el stored procedure:', error);
                 throw error;
             }
         });

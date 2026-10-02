@@ -15,6 +15,7 @@ if (!process.env.FONTCONFIG_PATH) {
 import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { construirTicketSVG, DatosTicket } from './ticket.svg';
+import { logger } from '../utils/logger';
 
 const bucket = () => process.env.AWS_BUCKET_NAME || 'papaya-comercio-files';
 const region = () => process.env.AWS_REGION || 'us-east-2';
@@ -45,7 +46,7 @@ const normalizarLogo = async (logoDataUrl?: string | null): Promise<string | nul
         const png = await sharp(buffer, { failOn: 'none' }).png().toBuffer();
         return `data:image/png;base64,${png.toString('base64')}`;
     } catch (error: any) {
-        console.error('ticket-imagen: logo malformado, se omite:', error.message);
+        logger.error('ticket-imagen: logo malformado, se omite:', error.message);
         return null;
     }
 };
@@ -72,7 +73,7 @@ export const obtenerLogo = async (
                 const png = await sharp(Buffer.from(respuesta.data), { failOn: 'none' }).png().toBuffer();
                 return `data:image/png;base64,${png.toString('base64')}`;
             } catch (error: any) {
-                console.error('ticket-imagen: fallo obteniendo logo real (conf_print.logo):', error.message);
+                logger.error('ticket-imagen: fallo obteniendo logo real (conf_print.logo):', error.message);
             }
         }
     }
@@ -90,7 +91,7 @@ export const generarYSubirTicket = async (
 ): Promise<string | null> => {
     try {
         if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-            console.error('ticket-imagen: faltan credenciales AWS en el env');
+            logger.error('ticket-imagen: faltan credenciales AWS en el env');
             return null;
         }
         const { logoArchivo, logo64, ...resto } = datos;
@@ -113,7 +114,7 @@ export const generarYSubirTicket = async (
 
         return `https://${bucket()}.s3.${region()}.amazonaws.com/${key}`;
     } catch (error: any) {
-        console.error('ticket-imagen: error generando/subiendo:', error.message);
+        logger.error('ticket-imagen: error generando/subiendo:', error.message);
         return null;
     }
 };

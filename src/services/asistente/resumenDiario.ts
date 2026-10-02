@@ -4,6 +4,7 @@ import { ejecutarHerramienta } from './herramientas';
 import { ContextoAsistente, DefinicionHerramienta, MensajeChat } from './tipos';
 import { sendPushToSede, shouldSendOncePerDay } from '../push.sender';
 import { evaluarSede, marcarDisparada } from './reglas';
+import { logger } from '../../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -210,7 +211,7 @@ export async function enviarResumenDiario(fechaISO?: string): Promise<{
             });
             enviados++;
         } catch (err) {
-            console.error(`[resumen-ia] sede ${idsede}:`, err);
+            logger.error(`[resumen-ia] sede ${idsede}:`, err);
             omitidos++;
         }
     }

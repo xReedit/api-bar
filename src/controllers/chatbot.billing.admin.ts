@@ -6,6 +6,7 @@
 // GET /chat-bot/billing/packs (JWT del restaurante).
 import { PrismaClient } from '@prisma/client';
 import express, { Request, Response } from 'express';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -18,7 +19,7 @@ router.get('/packs', async (_req: Request, res: Response) => {
             ORDER BY activo DESC, precio_soles ASC`;
         res.status(200).json({ success: true, packs });
     } catch (error) {
-        console.error('billing-admin packs:', error);
+        logger.error('billing-admin packs:', error);
         res.status(500).json({ success: false, error: 'no se pudieron listar los paquetes' });
     }
 });
@@ -57,7 +58,7 @@ router.post('/packs', async (req: Request, res: Response) => {
             ORDER BY activo DESC, precio_soles ASC`;
         res.status(200).json({ success: true, packs });
     } catch (error) {
-        console.error('billing-admin guardar pack:', error);
+        logger.error('billing-admin guardar pack:', error);
         res.status(500).json({ success: false, error: 'no se pudo guardar el paquete' });
     }
 });
@@ -71,7 +72,7 @@ router.get('/pagos', async (req: Request, res: Response) => {
             FROM chatbot_pago ORDER BY id DESC LIMIT ${limit}`;
         res.status(200).json({ success: true, pagos });
     } catch (error) {
-        console.error('billing-admin pagos:', error);
+        logger.error('billing-admin pagos:', error);
         res.status(500).json({ success: false, error: 'no se pudieron listar los pagos' });
     }
 });
@@ -90,7 +91,7 @@ router.get('/activaciones', async (_req: Request, res: Response) => {
             LIMIT 50`;
         res.status(200).json({ success: true, activaciones });
     } catch (error) {
-        console.error('billing-admin activaciones:', error);
+        logger.error('billing-admin activaciones:', error);
         res.status(500).json({ success: false, error: 'no se pudieron listar las activaciones' });
     }
 });

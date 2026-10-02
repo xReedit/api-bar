@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { sendPushToSede } from '../services/push.sender';
+import { logger } from '../utils/logger';
 
 dotenv.config();
 
@@ -71,7 +72,7 @@ router.post('/subscribe', async (req, res) => {
 
         res.json({ ok: true });
     } catch (error) {
-        console.error('Error en /push/subscribe:', error);
+        logger.error('Error en /push/subscribe:', error);
         res.status(500).json({ error: 'Error guardando suscripción' });
     }
 });
@@ -94,7 +95,7 @@ router.post('/unsubscribe', async (req, res) => {
 
         res.json({ ok: true });
     } catch (error) {
-        console.error('Error en /push/unsubscribe:', error);
+        logger.error('Error en /push/unsubscribe:', error);
         res.status(500).json({ error: 'Error desuscribiendo' });
     }
 });
@@ -138,7 +139,7 @@ router.post('/resubscribe', async (req, res) => {
         // El cliente debe volver a llamar a /subscribe con idusuario/idsede.
         res.json({ ok: false, message: 'Re-suscripción requerida desde el cliente' });
     } catch (error) {
-        console.error('Error en /push/resubscribe:', error);
+        logger.error('Error en /push/resubscribe:', error);
         res.status(500).json({ error: 'Error en resubscribe' });
     }
 });
@@ -165,7 +166,7 @@ router.post('/test', async (req, res) => {
 
         res.json({ ok: true });
     } catch (error) {
-        console.error('Error en /push/test:', error);
+        logger.error('Error en /push/test:', error);
         res.status(500).json({ error: 'Error enviando push de prueba' });
     }
 });

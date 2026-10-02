@@ -4,6 +4,7 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { detectarTexto, extraerLineas, type LineaCarta } from './carta.ocr.service';
 import { matchLineas } from './carta.match.service';
+import { logger } from '../utils/logger';
 
 const bucket = () => process.env.AWS_BUCKET_NAME || 'papaya-comercio-files';
 const region = () => process.env.AWS_REGION || 'us-east-2';
@@ -42,7 +43,7 @@ export const guardarIndice = async (idsede: number, idx: IndiceCarta): Promise<b
             Body: JSON.stringify(idx), ContentType: 'application/json'
         }));
         return true;
-    } catch (e) { console.error('[carta-idx] guardar fallo', e); return false; }
+    } catch (e) { logger.error('[carta-idx] guardar fallo', e); return false; }
 };
 
 // ETag del objeto S3 = versión de la imagen. Mismo ETag => índice vigente, no se re-OCRea.
@@ -81,7 +82,7 @@ export const construirIndice = async (idsede: number, prisma: any): Promise<Resu
         const archivo = categoria?.url_carta;
         if (!archivo) return { indice: null };
         const etag = await etagCarta(archivo);
-        if (!etag) console.warn('[carta-idx] sin etag de S3 (¿falta permiso HeadObject?), versionado de imagen degradado', idsede);
+        if (!etag) logger.warn('[carta-idx] sin etag de S3 (¿falta permiso HeadObject?), versionado de imagen degradado', idsede);
         // Siempre se re-OCRea y re-empareja: indexar es una acción explícita del panel
         // (botón "Leer carta" o subida de carta) y un OCR por clic es barato. El atajo
         // "misma imagen ⇒ devolver índice previo" dejaba enlaces línea↔item viejos
@@ -98,7 +99,7 @@ export const construirIndice = async (idsede: number, prisma: any): Promise<Resu
             // Carta demasiado larga: se borra el índice previo para que un índice de una
             // carta anterior (corta) no tache posiciones equivocadas sobre la imagen nueva.
             await borrarIndice(idsede);
-            console.warn(`[carta-idx] carta demasiado larga (${extraido.lineas.length} lineas > ${max}), tachado desactivado`, idsede);
+            logger.warn(`[carta-idx] carta demasiado larga (${extraido.lineas.length} lineas > ${max}), tachado desactivado`, idsede);
             return { indice: null, motivo: 'carta_demasiado_larga', lineas: extraido.lineas.length, max };
         }
 
@@ -127,5 +128,5 @@ export const construirIndice = async (idsede: number, prisma: any): Promise<Resu
         };
         await guardarIndice(idsede, idx);
         return { indice: idx };
-    } catch (e) { console.error('[carta-idx] construir fallo', e); return { indice: null }; }
+    } catch (e) { logger.error('[carta-idx] construir fallo', e); return { indice: null }; }
 };

@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import { CustomRequest } from '../../middleware/auth';
 import { limitarRangoFechasDashboard } from '../../utils/utils';
 import * as dash from '../../services/encuesta.dash.service';
+import { logger } from '../../utils/logger';
 
 const router = express.Router();
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -50,7 +51,7 @@ const responder = (res: Response, fn: () => Promise<unknown>, contexto: string) 
         (datos) => res.status(200).json(datos),
         (e) => {
             if (e instanceof dash.ErrorDash) return res.status(e.status).json({ error: e.message });
-            console.error(`[dash-encuestas] ${contexto}:`, e);
+            logger.error(`[dash-encuestas] ${contexto}:`, e);
             return res.status(500).json({ error: 'No se pudieron cargar las encuestas.' });
         },
     );

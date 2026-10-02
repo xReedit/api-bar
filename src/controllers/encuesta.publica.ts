@@ -25,6 +25,7 @@ import {
     validarVenta,
     Venta,
 } from '../services/encuesta.publica.service';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 // En estos canales el token viaja impreso en cada comprobante: sin la firma de la venta cualquiera responderia sin limite
@@ -47,7 +48,7 @@ router.use((req: Request, res: Response, next: NextFunction) => {
     res.set('Cache-Control', 'no-store');
     res.set('X-Content-Type-Options', 'nosniff');
     if (!secretoEncuesta()) {
-        if (!avisoSinSecreto) console.error('[encuesta-publica] ENCUESTA_SECRET no configurado (minimo 32 caracteres): servicio deshabilitado');
+        if (!avisoSinSecreto) logger.error('[encuesta-publica] ENCUESTA_SECRET no configurado (minimo 32 caracteres): servicio deshabilitado');
         avisoSinSecreto = true;
         return error(res, 503, 'NO_DISPONIBLE', 'La encuesta no esta disponible en este momento.');
     }
@@ -60,7 +61,7 @@ router.use((req: Request, res: Response, next: NextFunction) => {
 
 const responderError = (res: Response, e: unknown, contexto: string) => {
     if (e instanceof ErrorEncuesta) return error(res, e.status, e.codigo, e.message);
-    console.error(`[encuesta-publica] ${contexto}:`, e);
+    logger.error(`[encuesta-publica] ${contexto}:`, e);
     return error(res, 500, 'NO_DISPONIBLE', 'No se pudo procesar la encuesta. Intenta de nuevo.');
 };
 

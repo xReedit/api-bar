@@ -8,6 +8,7 @@ import express, { Request, Response } from 'express';
 import { AuthResult, buildRecargaPayload, validarConfirmar, validarIniciar } from '../services/billing.helpers';
 import * as chatbotgo from '../services/chatbotgo.service';
 import * as niubiz from '../services/niubiz.service';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -37,7 +38,7 @@ router.get('/saldo/:idsede', async (req: Request, res: Response) => {
         const saldo = await chatbotgo.getSaldo(String(req.params.idsede));
         res.status(200).json({ success: true, saldo });
     } catch (error) {
-        console.error('billing saldo:', error);
+        logger.error('billing saldo:', error);
         res.status(502).json({ success: false, error: 'saldo no disponible' });
     }
 });
@@ -50,7 +51,7 @@ router.get('/packs', async (_req: Request, res: Response) => {
             WHERE activo = 1 ORDER BY conversaciones ASC`;
         res.status(200).json({ success: true, packs });
     } catch (error) {
-        console.error('billing packs:', error);
+        logger.error('billing packs:', error);
         res.status(500).json({ success: false, error: 'no se pudieron listar los paquetes' });
     }
 });
@@ -105,7 +106,7 @@ router.post('/pago/iniciar', async (req: Request, res: Response) => {
             logoUrl: niubiz.niubizLogoUrl(),
         });
     } catch (error) {
-        console.error('billing iniciar:', detalle(error));
+        logger.error('billing iniciar:', detalle(error));
         res.status(500).json({ success: false, error: 'no se pudo iniciar el pago' });
     }
 });
@@ -171,7 +172,7 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
             // 'fallido' aquí perdería el intento sin que hubiera un rechazo real.
             await prisma.$executeRaw`
                 UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ${pago.id} AND estado = 'procesando'`;
-            console.warn('billing: respuesta de Niubiz irreconocible, se libera el reclamo', { purchaseNumber: pago.id });
+            logger.warn('billing: respuesta de Niubiz irreconocible, se libera el reclamo', { purchaseNumber: pago.id });
             return res.status(502).json({ success: false, error: 'pasarela no disponible, reintenta', retryable: true });
         }
 
@@ -179,7 +180,7 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
             // Rechazo real: Niubiz contestó con un ACTION_CODE de rechazo. Terminal.
             await prisma.$executeRaw`
                 UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ${pago.id} AND estado = 'procesando'`;
-            console.warn('billing: pago rechazado', { purchaseNumber: pago.id, actionCode: auth.actionCode });
+            logger.warn('billing: pago rechazado', { purchaseNumber: pago.id, actionCode: auth.actionCode });
             return res.status(402).json({
                 success: false,
                 error: auth.descripcion || 'pago rechazado',
@@ -196,12 +197,12 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
             await prisma.$executeRaw`
                 UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ${auth.transactionId}
                 WHERE id = ${pago.id} AND estado = 'procesando'`;
-            console.log('billing: pago aprobado', { purchaseNumber: pago.id, tx: auth.transactionId });
+            logger.info('billing: pago aprobado', { purchaseNumber: pago.id, tx: auth.transactionId });
 
             const resultado = await acreditar({ ...pago, niubiz_tx: auth.transactionId });
             return res.status(200).json({ success: true, ...resultado });
         } catch (dbError) {
-            console.error('billing: PAGO APROBADO POR NIUBIZ PERO NO REGISTRADO EN BD (revisar manualmente)', {
+            logger.error('billing: PAGO APROBADO POR NIUBIZ PERO NO REGISTRADO EN BD (revisar manualmente)', {
                 purchaseNumber: pago.id,
                 transactionId: auth.transactionId,
                 actionCode: auth.actionCode,
@@ -214,7 +215,7 @@ router.post('/pago/confirmar', async (req: Request, res: Response) => {
             });
         }
     } catch (error) {
-        console.error('billing confirmar:', detalle(error));
+        logger.error('billing confirmar:', detalle(error));
         res.status(500).json({ success: false, error: 'no se pudo confirmar el pago' });
     }
 });
@@ -235,7 +236,7 @@ const acreditar = async (
             niubizTx: pago.niubiz_tx,
         }));
     } catch (error) {
-        console.error('billing: pago cobrado pero NO acreditado (reintentar confirmar)', error);
+        logger.error('billing: pago cobrado pero NO acreditado (reintentar confirmar)', error);
         return { acreditado: false };
     }
     try {

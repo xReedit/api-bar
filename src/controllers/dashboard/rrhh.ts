@@ -21,6 +21,7 @@ import axios from "axios";
 import * as jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
+import { logger } from '../../utils/logger';
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -101,7 +102,7 @@ router.post("/get-dash-rrhh-costo", async (req, res) => {
         // dashboard: se devuelve un cuerpo que la pantalla sabe mostrar, en
         // vez de un 500 que solo dice "algo paso".
         const detalle = error?.response?.data?.error || error?.message || 'error desconocido';
-        console.error('[dash-rrhh] no se pudo consultar Recursos Humanos:', detalle);
+        logger.error('[dash-rrhh] no se pudo consultar Recursos Humanos:', detalle);
 
         res.status(200).json({
             sin_rrhh: true,
@@ -148,7 +149,7 @@ router.post("/get-dash-rrhh-sedes", async (req, res) => {
 
     } catch (error: any) {
         const detalle = error?.response?.data?.error || error?.message || 'error desconocido';
-        console.error('[dash-rrhh] no se pudieron comparar las sedes:', detalle);
+        logger.error('[dash-rrhh] no se pudieron comparar las sedes:', detalle);
         res.status(200).json({ sin_rrhh: true, no_disponible: true, motivo: detalle, sedes: [] });
     }
 });

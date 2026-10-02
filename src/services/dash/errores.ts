@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 /**
  * Saneo de errores para las respuestas del dashboard y del asistente IA.
  *
@@ -27,6 +28,6 @@ export function mensajeError(error: unknown, contexto = 'consultar los datos'): 
     if (error instanceof ErrorValidacion) {
         return error.message;
     }
-    console.error(`[dash] Error al ${contexto}:`, error);
+    logger.error(`[dash] Error al ${contexto}:`, error);
     return `No se pudo ${contexto}. Intenta nuevamente.`;
 }

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 export class JsonPrintService {
     datosSede: any;
     elPedido: any
@@ -50,7 +51,7 @@ export class JsonPrintService {
         let listTPCPrinter = _tpcPrinter;
         listTPCPrinter = listTPCPrinter.filter((p: any) => p.idimpresora !== 0);
         isTpcPrinter = listTPCPrinter.length > 0;
-        console.log('isTpcPrinter', isTpcPrinter);
+        logger.debug('isTpcPrinter', isTpcPrinter);
 
         if (isTpcPrinter) {
             listTPCPrinter.map((p: any) => {
@@ -240,8 +241,8 @@ export class JsonPrintService {
     
                 xImpresoraPrint.push(childPrinter);
     
-                // console.log('xArrayBodyPrint', xArrayBodyPrint);
-                // console.log('xImpresoraPrint', xImpresoraPrint);
+                // logger.debug('xArrayBodyPrint', xArrayBodyPrint);
+                // logger.debug('xImpresoraPrint', xImpresoraPrint);
                 xRptPrint.push({
                     arrBodyPrint: xArrayBodyPrint,
                     arrPrinters: xImpresoraPrint
@@ -256,7 +257,7 @@ export class JsonPrintService {
 
         xRptPrint.listPrinters = listOnlyPrinters;
 
-        // console.log('xRptPrint', xRptPrint);
+        // logger.debug('xRptPrint', xRptPrint);
 
         return xRptPrint;
 
@@ -286,13 +287,13 @@ export class JsonPrintService {
         _objMiPedido.tipoconsumo
             .map((tpc: any) => {
                 firtsIdPrinter = tpc.secciones.filter((s: any) => s.idimpresora !== 0)[0];
-                // console.log('impresora por tipo de consumo', firtsIdPrinter);
+                // logger.debug('impresora por tipo de consumo', firtsIdPrinter);
                 if (firtsIdPrinter) { return; }
             });
 
         // sino encontro ningun impresora asigna impresora de la lista de impresoras
         if (!firtsIdPrinter) {
-            console.log('selecciona primera impresora');
+            logger.debug('selecciona primera impresora');
             firtsIdPrinter = this.GetFirstPrinter(listPrinter);
         }
 

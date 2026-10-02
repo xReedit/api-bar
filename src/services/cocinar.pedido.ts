@@ -2,6 +2,7 @@
 import axios from "axios";
 import PedidoServices from "./pedido.services";
 import ClassEstructuraPedido from "../class/estructura.pedido";
+import { logger } from '../utils/logger';
 
 
 export const getEstructuraPedido = async (items: any[], tipo_entrega: any, datos_entrega: any, idsede: number) => {
@@ -24,8 +25,8 @@ export const getEstructuraPedido = async (items: any[], tipo_entrega: any, datos
         throw new Error(`get-seccion-items no devolvió secciones para idsede ${idsede} (items: ${JSON.stringify(items?.map((i: any) => i.iditem))})`);
     }
     
-    // console.log('Items recibidos para cocinar:', JSON.stringify(items, null, 2));
-    // console.log('Secciones retornadas por get-seccion-items:', JSON.stringify(secciones, null, 2));
+    // logger.debug('Items recibidos para cocinar:', JSON.stringify(items, null, 2));
+    // logger.debug('Secciones retornadas por get-seccion-items:', JSON.stringify(secciones, null, 2));
 
     // obtenemos los canales de consumo
     const canales_consumo = await getCanalesConsumo(idsede);
@@ -49,7 +50,7 @@ const getReglasCarta = async (idsede: number) => {
         const response = await axios.get(`${baseUrl}/get-reglas-carta/${idsede}/0`);        
         return response.data;
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         return null;
     }    
 }
@@ -74,7 +75,7 @@ async function getCanalesConsumo(idsede: number) {
         const response = await axios.get(`${baseUrl}/canales/${idsede}`);
         return response.data;
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         return [];
     }
 

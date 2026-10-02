@@ -1,5 +1,6 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
+import { logger } from '../../utils/logger';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -144,7 +145,7 @@ router.get("/advertencia/:idsede", async (req, res) => {
         return res.json({ mostrar: false });
         
     } catch (error) {
-        console.error('Error en advertencia cobranza:', error);
+        logger.error('Error en advertencia cobranza:', error);
         return res.json({ mostrar: false });
     }
 });

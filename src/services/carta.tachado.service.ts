@@ -9,6 +9,7 @@ import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { leerIndice, urlCartaBase, type IndiceCarta, type LineaIndexada } from './carta.indice.service';
 import type { Caja } from './carta.ocr.service';
+import { logger } from '../utils/logger';
 
 const bucket = () => process.env.AWS_BUCKET_NAME || 'papaya-comercio-files';
 const region = () => process.env.AWS_REGION || 'us-east-2';
@@ -110,7 +111,7 @@ export const generarCartaTachada = async (
         ventana.set(Number(idsede), { hash, url, agotados: nombres, en: Date.now() });
         return { tipo: 'imagen', imagen_url: url, agotados: nombres };
     } catch (e) {
-        console.error('[carta-tachado] fallo, fallback a link', e);
+        logger.error('[carta-tachado] fallo, fallback a link', e);
         return await fallbackLink(idsede, prisma);
     }
 };

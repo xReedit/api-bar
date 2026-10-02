@@ -13,6 +13,7 @@ import { generarYSubirTicket } from "../services/ticket.image.service";
 import { generarCartaTachada, resolverCartaTachado } from "../services/carta.tachado.service";
 import { leerIndice } from "../services/carta.indice.service";
 import axios from "axios";
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -216,7 +217,7 @@ router.get('/comprobante/:idsede/:documento/:fecha/:importe', async (req: any, r
             ...(urlPdf ? { url_pdf: urlPdf } : {})
         });
     } catch (error) {
-        console.error('Error en /comprobante:', error);
+        logger.error('Error en /comprobante:', error);
         return res.status(500).json({ success: false, error: 'No se pudo consultar el comprobante' });
     } finally {
         prisma.$disconnect();
@@ -335,7 +336,7 @@ router.post('/generar-comprobante', async (req, res) => {
             try {
                 await marcar({ numero: d.numero, url_pdf: d.url_pdf, num_doc: numDoc, external_id: d.external_id });
             } catch (e: any) {
-                console.error(`generar-comprobante: EMITIDO ${d.numero} (${d.external_id}) pero NO persistido para sesión ${session_id}:`, e?.message);
+                logger.error(`generar-comprobante: EMITIDO ${d.numero} (${d.external_id}) pero NO persistido para sesión ${session_id}:`, e?.message);
             }
             return res.status(200).json({ success: true, numero: d.numero, url_pdf: d.url_pdf });
         } catch (e: any) {
@@ -344,18 +345,18 @@ router.post('/generar-comprobante', async (req, res) => {
             // cuando se corrija la config.
             const status = e?.response?.status;
             if (status === 401 || status === 403) {
-                console.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
+                logger.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
                 try { await liberar(); } catch { /* queda emitiendo con TTL */ }
                 return res.status(200).json({ success: false, error: 'la emisión de comprobantes no está disponible en este momento; solicítalo en caja' });
             }
             // Red caída a mitad de camino = estado incierto: NO liberar (el CPE
             // pudo emitirse); que lo resuelva caja antes que duplicar.
-            console.error('generar-comprobante: fallo llamando a backend-pedidos:', e?.message);
+            logger.error('generar-comprobante: fallo llamando a backend-pedidos:', e?.message);
             try { await marcar({ estado: 'bloqueado', error: 'el comprobante quedó en proceso; solicítalo en caja' }); } catch { /* claim queda como emitiendo, expira por TTL */ }
             return res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' });
         }
     } catch (error: any) {
-        console.error('Error en /generar-comprobante:', error?.message);
+        logger.error('Error en /generar-comprobante:', error?.message);
         return res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; puedes pedirlo en caja' });
     }
 });
@@ -497,7 +498,7 @@ const mapaOpcionesPorItem = async (idsede: number): Promise<Map<number, { req: n
             mapa.set(iditem, { req: Number(f?.req || 0), tot: Number(f?.tot || 0) });
         }
     } catch (e: any) {
-        console.error('mapaOpcionesPorItem: no se pudo leer los grupos de opciones, el menú va sin marcador:', e?.message);
+        logger.error('mapaOpcionesPorItem: no se pudo leer los grupos de opciones, el menú va sin marcador:', e?.message);
     }
     return mapa;
 };
@@ -549,7 +550,7 @@ router.get("/menu/:idorg/:idsede", async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en consultar_menu:', error);
+        logger.error('Error en consultar_menu:', error);
         res.status(500).json({
             success: false,
             error: 'Error al consultar menu'
@@ -606,7 +607,7 @@ export const leerGruposDeItems = async (
                 const grupos = await leer(iditem);
                 return { iditem, grupos: Array.isArray(grupos) ? grupos : [] };
             } catch (e: any) {
-                console.error(`opciones: falló el CALL del iditem ${iditem}, ese plato va sin opciones:`, e?.message);
+                logger.error(`opciones: falló el CALL del iditem ${iditem}, ese plato va sin opciones:`, e?.message);
                 return { iditem, grupos: [] as any[] };
             }
         }));
@@ -637,7 +638,7 @@ router.post("/opciones-items", async (req, res) => {
         }
 
         if (omitidos.length > 0) {
-            console.warn(`/opciones-items: se pidieron ${ids.length + omitidos.length} platos, tope ${MAX_ITEMS_OPCIONES}; omitidos: ${omitidos.join(', ')}`);
+            logger.warn(`/opciones-items: se pidieron ${ids.length + omitidos.length} platos, tope ${MAX_ITEMS_OPCIONES}; omitidos: ${omitidos.join(', ')}`);
         }
 
         const gruposPorItem = await leerGruposDeItems(ids);
@@ -656,7 +657,7 @@ router.post("/opciones-items", async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en /opciones-items:', error);
+        logger.error('Error en /opciones-items:', error);
         return res.status(200).json({ success: true, platos: [] });
     }
 });
@@ -774,7 +775,7 @@ router.post("/calcular-delivery", async (req, res) => {
         const zonas = modo === 'zonas' ? validarZonas(parametros.zonas) : [];
         if (modo === 'zonas' && zonas.length === 0) {
             // Misconfig del panel: no tumbar el delivery de la sede.
-            console.warn('calcular-delivery: modo zonas sin zonas válidas, fallback a variable', { idsede });
+            logger.warn('calcular-delivery: modo zonas sin zonas válidas, fallback a variable', { idsede });
             modo = 'variable';
         }
 
@@ -892,14 +893,14 @@ router.post("/calcular-delivery", async (req, res) => {
                     }
                 }
             } catch (error: any) {
-                console.error('calcular-delivery: fallo buscando direccion guardada, sigue geocoding:', error.message);
+                logger.error('calcular-delivery: fallo buscando direccion guardada, sigue geocoding:', error.message);
             }
 
             if (coordsGuardadas) {
                 const distanciaGuardada = estimarKmRuta(GeocodingService.calcularDistanciaHaversine(
                     Number(sede.latitude), Number(sede.longitude), coordsGuardadas.lat, coordsGuardadas.lng
                 ));
-                console.log(`calcular-delivery: direccion guardada reusada ("${coordsGuardadas.direccion}", ${distanciaGuardada} km) — sin geocoding`);
+                logger.debug(`calcular-delivery: direccion guardada reusada ("${coordsGuardadas.direccion}", ${distanciaGuardada} km) — sin geocoding`);
                 desdeGuardada = true;
                 direccionLegible = coordsGuardadas.direccion;
                 resultadoDistancia = {
@@ -1125,7 +1126,7 @@ router.post("/calcular-delivery", async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en calcular_delivery:', error);
+        logger.error('Error en calcular_delivery:', error);
         res.status(500).json({
             success: false,
             error: 'Error al calcular delivery'
@@ -1146,7 +1147,7 @@ router.get('/carta-imagen/:idsede', async (req: any, res) => {
             : undefined;
         res.status(200).json({ success: true, ...r, ...(mensaje ? { mensaje } : {}) });
     } catch (error) {
-        console.error('Error en carta-imagen', error);
+        logger.error('Error en carta-imagen', error);
         res.status(200).json({ success: true, tipo: 'link', link_carta: null }); // nunca romper al bot
     }
 });
@@ -1324,7 +1325,7 @@ router.get("/config/:idsede", async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error en obtener_config_negocio:', error);
+        logger.error('Error en obtener_config_negocio:', error);
         res.status(500).json({
             success: false,
             error: 'Error al obtener configuracion'
@@ -1464,7 +1465,7 @@ router.post("/resumen-pedido", async (req, res) => {
                     // El POS infla el cierre de caja cuando un item se parte en
                     // varias filas de detalle (defecto preexistente). Se loguea
                     // para medir la frecuencia real durante el piloto.
-                    console.warn(`resumen-pedido: iditem ${a.iditem} genera ${subitems_view.length} elementos en subitems_view (cierre de caja inflado, defecto preexistente del POS)`);
+                    logger.warn(`resumen-pedido: iditem ${a.iditem} genera ${subitems_view.length} elementos en subitems_view (cierre de caja inflado, defecto preexistente del POS)`);
                 }
 
                 return { ...base, sobreprecio_total, subitems_view };
@@ -1500,7 +1501,7 @@ router.post("/resumen-pedido", async (req, res) => {
                     }
                 }
             } catch (e: any) {
-                console.error('resumen-pedido: fallo resolviendo costo delivery autoritativo, se usa el del bot:', e?.message);
+                logger.error('resumen-pedido: fallo resolviendo costo delivery autoritativo, se usa el del bot:', e?.message);
             }
         }
 
@@ -1578,10 +1579,10 @@ router.post("/resumen-pedido", async (req, res) => {
                     direccionPreview = direccionData?.direccion || null;
                 }
             } catch (errorDireccion: any) {
-                console.error('resumen-pedido: fallo parseando direccion_cliente del preview:', errorDireccion.message);
+                logger.error('resumen-pedido: fallo parseando direccion_cliente del preview:', errorDireccion.message);
             }
         } catch (error: any) {
-            console.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error.message);
+            logger.error('resumen-pedido: fallo calculando correlativo _resumen_num, arranca en 1:', error.message);
             numeroResumen = 1;
         }
         // Clave aditiva top-level: los consumidores de esta estructura leen
@@ -1683,7 +1684,7 @@ router.post("/resumen-pedido", async (req, res) => {
                 }
             }
         } catch (error: any) {
-            console.error('resumen-pedido: fallo modo imagen, usando texto:', error.message);
+            logger.error('resumen-pedido: fallo modo imagen, usando texto:', error.message);
             imagenUrl = null;
             numeroResumenRespuesta = null;
             resumenRespuesta = ticketFormateado;
@@ -1696,7 +1697,7 @@ router.post("/resumen-pedido", async (req, res) => {
         });
 
     } catch (error: any) {
-        console.error('Error en resumen-pedido:', error);
+        logger.error('Error en resumen-pedido:', error);
         // Canal no disponible para esta sede (ej. delivery donde solo hay recojo):
         // respondemos 200 con success:false para que el bot lo relate al cliente
         // en vez de un "se cayo el sistema".
@@ -1788,7 +1789,7 @@ router.post("/pedido", async (req, res) => {
                     ? JSON.parse(preview[0].direccion_cliente) 
                     : preview[0].direccion_cliente;
             } catch (error) {
-                console.error('Error al parsear direccion_cliente:', error);
+                logger.error('Error al parsear direccion_cliente:', error);
             }
         }
 
@@ -2454,7 +2455,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
         let agotadosManual: string[] = [];
         if (modoCartaTachado === 'manual') {
             const idx = await leerIndice(Number(idsede));
-            if (!idx) console.warn('[contexto] modo manual sin indice, agotados_manual vacio', idsede);
+            if (!idx) logger.warn('[contexto] modo manual sin indice, agotados_manual vacio', idsede);
             agotadosManual = (idx?.lineas || []).filter((l) => l.agotado).map((l) => l.texto);
         }
 
@@ -2642,7 +2643,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
     } catch (error) {
         // Log del error real: antes era mudo y un fallo aquí dejaba al bot
         // sin carta/menú sin pista alguna en los logs.
-        console.error('Error en /chatbot/contexto:', error);
+        logger.error('Error en /chatbot/contexto:', error);
         res.status(500).json({
             success: false,
             error: 'Error al obtener contexto'

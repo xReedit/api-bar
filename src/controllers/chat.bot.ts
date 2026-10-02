@@ -8,6 +8,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { construirIndice, leerIndice, guardarIndice } from "../services/carta.indice.service";
 import { generarCartaTachada, invalidarVentana } from "../services/carta.tachado.service";
 import { auth, authSede } from "../middleware/auth";
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -32,7 +33,7 @@ router.post('/presign-upload', auth, async (req, res) => {
             return res.status(400).json({ success: false, error: 'fileName inválido' });
         }
         if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-            console.error('presign-upload: faltan AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY en el env');
+            logger.error('presign-upload: faltan AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY en el env');
             return res.status(500).json({ success: false, error: 'S3 no configurado en el servidor' });
         }
 
@@ -54,7 +55,7 @@ router.post('/presign-upload', auth, async (req, res) => {
             publicUrl: `https://${bucket}.s3.${region}.amazonaws.com/${key}`
         });
     } catch (error) {
-        console.error('Error en presign-upload:', error);
+        logger.error('Error en presign-upload:', error);
         res.status(500).json({ success: false, error: 'No se pudo generar la URL de subida' });
     }
 });
@@ -123,10 +124,10 @@ router.post("/activar-chatbot", async (req, res) => {
         await prisma.$executeRaw`
             INSERT INTO chatbot_solicitud (idsede, estado, atendido_en)
             VALUES (${idsede}, 'atendida', NOW())`;
-        console.log('chatbot activado (autoservicio)', { idsede });
+        logger.info('chatbot activado (autoservicio)', { idsede });
         res.status(200).json({ success: true, activado: true });
     } catch (error) {
-        console.error('activar-chatbot:', error);
+        logger.error('activar-chatbot:', error);
         res.status(500).json({ success: false, error: 'no se pudo activar el chatbot' });
     }
 });
@@ -727,7 +728,7 @@ router.post("/get-seccion-items", async (req, res) => {
     
 
 
-    // console.log('sql', `call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(_items)})`);       
+    // logger.debug('sql', `call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(_items)})`);       
     const rpt: any = await prisma.$queryRaw`call procedure_get_seccion_items_chatbot(${idsede}, ${JSON.stringify(_items)})`        
     try {
         const data = {
@@ -897,8 +898,8 @@ router.get("/get-list-productos-disponibles/:idsede", async (req, res, next) => 
 // registra la direccion del cliente para el pedido - bot
 router.post("/create-direccion-cliente-pedido-bot", async (req, res, next) => {
     const { direccion, idcliente } = req.body;   
-    // console.log('direccion', direccion); 
-    // console.log('idcliente', idcliente);
+    // logger.debug('direccion', direccion); 
+    // logger.debug('idcliente', idcliente);
 
     // 1 - buscar si la direccion ya existe
     const rptDireccion: any = await prisma.cliente_pwa_direccion.findMany({
@@ -1215,7 +1216,7 @@ router.post('/carta-indexar/:idsede', auth, authSede, async (req: any, res) => {
         if (r.indice || r.motivo) invalidarVentana(idsede);
         res.status(200).json({ success: !!r.indice, indice: r.indice, ...(r.motivo ? { motivo: r.motivo, lineas: r.lineas, max: r.max } : {}) });
     } catch (error) {
-        console.error('Error en carta-indexar', error);
+        logger.error('Error en carta-indexar', error);
         res.status(500).send({ error: 'Error al indexar la carta' });
     }
 });
@@ -1228,7 +1229,7 @@ router.get('/carta-indice/:idsede', auth, authSede, async (req: any, res) => {
         const indice = await leerIndice(idsede);
         res.status(200).json({ success: true, indice });
     } catch (error) {
-        console.error('Error en carta-indice', error);
+        logger.error('Error en carta-indice', error);
         res.status(500).send({ error: 'Error al leer el indice' });
     }
 });
@@ -1259,7 +1260,7 @@ router.put('/carta-agotados/:idsede', auth, authSede, async (req: any, res) => {
         invalidarVentana(idsede); // el próximo pedido de carta regenera ya
         res.status(200).json({ success: ok });
     } catch (error) {
-        console.error('Error en carta-agotados', error);
+        logger.error('Error en carta-agotados', error);
         res.status(500).send({ error: 'Error al guardar agotados' });
     }
 });
@@ -1274,7 +1275,7 @@ router.get('/carta-preview/:idsede', auth, authSede, async (req: any, res) => {
         const r = await generarCartaTachada(idsede, prisma);
         res.status(200).json({ success: true, ...r });
     } catch (error) {
-        console.error('Error en carta-preview', error);
+        logger.error('Error en carta-preview', error);
         res.status(500).send({ error: 'Error al generar preview' });
     }
 });

@@ -1,5 +1,6 @@
 import * as express from "express";
 import { PrismaClient } from "@prisma/client";
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -40,7 +41,7 @@ router.post('/create', async (req: any, res, next) => {
         // res.json(rpt)    
         res.status(200).send(rpt);
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         return res.status(400).send({ success:false, error: 'Error al procesar la solicitud' });        
     }
     

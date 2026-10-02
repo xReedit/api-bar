@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from 'dotenv';
 import { normalizeResponse } from "../../services/dash.util";
 import { validarYCorregirRangoPeriodo } from "../../utils/utils";
+import { logger } from '../../utils/logger';
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -18,7 +19,7 @@ router.post("/get-pedidos", async (req, res) => {
     params = validarYCorregirRangoPeriodo(params);
     try {        
         const ssql = `CALL procedure_module_dash_pedidos(${idsede}, ${JSON.stringify(params)})`;
-        //console.log('object', ssql);
+        //logger.debug('object', ssql);
         const rpt: any = await prisma.$queryRaw`CALL procedure_module_dash_pedidos(${idsede}, ${JSON.stringify(params)})`;
         const sqlExec = rpt[0].f0
         let rptExec: any = await prisma.$queryRawUnsafe(sqlExec);

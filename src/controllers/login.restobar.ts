@@ -8,6 +8,7 @@ import { loginRestobar, loginRestobarBot, loginDashboard } from './usuario'
 
 
 import { PrismaClient } from "@prisma/client";
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -67,7 +68,7 @@ router.post('/login', limiteLogin, async (req: any, res: any) => {
         prisma.$disconnect();
 
         // userRestobar.idsede_restobar = _data.sede.idsede_restobar
-        //////console.log('0userRestobar', userRestobar);
+        //////logger.debug('0userRestobar', userRestobar);
 
         loginRestobar(req, res, userRestobar)
 
@@ -133,7 +134,7 @@ router.post('/login-bot', limiteLogin, async (req: any, res: any) => {
     } catch (error) {
         // Sin este catch, un throw en los await dejaba la request colgada
         // (rechazo de promesa sin manejar en express 4).
-        console.error('login-bot:', error);
+        logger.error('login-bot:', error);
         return res.status(500).send(getErrorMessage(error));
     }
 })

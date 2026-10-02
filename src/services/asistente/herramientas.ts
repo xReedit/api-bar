@@ -389,7 +389,7 @@ const ventasPorDiaHerramienta: Herramienta = {
                 elegirVista(
                     args.grafico,
                     {
-                        serie: () => bloqueSerieDiaria('serie_dia', tituloSerie, recortada, lineaMeta),
+                        serie: () => bloqueSerieDiaria('serie_dia', tituloSerie, recortada, lineaMeta, agrupar),
                         comparar: () =>
                             bloqueComparativaDias(
                                 'comparativa_dias',
@@ -402,12 +402,12 @@ const ventasPorDiaHerramienta: Herramienta = {
                                 agrupar
                             ),
                         combo: () =>
-                            bloqueComboVentas('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta),
+                            bloqueComboVentas('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta, agrupar),
                         // Con muchos puntos las columnas se apelmazan y gana la serie limpia.
                         auto: () =>
                             recortada.length <= 14
-                                ? bloqueComboVentas('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta)
-                                : bloqueSerieDiaria('serie_dia', tituloSerie, recortada, lineaMeta)
+                                ? bloqueComboVentas('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta, agrupar)
+                                : bloqueSerieDiaria('serie_dia', tituloSerie, recortada, lineaMeta, agrupar)
                     },
                     'auto'
                 )
@@ -1268,7 +1268,8 @@ const canales: Herramienta = {
                                                 : `Canales por ${agrupar}`,
                                             periodos,
                                             nombresCanal,
-                                            porClave
+                                            porClave,
+                                            agrupar
                                         )
                                     ]
                                   : [bloqueDonaCanales('dona_canales', 'Reparto por canal', canalesConPeso)],
@@ -1284,7 +1285,8 @@ const canales: Herramienta = {
                                             `Canales por ${agrupar}`,
                                             periodos,
                                             nombresCanal,
-                                            porClave
+                                            porClave,
+                                            agrupar
                                         )
                                     ]
                                   : [

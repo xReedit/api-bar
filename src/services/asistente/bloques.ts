@@ -25,6 +25,26 @@ const MESES = [
  * Etiqueta del eje segun la granularidad de la clave.
  * "2026-08" -> "ago 2026";  "2026-08-15" -> "15/08"
  */
+export type Agrupacion = 'dia' | 'semana' | 'mes';
+
+/**
+ * Etiqueta del eje segun como se agrupo.
+ *
+ * Una semana se identifica por su lunes, pero poner "31/08" a secas se lee como
+ * un dia suelto: el usuario ve un punto por semana rotulado con una fecha y no
+ * sabe que abarca. Se pone el rango completo.
+ */
+export function etiquetaPeriodo(clave: string, agrupar: Agrupacion = 'dia'): string {
+    if (agrupar !== 'semana') return etiquetaFecha(clave);
+
+    const lunes = new Date(clave + 'T00:00:00Z');
+    const domingo = new Date(lunes.getTime() + 6 * 86400000);
+    const dm = (d: Date) =>
+        `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+
+    return `${dm(lunes)} - ${dm(domingo)}`;
+}
+
 function etiquetaFecha(clave: string): string {
     if (clave.length === 7) {
         const [ano, mes] = clave.split('-');
@@ -39,7 +59,8 @@ export function bloqueSerieDiaria(
     id: string,
     titulo: string,
     serie: Array<{ fecha: string; total: number }>,
-    meta?: { valor: number; etiqueta: string }
+    meta?: { valor: number; etiqueta: string },
+    agrupar: Agrupacion = 'dia'
 ): Bloque {
     return {
         id,
@@ -49,7 +70,7 @@ export function bloqueSerieDiaria(
             // Area y no linea: el relleno da el volumen de un vistazo, y es como se
             // ve la misma serie en el dashboard.
             apex: 'area',
-            categorias: serie.map((d) => etiquetaFecha(d.fecha)),
+            categorias: serie.map((d) => etiquetaPeriodo(d.fecha, agrupar)),
             series: [{ name: 'Ventas', data: serie.map((d) => d.total) }],
             formatoValor: 'moneda',
             // La linea de meta convierte "vendi 1,200" en "me falto" o "la pase".
@@ -381,7 +402,8 @@ export function bloqueEvolucionCanales(
     titulo: string,
     periodos: string[],
     canales: string[],
-    valores: Map<string, number>
+    valores: Map<string, number>,
+    agrupar: Agrupacion = 'dia'
 ): Bloque {
     return {
         id,
@@ -389,7 +411,7 @@ export function bloqueEvolucionCanales(
         titulo,
         grafico: {
             apex: 'line',
-            categorias: periodos.map(etiquetaFecha),
+            categorias: periodos.map((p) => etiquetaPeriodo(p, agrupar)),
             series: canales.map((canal) => ({
                 name: canal,
                 data: periodos.map((per) => valores.get(`${per}|${canal}`) ?? 0)
@@ -507,7 +529,8 @@ export function bloqueComboVentas(
     id: string,
     titulo: string,
     dias: Array<{ fecha: string; total: number; transacciones: number }>,
-    meta?: { valor: number; etiqueta: string }
+    meta?: { valor: number; etiqueta: string },
+    agrupar: Agrupacion = 'dia'
 ): Bloque {
     return {
         id,
@@ -515,7 +538,7 @@ export function bloqueComboVentas(
         titulo,
         grafico: {
             apex: 'line',
-            categorias: dias.map((d) => etiquetaFecha(d.fecha)),
+            categorias: dias.map((d) => etiquetaPeriodo(d.fecha, agrupar)),
             series: [
                 { name: 'Vendido', tipo: 'column', data: dias.map((d) => d.total) },
                 { name: 'Tickets', tipo: 'line', data: dias.map((d) => d.transacciones) }

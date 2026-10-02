@@ -25,6 +25,7 @@ import {
     bloqueTablaInventario,
     bloqueDispersionMargen,
     bloqueComboVentas,
+    bloqueComparativaDias,
     bloqueMancuernaMetas,
     bloqueMapaHorario,
     bloqueMedidor,
@@ -246,10 +247,13 @@ const ventasPorDiaHerramienta: Herramienta = {
                 sedes: PARAM_SEDES,
                 ...PARAM_FECHAS,
                 grafico: PARAM_GRAFICO(
-                    ['serie', 'combo'],
+                    ['serie', 'combo', 'comparar'],
                     'serie = linea limpia, mejor para ver la tendencia de muchos dias. ' +
                         'combo = columnas de venta con la linea de tickets encima, para ' +
-                        'distinguir mucha-gente-ticket-chico de poca-gente-ticket-grande.'
+                        'distinguir mucha-gente-ticket-chico de poca-gente-ticket-grande. ' +
+                        'comparar = DOS lineas superpuestas, este periodo contra el anterior ' +
+                        'del mismo largo, alineadas por dia de la semana. Usala siempre que ' +
+                        'pidan comparar con la semana, el mes o el periodo anterior.'
                 ),
                 agrupar_por: {
                     type: 'string',
@@ -282,6 +286,17 @@ const ventasPorDiaHerramienta: Herramienta = {
         // Linea de meta del tramo que se esta dibujando: la diaria para dias, por
         // siete para semanas, la mensual para meses. Si varios locales, se suman:
         // la serie tambien viene sumada. Sin meta cargada no se dibuja nada.
+        // Solo si se va a dibujar la comparativa: son otras tantas consultas.
+        const comparar = args.grafico === 'comparar';
+        let serieAnterior: typeof recortada = [];
+        if (comparar) {
+            const filasAntes: FilaVenta[] = [];
+            for (const idsede of sedes.ids) {
+                filasAntes.push(...(await filasDeVentas(idsede, rangoAnterior(periodo))));
+            }
+            serieAnterior = ventasPorDia(filasAntes, agrupar).slice(-MAX_PUNTOS);
+        }
+
         const metas = await Promise.all(sedes.ids.map((id) => metaDeSede(id)));
         const diaria = metas.reduce((t, m) => t + (m?.diaria ?? 0), 0);
         const mensual = metas.reduce((t, m) => t + (m?.mensual ?? 0), 0);
@@ -323,6 +338,16 @@ const ventasPorDiaHerramienta: Herramienta = {
                     args.grafico,
                     {
                         serie: () => bloqueSerieDiaria('serie_dia', tituloSerie, recortada, lineaMeta),
+                        comparar: () =>
+                            bloqueComparativaDias(
+                                'comparativa_dias',
+                                'Este periodo contra el anterior',
+                                recortada,
+                                serieAnterior,
+                                'Este periodo',
+                                'Periodo anterior',
+                                lineaMeta
+                            ),
                         combo: () =>
                             bloqueComboVentas('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta),
                         // Con muchos puntos las columnas se apelmazan y gana la serie limpia.

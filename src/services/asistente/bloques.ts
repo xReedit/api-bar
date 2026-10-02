@@ -268,6 +268,63 @@ export function bloqueTreemap(
     };
 }
 
+const DIA_CORTO = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+
+/**
+ * Dos periodos superpuestos, un trazo cada uno.
+ *
+ * Una comparativa dibujada como una sola linea continua no compara nada: se ve
+ * la forma del tramo entero, pero no cual de los dos pedazos fue mejor. Aqui las
+ * dos semanas arrancan en el mismo punto del eje, asi que la distancia vertical
+ * entre los trazos ES la diferencia, dia contra dia.
+ *
+ * Se alinea por posicion y no por fecha a proposito: el periodo anterior tiene
+ * el mismo largo, asi que la posicion 0 de uno y de otro caen en el mismo dia de
+ * la semana. Comparar lunes con lunes es lo util en un restaurante.
+ */
+export function bloqueComparativaDias(
+    id: string,
+    titulo: string,
+    actual: Array<{ fecha: string; total: number }>,
+    anterior: Array<{ fecha: string; total: number }>,
+    etiquetaActual: string,
+    etiquetaAnterior: string,
+    meta?: { valor: number; etiqueta: string }
+): Bloque {
+    const largo = Math.max(actual.length, anterior.length);
+
+    const categorias = Array.from({ length: largo }, (_, i) => {
+        const dia = actual[i]?.fecha ?? anterior[i]?.fecha;
+        if (!dia) return `Dia ${i + 1}`;
+        const d = new Date(dia + 'T00:00:00Z');
+        return `${DIA_CORTO[d.getUTCDay()]} ${etiquetaFecha(dia)}`;
+    });
+
+    const serie = (filas: typeof actual) =>
+        Array.from({ length: largo }, (_, i) => filas[i]?.total ?? 0);
+
+    return {
+        id,
+        tipo: 'grafico',
+        titulo,
+        grafico: {
+            // Linea y no area: dos rellenos superpuestos se ensucian y tapan el
+            // cruce, que es justo lo que hay que ver.
+            apex: 'line',
+            categorias,
+            series: [
+                { name: etiquetaActual, data: serie(actual) },
+                { name: etiquetaAnterior, data: serie(anterior) }
+            ],
+            formatoValor: 'moneda',
+            referenciaY: meta,
+            altoMovil: 260,
+            altoEscritorio: 320,
+            leyenda: true
+        }
+    };
+}
+
 /**
  * Columnas de venta con la linea de tickets encima.
  *

@@ -36,16 +36,26 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.alertasOperativas = exports.detalleOperaciones = void 0;
+exports.alertasOperativas = exports.detalleOperaciones = exports.operacionesPorDia = void 0;
 var client_1 = require("@prisma/client");
 var agregados_1 = require("./agregados");
 var prisma = new client_1.PrismaClient();
+/** Desde aqui, lo borrado o anulado pesa demasiado sobre la venta del periodo. */
+var PESO_SOSPECHOSO_PCT = 2;
 /**
- * Umbral de anomalia: el doble que el periodo anterior, con un minimo absoluto
- * para no gritar porque se paso de 1 a 3. Es deliberadamente simple: el objetivo
- * es senalar donde mirar, no clasificar fraude.
+ * Dos formas de saltar, porque hay dos formas de que esto sea un problema.
+ *
+ * Por FRECUENCIA: se borra el doble que el periodo anterior. Util para pillar un
+ * cambio de habito.
+ *
+ * Por PESO: el monto pasa del 2% de lo vendido. Esta hacia falta. Mirando solo
+ * la cantidad, S/ 3,957 en items borrados repartidos en 30 registros se leia
+ * como "nada raro", cuando es plata que entro al pedido y salio sin cobrarse.
+ * Un monto no se juzga solo: se juzga contra lo que se vendio.
  */
-function esAnomalo(cantidad, anterior) {
+function esAnomalo(cantidad, anterior, monto, ventas) {
+    if (ventas > 0 && (monto / ventas) * 100 >= PESO_SOSPECHOSO_PCT)
+        return true;
     if (cantidad < 5)
         return false;
     if (anterior === 0)
@@ -96,6 +106,54 @@ function porUsuario(sql) {
         });
     });
 }
+/** De donde sale cada tipo: tabla, columna de fecha, de monto y filtro. */
+var ORIGEN = {
+    pedidos_anulados: {
+        sql: function (sedes) { return "SELECT DATE_FORMAT(p.fecha_hora, '%Y-%m-%d') f, COUNT(*) c, SUM(p.total_r) m\n            FROM pedido p WHERE p.idsede IN (".concat(sedes, ") AND p.estado = 3"); }
+    },
+    ventas_anuladas: {
+        sql: function (sedes) { return "SELECT DATE_FORMAT(rp.fecha_hora, '%Y-%m-%d') f, COUNT(*) c, SUM(rp.total) m\n            FROM registro_pago rp WHERE rp.idsede IN (".concat(sedes, ") AND rp.estado = 1"); }
+    },
+    items_borrados: {
+        sql: function (sedes) { return "SELECT DATE_FORMAT(p.fecha_hora, '%Y-%m-%d') f, COUNT(*) c, SUM(pd.ptotal_r) m\n            FROM pedido_detalle pd INNER JOIN pedido p ON p.idpedido = pd.idpedido\n            WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1"); }
+    },
+    egresos_caja: {
+        sql: function (sedes) { return "SELECT DATE_FORMAT(ic.fecha_hora, '%Y-%m-%d') f, COUNT(*) c, SUM(ic.monto) m\n            FROM ie_caja ic WHERE ic.idsede IN (".concat(sedes, ") AND ic.tipo = 2 AND ic.estado = 0"); }
+    }
+};
+/**
+ * El mismo dato, repartido por dia.
+ *
+ * `detalleOperaciones` corta en 30 filas para no inundar al modelo, asi que
+ * agrupar a partir de ella daria un reparto falso: el dia mas caro puede estar
+ * fuera del corte. Esto cuenta sobre el total, sin limite.
+ */
+function operacionesPorDia(tipo, idsedes, desde, hasta) {
+    return __awaiter(this, void 0, void 0, function () {
+        var sedes, col, filas;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    sedes = listaSedes(idsedes);
+                    if (!sedes)
+                        return [2 /*return*/, []];
+                    col = tipo === 'egresos_caja' ? 'ic.fecha_hora' : tipo === 'ventas_anuladas' ? 'rp.fecha_hora' : 'p.fecha_hora';
+                    return [4 /*yield*/, prisma.$queryRawUnsafe("".concat(ORIGEN[tipo].sql(sedes), "\n           AND ").concat(col, " >= '").concat(desde, " 00:00:00' AND ").concat(col, " <= '").concat(hasta, " 23:59:59'\n         GROUP BY f ORDER BY f"))];
+                case 1:
+                    filas = _a.sent();
+                    return [2 /*return*/, (filas !== null && filas !== void 0 ? filas : []).map(function (r) {
+                            var _a;
+                            return ({
+                                fecha: String((_a = r.f) !== null && _a !== void 0 ? _a : ''),
+                                cantidad: Number(r.c) || 0,
+                                monto: (0, agregados_1.redondear)(Number(r.m) || 0)
+                            });
+                        })];
+            }
+        });
+    });
+}
+exports.operacionesPorDia = operacionesPorDia;
 /**
  * Detalle linea por linea de una operacion.
  *
@@ -199,13 +257,13 @@ function detalleOperaciones(tipo, idsedes, desde, hasta, limite) {
 exports.detalleOperaciones = detalleOperaciones;
 function alertasOperativas(idsedes, desde, hasta, desdeAnterior, hastaAnterior) {
     return __awaiter(this, void 0, void 0, function () {
-        var sedes, entre, sqlBorrados, sqlPedidosAnulados, sqlVentasAnuladas, sqlDescuentos, sqlEgresos, definiciones, indicadores, _i, definiciones_1, _a, clave, etiqueta, sql, hoy, antes, borradosPorUsuario, anuladosPorUsuario, egresosPorUsuario, motivos;
+        var sedes, entre, sqlBorrados, sqlPedidosAnulados, sqlVentasAnuladas, sqlDescuentos, sqlEgresos, definiciones, ventas, indicadores, _i, definiciones_1, _a, clave, etiqueta, sql, hoy, antes, borradosPorUsuario, anuladosPorUsuario, egresosPorUsuario, motivos;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     sedes = listaSedes(idsedes);
                     if (!sedes)
-                        return [2 /*return*/, { indicadores: [], borradosPorUsuario: [], anuladosPorUsuario: [], egresosPorUsuario: [], motivosFrecuentes: [] }];
+                        return [2 /*return*/, { ventasDelPeriodo: 0, indicadores: [], borradosPorUsuario: [], anuladosPorUsuario: [], egresosPorUsuario: [], motivosFrecuentes: [] }];
                     entre = function (col, a, b) { return "".concat(col, " >= '").concat(a, " 00:00:00' AND ").concat(col, " <= '").concat(b, " 23:59:59'"); };
                     sqlBorrados = function (a, b) { return "\n        SELECT COUNT(*) cantidad, COALESCE(SUM(pd.ptotal_r),0) monto\n        FROM pedido_detalle pd\n        INNER JOIN pedido p ON p.idpedido = pd.idpedido\n        WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1 AND ").concat(entre('p.fecha_hora', a, b)); };
                     sqlPedidosAnulados = function (a, b) { return "\n        SELECT COUNT(*) cantidad, COALESCE(SUM(CAST(p.total_r AS DECIMAL(10,2))),0) monto\n        FROM pedido p\n        WHERE p.idsede IN (".concat(sedes, ") AND p.estado = 3 AND ").concat(entre('p.fecha_hora', a, b)); };
@@ -219,17 +277,20 @@ function alertasOperativas(idsedes, desde, hasta, desdeAnterior, hastaAnterior) 
                         ['descuentos', 'Descuentos aplicados', sqlDescuentos],
                         ['egresos_caja', 'Salidas de caja', sqlEgresos]
                     ];
+                    return [4 /*yield*/, unaFila("\n        SELECT COUNT(*) cantidad, COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))),0) monto\n        FROM registro_pago rp\n        WHERE rp.idsede IN (".concat(sedes, ") AND rp.estado = 0\n          AND ").concat(entre('rp.fecha_hora', desde, hasta)))];
+                case 1:
+                    ventas = _b.sent();
                     indicadores = [];
                     _i = 0, definiciones_1 = definiciones;
-                    _b.label = 1;
-                case 1:
-                    if (!(_i < definiciones_1.length)) return [3 /*break*/, 5];
+                    _b.label = 2;
+                case 2:
+                    if (!(_i < definiciones_1.length)) return [3 /*break*/, 6];
                     _a = definiciones_1[_i], clave = _a[0], etiqueta = _a[1], sql = _a[2];
                     return [4 /*yield*/, unaFila(sql(desde, hasta))];
-                case 2:
+                case 3:
                     hoy = _b.sent();
                     return [4 /*yield*/, unaFila(sql(desdeAnterior, hastaAnterior))];
-                case 3:
+                case 4:
                     antes = _b.sent();
                     indicadores.push({
                         clave: clave,
@@ -239,25 +300,27 @@ function alertasOperativas(idsedes, desde, hasta, desdeAnterior, hastaAnterior) 
                         cantidadAnterior: antes.cantidad,
                         montoAnterior: antes.monto,
                         variacionPct: variacion(hoy.cantidad, antes.cantidad),
-                        anomalo: esAnomalo(hoy.cantidad, antes.cantidad)
+                        pctSobreVentas: ventas.monto ? (0, agregados_1.redondear)((hoy.monto / ventas.monto) * 100) : null,
+                        anomalo: esAnomalo(hoy.cantidad, antes.cantidad, hoy.monto, ventas.monto)
                     });
-                    _b.label = 4;
-                case 4:
+                    _b.label = 5;
+                case 5:
                     _i++;
-                    return [3 /*break*/, 1];
-                case 5: return [4 /*yield*/, porUsuario("\n        SELECT u.nombres usuario, COUNT(*) cantidad, COALESCE(SUM(pd.ptotal_r),0) monto\n        FROM pedido_detalle pd\n        INNER JOIN pedido p ON p.idpedido = pd.idpedido\n        LEFT JOIN usuario u ON u.idusuario = p.idusuario\n        WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1 AND ").concat(entre('p.fecha_hora', desde, hasta), "\n        GROUP BY u.nombres ORDER BY cantidad DESC LIMIT 5"))];
-                case 6:
+                    return [3 /*break*/, 2];
+                case 6: return [4 /*yield*/, porUsuario("\n        SELECT u.nombres usuario, COUNT(*) cantidad, COALESCE(SUM(pd.ptotal_r),0) monto\n        FROM pedido_detalle pd\n        INNER JOIN pedido p ON p.idpedido = pd.idpedido\n        LEFT JOIN usuario u ON u.idusuario = p.idusuario\n        WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1 AND ").concat(entre('p.fecha_hora', desde, hasta), "\n        GROUP BY u.nombres ORDER BY cantidad DESC LIMIT 5"))];
+                case 7:
                     borradosPorUsuario = _b.sent();
                     return [4 /*yield*/, porUsuario("\n        SELECT u.nombres usuario, COUNT(*) cantidad,\n               COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))),0) monto\n        FROM registro_pago rp\n        LEFT JOIN usuario u ON u.idusuario = rp.idusuario\n        WHERE rp.idsede IN (".concat(sedes, ") AND rp.estado = 1 AND ").concat(entre('rp.fecha_hora', desde, hasta), "\n        GROUP BY u.nombres ORDER BY cantidad DESC LIMIT 5"))];
-                case 7:
+                case 8:
                     anuladosPorUsuario = _b.sent();
                     return [4 /*yield*/, porUsuario("\n        SELECT u.nombres usuario, COUNT(*) cantidad,\n               COALESCE(SUM(CAST(ic.monto AS DECIMAL(10,2))),0) monto\n        FROM ie_caja ic\n        LEFT JOIN usuario u ON u.idusuario = ic.idusuario\n        WHERE ic.idsede IN (".concat(sedes, ") AND ic.tipo = 2 AND ic.estado = 0\n          AND ").concat(entre('ic.fecha_hora', desde, hasta), "\n        GROUP BY u.nombres ORDER BY monto DESC LIMIT 5"))];
-                case 8:
+                case 9:
                     egresosPorUsuario = _b.sent();
                     return [4 /*yield*/, prisma.$queryRawUnsafe("\n        SELECT TRIM(pd.motivo_borrado) motivo, COUNT(*) veces\n        FROM pedido_detalle pd\n        INNER JOIN pedido p ON p.idpedido = pd.idpedido\n        WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1\n          AND pd.motivo_borrado IS NOT NULL AND TRIM(pd.motivo_borrado) <> ''\n          AND ").concat(entre('p.fecha_hora', desde, hasta), "\n        GROUP BY TRIM(pd.motivo_borrado) ORDER BY veces DESC LIMIT 5"))];
-                case 9:
+                case 10:
                     motivos = _b.sent();
                     return [2 /*return*/, {
+                            ventasDelPeriodo: ventas.monto,
                             indicadores: indicadores,
                             borradosPorUsuario: borradosPorUsuario,
                             anuladosPorUsuario: anuladosPorUsuario,

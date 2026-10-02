@@ -9,7 +9,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 exports.__esModule = true;
-exports.bloqueTablaGenerica = exports.bloqueTablaInventario = exports.bloqueTablaMargen = exports.bloqueDispersionMargen = exports.bloqueRadialMetas = exports.bloqueMapaHorario = exports.bloquePendiente = exports.bloqueMancuernaMetas = exports.bloqueComboVentas = exports.bloqueTreemap = exports.bloqueMedidor = exports.bloqueRankingMetas = exports.bloqueClima = exports.bloqueTablaProductos = exports.bloqueBarrasLocales = exports.bloqueRankingLocales = exports.bloqueSerieDiaria = exports.bloqueKpis = void 0;
+exports.bloqueTablaGenerica = exports.bloqueTablaInventario = exports.bloqueTablaMargen = exports.bloqueDispersionMargen = exports.bloqueRadialMetas = exports.bloqueMapaHorario = exports.bloquePendiente = exports.bloqueMancuernaMetas = exports.bloqueComboVentas = exports.bloqueComparativaDias = exports.bloqueTreemap = exports.bloqueMedidor = exports.bloqueRankingMetas = exports.bloqueClima = exports.bloqueTablaProductos = exports.bloqueBarrasLocales = exports.bloqueRankingLocales = exports.bloqueSerieDiaria = exports.bloqueKpis = void 0;
 var agregados_1 = require("../dash/agregados");
 /**
  * Constructores de bloques visuales.
@@ -230,6 +230,66 @@ function bloqueTreemap(id, titulo, items) {
     };
 }
 exports.bloqueTreemap = bloqueTreemap;
+var DIA_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+/**
+ * Dos periodos superpuestos, un trazo cada uno.
+ *
+ * Una comparativa dibujada como una sola linea continua no compara nada: se ve
+ * la forma del tramo entero, pero no cual de los dos pedazos fue mejor. Aqui las
+ * dos semanas arrancan en el mismo punto del eje, asi que la distancia vertical
+ * entre los trazos ES la diferencia, dia contra dia.
+ *
+ * Se alinea por posicion y no por fecha a proposito: el periodo anterior tiene
+ * el mismo largo, asi que la posicion 0 de uno y de otro caen en el mismo dia de
+ * la semana. Comparar lunes con lunes es lo util en un restaurante.
+ */
+function bloqueComparativaDias(id, titulo, actual, anterior, etiquetaActual, etiquetaAnterior, meta, agrupar) {
+    if (agrupar === void 0) { agrupar = 'dia'; }
+    var largo = Math.max(actual.length, anterior.length);
+    // El eje tiene que ser lo que los dos periodos COMPARTEN, no las fechas de
+    // uno de ellos: poner "Lun 28/09" sobre dos series de semanas distintas hace
+    // creer que ambas son del 28.
+    var categorias = Array.from({ length: largo }, function (_, i) {
+        var _a;
+        var dia = (_a = actual[i]) === null || _a === void 0 ? void 0 : _a.fecha;
+        if (!dia)
+            return "".concat(i + 1);
+        var d = new Date(dia + 'T00:00:00Z');
+        if (agrupar === 'mes')
+            return MESES[d.getUTCMonth()];
+        if (agrupar === 'semana')
+            return "Sem ".concat(i + 1);
+        // Hasta una semana, el dia de la semana se lee solo. Mas alla se repetiria
+        // cuatro veces, asi que manda el dia del mes, que es como se alinean.
+        if (largo <= 7)
+            return DIA_CORTO[d.getUTCDay()];
+        return String(d.getUTCDate()).padStart(2, '0');
+    });
+    var serie = function (filas) {
+        return Array.from({ length: largo }, function (_, i) { var _a, _b; return (_b = (_a = filas[i]) === null || _a === void 0 ? void 0 : _a.total) !== null && _b !== void 0 ? _b : 0; });
+    };
+    return {
+        id: id,
+        tipo: 'grafico',
+        titulo: titulo,
+        grafico: {
+            // Linea y no area: dos rellenos superpuestos se ensucian y tapan el
+            // cruce, que es justo lo que hay que ver.
+            apex: 'line',
+            categorias: categorias,
+            series: [
+                { name: etiquetaActual, data: serie(actual) },
+                { name: etiquetaAnterior, data: serie(anterior) }
+            ],
+            formatoValor: 'moneda',
+            referenciaY: meta,
+            altoMovil: 260,
+            altoEscritorio: 320,
+            leyenda: true
+        }
+    };
+}
+exports.bloqueComparativaDias = bloqueComparativaDias;
 /**
  * Columnas de venta con la linea de tickets encima.
  *

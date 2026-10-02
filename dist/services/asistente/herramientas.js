@@ -172,6 +172,11 @@ function rangoDe(periodo) {
     };
 }
 /** Periodo inmediatamente anterior, del mismo largo, para comparar. */
+/** "2026-09-28" -> "28/09". Para nombrar cada serie en la leyenda. */
+function etiquetaCorta(iso) {
+    var _a = iso.split('-'), mes = _a[1], dia = _a[2];
+    return "".concat(dia, "/").concat(mes);
+}
 function rangoAnterior(periodo) {
     var desde = new Date(periodo.desde + 'T00:00:00Z');
     var hasta = new Date(periodo.hasta + 'T00:00:00Z');
@@ -285,9 +290,12 @@ var ventasPorDiaHerramienta = {
             'Util para ver evolucion, crecimiento, dias fuertes y caidas.',
         parametros: {
             type: 'object',
-            properties: __assign(__assign({ sedes: PARAM_SEDES }, PARAM_FECHAS), { grafico: PARAM_GRAFICO(['serie', 'combo'], 'serie = linea limpia, mejor para ver la tendencia de muchos dias. ' +
+            properties: __assign(__assign({ sedes: PARAM_SEDES }, PARAM_FECHAS), { grafico: PARAM_GRAFICO(['serie', 'combo', 'comparar'], 'serie = linea limpia, mejor para ver la tendencia de muchos dias. ' +
                     'combo = columnas de venta con la linea de tickets encima, para ' +
-                    'distinguir mucha-gente-ticket-chico de poca-gente-ticket-grande.'), agrupar_por: {
+                    'distinguir mucha-gente-ticket-chico de poca-gente-ticket-grande. ' +
+                    'comparar = DOS lineas superpuestas, este periodo contra el anterior ' +
+                    'del mismo largo, alineadas por dia de la semana. Usala siempre que ' +
+                    'pidan comparar con la semana, el mes o el periodo anterior.'), agrupar_por: {
                     type: 'string',
                     "enum": ['dia', 'semana', 'mes'],
                     description: 'Como agrupar la serie. Para periodos largos o si piden ' +
@@ -299,9 +307,9 @@ var ventasPorDiaHerramienta = {
     ejecutar: function (args, ctx) {
         var _a;
         return __awaiter(this, void 0, void 0, function () {
-            var sedes, periodo, agrupar, filas, _i, _b, idsede, _c, _d, _e, serie, recortada, metas, diaria, mensual, valorMeta, lineaMeta, tituloSerie;
-            return __generator(this, function (_f) {
-                switch (_f.label) {
+            var sedes, periodo, agrupar, filas, _i, _b, idsede, _c, _d, _e, serie, recortada, comparar, serieActualComp, serieAnterior, antes, filasAntes, _f, _g, idsede, _h, _j, _k, brutaAnterior, etiquetasComparativa, metas, diaria, mensual, valorMeta, lineaMeta, tituloSerie;
+            return __generator(this, function (_l) {
+                switch (_l.label) {
                     case 0:
                         sedes = (0, sedes_1.resolverSedes)(args.sedes, ctx);
                         periodo = periodoDe(args, ctx);
@@ -310,7 +318,7 @@ var ventasPorDiaHerramienta = {
                             : 'dia';
                         filas = [];
                         _i = 0, _b = sedes.ids;
-                        _f.label = 1;
+                        _l.label = 1;
                     case 1:
                         if (!(_i < _b.length)) return [3 /*break*/, 4];
                         idsede = _b[_i];
@@ -318,17 +326,57 @@ var ventasPorDiaHerramienta = {
                         _e = [filas];
                         return [4 /*yield*/, filasDeVentas(idsede, rangoDe(periodo))];
                     case 2:
-                        _d.apply(_c, _e.concat([(_f.sent())]));
-                        _f.label = 3;
+                        _d.apply(_c, _e.concat([(_l.sent())]));
+                        _l.label = 3;
                     case 3:
                         _i++;
                         return [3 /*break*/, 1];
                     case 4:
                         serie = (0, agregados_1.ventasPorDia)(filas, agrupar);
                         recortada = serie.slice(-MAX_PUNTOS);
-                        return [4 /*yield*/, Promise.all(sedes.ids.map(function (id) { return (0, metas_1.metaDeSede)(id); }))];
+                        comparar = args.grafico === 'comparar';
+                        serieActualComp = recortada;
+                        serieAnterior = [];
+                        if (!comparar) return [3 /*break*/, 9];
+                        antes = rangoAnterior(periodo);
+                        filasAntes = [];
+                        _f = 0, _g = sedes.ids;
+                        _l.label = 5;
                     case 5:
-                        metas = _f.sent();
+                        if (!(_f < _g.length)) return [3 /*break*/, 8];
+                        idsede = _g[_f];
+                        _j = (_h = filasAntes.push).apply;
+                        _k = [filasAntes];
+                        return [4 /*yield*/, filasDeVentas(idsede, antes)];
+                    case 6:
+                        _j.apply(_h, _k.concat([(_l.sent())]));
+                        _l.label = 7;
+                    case 7:
+                        _f++;
+                        return [3 /*break*/, 5];
+                    case 8:
+                        brutaAnterior = (0, agregados_1.ventasPorDia)(filasAntes, agrupar);
+                        if (agrupar === 'dia') {
+                            // Sin rellenar, un dia cerrado desplaza todo lo que viene detras y
+                            // la posicion i deja de ser el mismo dia de la semana en ambos.
+                            serieActualComp = (0, agregados_1.rellenarDias)(serie, periodo.desde, periodo.hasta);
+                            serieAnterior = (0, agregados_1.rellenarDias)(brutaAnterior, antes.rango_start_date, antes.rango_end_date);
+                        }
+                        else {
+                            serieActualComp = recortada;
+                            serieAnterior = brutaAnterior.slice(-MAX_PUNTOS);
+                        }
+                        _l.label = 9;
+                    case 9:
+                        etiquetasComparativa = comparar
+                            ? {
+                                actual: "".concat(etiquetaCorta(periodo.desde), " a ").concat(etiquetaCorta(periodo.hasta)),
+                                anterior: "".concat(etiquetaCorta(rangoAnterior(periodo).rango_start_date), " a ").concat(etiquetaCorta(rangoAnterior(periodo).rango_end_date))
+                            }
+                            : { actual: 'Este periodo', anterior: 'Periodo anterior' };
+                        return [4 /*yield*/, Promise.all(sedes.ids.map(function (id) { return (0, metas_1.metaDeSede)(id); }))];
+                    case 10:
+                        metas = _l.sent();
                         diaria = metas.reduce(function (t, m) { var _a; return t + ((_a = m === null || m === void 0 ? void 0 : m.diaria) !== null && _a !== void 0 ? _a : 0); }, 0);
                         mensual = metas.reduce(function (t, m) { var _a; return t + ((_a = m === null || m === void 0 ? void 0 : m.mensual) !== null && _a !== void 0 ? _a : 0); }, 0);
                         valorMeta = agrupar === 'mes' ? mensual : agrupar === 'semana' ? diaria * 7 : diaria;
@@ -358,6 +406,9 @@ var ventasPorDiaHerramienta = {
                                 bloques: [
                                     elegirVista(args.grafico, {
                                         serie: function () { return (0, bloques_1.bloqueSerieDiaria)('serie_dia', tituloSerie, recortada, lineaMeta); },
+                                        comparar: function () {
+                                            return (0, bloques_1.bloqueComparativaDias)('comparativa_dias', 'Este periodo contra el anterior', serieActualComp, serieAnterior, etiquetasComparativa.actual, etiquetasComparativa.anterior, lineaMeta, agrupar);
+                                        },
                                         combo: function () {
                                             return (0, bloques_1.bloqueComboVentas)('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta);
                                         },
@@ -766,7 +817,8 @@ var alertas = {
                         return [2 /*return*/, {
                                 periodo: { desde: periodo.desde, hasta: periodo.hasta },
                                 sedes: sedes.nombres,
-                                indicadores: datos.indicadores,
+                                ventas_del_periodo: datos.ventasDelPeriodo,
+                                indicadores: datos.indicadores.map(function (i) { return (__assign(__assign({}, i), { pct_sobre_ventas: i.pctSobreVentas })); }),
                                 anomalias: disparadas,
                                 quien_borra: datos.borradosPorUsuario,
                                 quien_anula: datos.anuladosPorUsuario,
@@ -1287,14 +1339,16 @@ var operacionesDetalle = {
                     type: 'string',
                     "enum": ['pedidos_anulados', 'ventas_anuladas', 'items_borrados', 'egresos_caja'],
                     description: 'Que operaciones detallar.'
-                }, limite: { type: 'integer', minimum: 1, maximum: 30 } }),
+                }, grafico: PARAM_GRAFICO(['lista', 'por_dia'], 'lista = cada operacion con su monto, para ver cuales fueron. ' +
+                    'por_dia = columnas con el monto de cada dia, para ver CUANDO se ' +
+                    'concentra. Si preguntan por dias, fechas o cuando pasa, es por_dia.'), limite: { type: 'integer', minimum: 1, maximum: 30 } }),
             required: ['tipo'],
             additionalProperties: false
         }
     },
     ejecutar: function (args, ctx) {
         return __awaiter(this, void 0, void 0, function () {
-            var sedes, periodo, tipo, operaciones, total;
+            var sedes, periodo, tipo, operaciones, total, porDia, diaPeor;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -1305,6 +1359,10 @@ var operacionesDetalle = {
                     case 1:
                         operaciones = _a.sent();
                         total = operaciones.reduce(function (t, o) { return t + o.monto; }, 0);
+                        return [4 /*yield*/, (0, alertas_1.operacionesPorDia)(tipo, sedes.ids, periodo.desde, periodo.hasta)];
+                    case 2:
+                        porDia = _a.sent();
+                        diaPeor = porDia.reduce(function (mx, d) { return (!mx || d.monto > mx.monto ? d : mx); }, null);
                         return [2 /*return*/, {
                                 periodo: { desde: periodo.desde, hasta: periodo.hasta },
                                 sedes: sedes.nombres,
@@ -1313,15 +1371,35 @@ var operacionesDetalle = {
                                 monto_total: (0, agregados_1.redondear)(total),
                                 operaciones: operaciones,
                                 sin_motivo: operaciones.filter(function (o) { return !o.motivo; }).length,
+                                // El reparto por dia va SIEMPRE en la respuesta aunque no se dibuje:
+                                // es lo que permite contestar "que dias se borra mas" sin contar a ojo
+                                // una lista truncada.
+                                por_dia: porDia,
+                                dia_con_mas_monto: diaPeor,
                                 link: "/caja?desde=".concat(periodo.desde, "&hasta=").concat(periodo.hasta),
-                                bloques: operaciones.length
-                                    ? [
-                                        (0, bloques_1.bloqueTablaGenerica)('tabla_operaciones', titulizarTipo(tipo), operaciones.map(function (o) { return ({
-                                            referencia: o.referencia,
-                                            monto: o.monto
-                                        }); }))
-                                    ].filter(Boolean)
-                                    : []
+                                bloques: (operaciones.length
+                                    ? elegirVista(args.grafico, {
+                                        lista: function () { return [
+                                            (0, bloques_1.bloqueTablaGenerica)('tabla_operaciones', titulizarTipo(tipo), operaciones.map(function (o) { return ({
+                                                referencia: o.referencia,
+                                                monto: o.monto
+                                            }); }))
+                                        ]; },
+                                        por_dia: function () { return [
+                                            (0, bloques_1.bloqueComboVentas)('operaciones_por_dia', "".concat(titulizarTipo(tipo), " por dia"), porDia.map(function (d) { return ({
+                                                fecha: d.fecha,
+                                                total: d.monto,
+                                                transacciones: d.cantidad
+                                            }); }))
+                                        ]; },
+                                        auto: function () { return [
+                                            (0, bloques_1.bloqueTablaGenerica)('tabla_operaciones', titulizarTipo(tipo), operaciones.map(function (o) { return ({
+                                                referencia: o.referencia,
+                                                monto: o.monto
+                                            }); }))
+                                        ]; }
+                                    }, 'auto')
+                                    : []).filter(Boolean)
                             }];
                 }
             });

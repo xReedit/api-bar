@@ -17,7 +17,7 @@
  * hoy el dashboard.
  */
 exports.__esModule = true;
-exports.redondear = exports.variacionPct = exports.ventasPorDia = exports.resumenVentas = void 0;
+exports.redondear = exports.variacionPct = exports.rellenarDias = exports.ventasPorDia = exports.resumenVentas = void 0;
 function aNumero(v) {
     var n = typeof v === 'number' ? v : parseFloat(String(v !== null && v !== void 0 ? v : '0'));
     return Number.isFinite(n) ? n : 0;
@@ -77,6 +77,28 @@ function ventasPorDia(filas, agrupar) {
         .sort(function (a, b) { return a.fecha.localeCompare(b.fecha); });
 }
 exports.ventasPorDia = ventasPorDia;
+/**
+ * Rellena con ceros los dias sin venta de un rango.
+ *
+ * `ventasPorDia` solo devuelve los dias que facturaron, que es lo correcto para
+ * una serie suelta. Pero para superponer dos periodos hace falta que la posicion
+ * i signifique lo mismo en los dos: si un lunes cerro y desaparece de la lista,
+ * todo lo que viene detras se corre y se acaba comparando jueves con martes.
+ *
+ * Un dia cerrado vendio cero, no "no existe".
+ */
+function rellenarDias(serie, desde, hasta) {
+    var _a;
+    var porFecha = new Map(serie.map(function (d) { return [d.fecha, d]; }));
+    var salida = [];
+    var fin = new Date(hasta + 'T00:00:00Z').getTime();
+    for (var t = new Date(desde + 'T00:00:00Z').getTime(); t <= fin; t += 86400000) {
+        var fecha = new Date(t).toISOString().slice(0, 10);
+        salida.push((_a = porFecha.get(fecha)) !== null && _a !== void 0 ? _a : { fecha: fecha, total: 0, transacciones: 0 });
+    }
+    return salida;
+}
+exports.rellenarDias = rellenarDias;
 /** Variacion porcentual, null cuando no hay base con la que comparar. */
 function variacionPct(actual, anterior) {
     if (!anterior)

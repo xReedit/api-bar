@@ -408,18 +408,18 @@ var ventasPorDiaHerramienta = {
                                 link: "/ventas?desde=".concat(periodo.desde, "&hasta=").concat(periodo.hasta),
                                 bloques: [
                                     elegirVista(args.grafico, {
-                                        serie: function () { return (0, bloques_1.bloqueSerieDiaria)('serie_dia', tituloSerie, recortada, lineaMeta); },
+                                        serie: function () { return (0, bloques_1.bloqueSerieDiaria)('serie_dia', tituloSerie, recortada, lineaMeta, agrupar); },
                                         comparar: function () {
                                             return (0, bloques_1.bloqueComparativaDias)('comparativa_dias', 'Este periodo contra el anterior', serieActualComp, serieAnterior, etiquetasComparativa.actual, etiquetasComparativa.anterior, lineaMeta, agrupar);
                                         },
                                         combo: function () {
-                                            return (0, bloques_1.bloqueComboVentas)('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta);
+                                            return (0, bloques_1.bloqueComboVentas)('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta, agrupar);
                                         },
                                         // Con muchos puntos las columnas se apelmazan y gana la serie limpia.
                                         auto: function () {
                                             return recortada.length <= 14
-                                                ? (0, bloques_1.bloqueComboVentas)('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta)
-                                                : (0, bloques_1.bloqueSerieDiaria)('serie_dia', tituloSerie, recortada, lineaMeta);
+                                                ? (0, bloques_1.bloqueComboVentas)('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta, agrupar)
+                                                : (0, bloques_1.bloqueSerieDiaria)('serie_dia', tituloSerie, recortada, lineaMeta, agrupar);
                                         }
                                     }, 'auto')
                                 ]
@@ -1212,7 +1212,7 @@ var canales = {
                                                 ? [
                                                     (0, bloques_1.bloqueEvolucionCanales)('evolucion_canales', pedido
                                                         ? "".concat(pedido, " por ").concat(agrupar)
-                                                        : "Canales por ".concat(agrupar), periodos, nombresCanal, porClave)
+                                                        : "Canales por ".concat(agrupar), periodos, nombresCanal, porClave, agrupar)
                                                 ]
                                                 : [(0, bloques_1.bloqueDonaCanales)('dona_canales', 'Reparto por canal', canalesConPeso)];
                                         },
@@ -1223,7 +1223,7 @@ var canales = {
                                         auto: function () {
                                             return periodos.length > 2
                                                 ? [
-                                                    (0, bloques_1.bloqueEvolucionCanales)('evolucion_canales', "Canales por ".concat(agrupar), periodos, nombresCanal, porClave)
+                                                    (0, bloques_1.bloqueEvolucionCanales)('evolucion_canales', "Canales por ".concat(agrupar), periodos, nombresCanal, porClave, agrupar)
                                                 ]
                                                 : [
                                                     (0, bloques_1.bloqueDonaCanales)('dona_canales', 'Reparto por canal', canalesConPeso)

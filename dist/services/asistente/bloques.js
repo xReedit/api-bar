@@ -9,7 +9,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 exports.__esModule = true;
-exports.bloqueTablaGenerica = exports.bloqueTablaInventario = exports.bloqueTablaMargen = exports.bloqueDispersionMargen = exports.bloqueRadialMetas = exports.bloqueMapaHorario = exports.bloquePendiente = exports.bloqueMancuernaMetas = exports.bloqueComboVentas = exports.bloqueComparativaDias = exports.bloqueDonaCanales = exports.bloqueEvolucionCanales = exports.bloqueRankingUsuarios = exports.bloqueKpisAlertas = exports.bloqueKpisResumen = exports.bloqueTreemap = exports.bloqueMedidor = exports.bloqueRankingMetas = exports.bloqueClima = exports.bloqueTablaProductos = exports.bloqueBarrasLocales = exports.bloqueRankingLocales = exports.bloqueSerieDiaria = exports.bloqueKpis = void 0;
+exports.bloqueTablaGenerica = exports.bloqueTablaInventario = exports.bloqueTablaMargen = exports.bloqueDispersionMargen = exports.bloqueRadialMetas = exports.bloqueMapaHorario = exports.bloquePendiente = exports.bloqueMancuernaMetas = exports.bloqueComboVentas = exports.bloqueComparativaDias = exports.bloqueDonaCanales = exports.bloqueEvolucionCanales = exports.bloqueRankingUsuarios = exports.bloqueKpisAlertas = exports.bloqueKpisResumen = exports.bloqueTreemap = exports.bloqueMedidor = exports.bloqueRankingMetas = exports.bloqueClima = exports.bloqueTablaProductos = exports.bloqueBarrasLocales = exports.bloqueRankingLocales = exports.bloqueSerieDiaria = exports.etiquetaPeriodo = exports.bloqueKpis = void 0;
 var agregados_1 = require("../dash/agregados");
 /**
  * Constructores de bloques visuales.
@@ -29,9 +29,24 @@ var MESES = [
     'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
 ];
 /**
- * Etiqueta del eje segun la granularidad de la clave.
- * "2026-08" -> "ago 2026";  "2026-08-15" -> "15/08"
+ * Etiqueta del eje segun como se agrupo.
+ *
+ * Una semana se identifica por su lunes, pero poner "31/08" a secas se lee como
+ * un dia suelto: el usuario ve un punto por semana rotulado con una fecha y no
+ * sabe que abarca. Se pone el rango completo.
  */
+function etiquetaPeriodo(clave, agrupar) {
+    if (agrupar === void 0) { agrupar = 'dia'; }
+    if (agrupar !== 'semana')
+        return etiquetaFecha(clave);
+    var lunes = new Date(clave + 'T00:00:00Z');
+    var domingo = new Date(lunes.getTime() + 6 * 86400000);
+    var dm = function (d) {
+        return "".concat(String(d.getUTCDate()).padStart(2, '0'), "/").concat(String(d.getUTCMonth() + 1).padStart(2, '0'));
+    };
+    return "".concat(dm(lunes), " - ").concat(dm(domingo));
+}
+exports.etiquetaPeriodo = etiquetaPeriodo;
 function etiquetaFecha(clave) {
     var _a;
     if (clave.length === 7) {
@@ -42,7 +57,8 @@ function etiquetaFecha(clave) {
     return "".concat(dia, "/").concat(mes);
 }
 /** Serie temporal: linea. Con muchos puntos, las etiquetas se apinan en movil. */
-function bloqueSerieDiaria(id, titulo, serie, meta) {
+function bloqueSerieDiaria(id, titulo, serie, meta, agrupar) {
+    if (agrupar === void 0) { agrupar = 'dia'; }
     return {
         id: id,
         tipo: 'grafico',
@@ -51,7 +67,7 @@ function bloqueSerieDiaria(id, titulo, serie, meta) {
             // Area y no linea: el relleno da el volumen de un vistazo, y es como se
             // ve la misma serie en el dashboard.
             apex: 'area',
-            categorias: serie.map(function (d) { return etiquetaFecha(d.fecha); }),
+            categorias: serie.map(function (d) { return etiquetaPeriodo(d.fecha, agrupar); }),
             series: [{ name: 'Ventas', data: serie.map(function (d) { return d.total; }) }],
             formatoValor: 'moneda',
             // La linea de meta convierte "vendi 1,200" en "me falto" o "la pase".
@@ -325,14 +341,15 @@ exports.bloqueRankingUsuarios = bloqueRankingUsuarios;
  * pedir cinco meses devolvia ciento cincuenta puntos amontonados y el eje no se
  * podia leer.
  */
-function bloqueEvolucionCanales(id, titulo, periodos, canales, valores) {
+function bloqueEvolucionCanales(id, titulo, periodos, canales, valores, agrupar) {
+    if (agrupar === void 0) { agrupar = 'dia'; }
     return {
         id: id,
         tipo: 'grafico',
         titulo: titulo,
         grafico: {
             apex: 'line',
-            categorias: periodos.map(etiquetaFecha),
+            categorias: periodos.map(function (p) { return etiquetaPeriodo(p, agrupar); }),
             series: canales.map(function (canal) { return ({
                 name: canal,
                 data: periodos.map(function (per) { var _a; return (_a = valores.get("".concat(per, "|").concat(canal))) !== null && _a !== void 0 ? _a : 0; })
@@ -435,14 +452,15 @@ exports.bloqueComparativaDias = bloqueComparativaDias;
  * Dos dias con la misma venta no son el mismo dia: uno pudo ser mucha gente con
  * ticket chico y el otro al reves. Esa lectura necesita las dos series juntas.
  */
-function bloqueComboVentas(id, titulo, dias, meta) {
+function bloqueComboVentas(id, titulo, dias, meta, agrupar) {
+    if (agrupar === void 0) { agrupar = 'dia'; }
     return {
         id: id,
         tipo: 'grafico',
         titulo: titulo,
         grafico: {
             apex: 'line',
-            categorias: dias.map(function (d) { return etiquetaFecha(d.fecha); }),
+            categorias: dias.map(function (d) { return etiquetaPeriodo(d.fecha, agrupar); }),
             series: [
                 { name: 'Vendido', tipo: 'column', data: dias.map(function (d) { return d.total; }) },
                 { name: 'Tickets', tipo: 'line', data: dias.map(function (d) { return d.transacciones; }) }

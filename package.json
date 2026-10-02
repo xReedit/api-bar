@@ -42,7 +42,6 @@
     "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.0",
     "pino": "^8.21.0",
-    "restobar": "file:",
     "sharp": "^0.32.6",
     "socket.io-client": "^2.4.0",
     "web-push": "^3.6.7"

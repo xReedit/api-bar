@@ -268,7 +268,7 @@ export function bloqueTreemap(
     };
 }
 
-const DIA_CORTO = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+const DIA_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 /**
  * Dos periodos superpuestos, un trazo cada uno.
@@ -289,15 +289,25 @@ export function bloqueComparativaDias(
     anterior: Array<{ fecha: string; total: number }>,
     etiquetaActual: string,
     etiquetaAnterior: string,
-    meta?: { valor: number; etiqueta: string }
+    meta?: { valor: number; etiqueta: string },
+    agrupar: 'dia' | 'semana' | 'mes' = 'dia'
 ): Bloque {
     const largo = Math.max(actual.length, anterior.length);
 
+    // El eje tiene que ser lo que los dos periodos COMPARTEN, no las fechas de
+    // uno de ellos: poner "Lun 28/09" sobre dos series de semanas distintas hace
+    // creer que ambas son del 28.
     const categorias = Array.from({ length: largo }, (_, i) => {
-        const dia = actual[i]?.fecha ?? anterior[i]?.fecha;
-        if (!dia) return `Dia ${i + 1}`;
+        const dia = actual[i]?.fecha;
+        if (!dia) return `${i + 1}`;
         const d = new Date(dia + 'T00:00:00Z');
-        return `${DIA_CORTO[d.getUTCDay()]} ${etiquetaFecha(dia)}`;
+
+        if (agrupar === 'mes') return MESES[d.getUTCMonth()];
+        if (agrupar === 'semana') return `Sem ${i + 1}`;
+        // Hasta una semana, el dia de la semana se lee solo. Mas alla se repetiria
+        // cuatro veces, asi que manda el dia del mes, que es como se alinean.
+        if (largo <= 7) return DIA_CORTO[d.getUTCDay()];
+        return String(d.getUTCDate()).padStart(2, '0');
     });
 
     const serie = (filas: typeof actual) =>

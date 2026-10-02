@@ -99,6 +99,28 @@ export function ventasPorDia(filas: FilaVenta[], agrupar: Agrupacion = 'dia'): D
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+/**
+ * Rellena con ceros los dias sin venta de un rango.
+ *
+ * `ventasPorDia` solo devuelve los dias que facturaron, que es lo correcto para
+ * una serie suelta. Pero para superponer dos periodos hace falta que la posicion
+ * i signifique lo mismo en los dos: si un lunes cerro y desaparece de la lista,
+ * todo lo que viene detras se corre y se acaba comparando jueves con martes.
+ *
+ * Un dia cerrado vendio cero, no "no existe".
+ */
+export function rellenarDias(serie: DiaVentas[], desde: string, hasta: string): DiaVentas[] {
+    const porFecha = new Map(serie.map((d) => [d.fecha, d]));
+    const salida: DiaVentas[] = [];
+
+    const fin = new Date(hasta + 'T00:00:00Z').getTime();
+    for (let t = new Date(desde + 'T00:00:00Z').getTime(); t <= fin; t += 86400000) {
+        const fecha = new Date(t).toISOString().slice(0, 10);
+        salida.push(porFecha.get(fecha) ?? { fecha, total: 0, transacciones: 0 });
+    }
+    return salida;
+}
+
 /** Variacion porcentual, null cuando no hay base con la que comparar. */
 export function variacionPct(actual: number, anterior: number): number | null {
     if (!anterior) return null;

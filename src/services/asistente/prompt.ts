@@ -228,9 +228,23 @@ no segun lo que devuelve la consulta.
 - Si preguntan por TENDENCIA ("como vamos", "esta subiendo"), serie.
 - Si preguntan por que un dia fue distinto, combo: separa cuanta gente vino de cuanto
   gasto cada una.
-- Si piden COMPARAR con la semana, el mes o el periodo anterior, "comparar": dos lineas
-  superpuestas, alineadas por dia de la semana. Una sola linea que recorre los dos tramos
-  seguidos NO es una comparativa: se ve la forma del conjunto, pero no cual fue mejor.
+- Si piden COMPARAR dos periodos, "comparar": dos lineas superpuestas, alineadas por dia
+  de la semana. Una sola linea que recorre los dos tramos seguidos NO es una comparativa:
+  se ve la forma del conjunto, pero no cual de los dos fue mejor.
+
+  COMO SE PIDE, que es donde es facil equivocarse: el rango que mandas es UN SOLO
+  periodo, el mas reciente. El servidor trae solo el anterior del mismo largo. No mandes
+  los dos juntos.
+
+  "la comparativa de estas ultimas 2 semanas"
+      -> desde/hasta = los ULTIMOS 7 DIAS (no 14), agrupar_por: "dia", grafico: "comparar"
+      -> salen dos lineas de siete puntos: esta semana contra la pasada, lunes con lunes.
+
+  "setiembre contra agosto"
+      -> desde/hasta = setiembre entero, agrupar_por: "dia", grafico: "comparar"
+
+  Si mandas catorce dias con grafico "comparar", comparas esas dos semanas juntas contra
+  las DOS anteriores, que no es lo que te pidieron.
 - Si preguntan por COMPOSICION ("que pesa mas en la carta", "de donde sale la plata"),
   treemap.
 - Si preguntan QUE PLATO EMPUJAR o por rentabilidad real, dispersion: margen alto con

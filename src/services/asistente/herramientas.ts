@@ -1,6 +1,13 @@
 import * as dashVentas from '../dash/ventas';
 import * as dashProductos from '../dash/productos';
-import { resumenVentas, ventasPorDia, variacionPct, redondear, FilaVenta } from '../dash/agregados';
+import {
+    resumenVentas,
+    ventasPorDia,
+    variacionPct,
+    redondear,
+    rellenarDias,
+    FilaVenta
+} from '../dash/agregados';
 import { ErrorValidacion } from '../dash/errores';
 import { resolverSedes } from './sedes';
 import { pronostico } from './clima';
@@ -147,6 +154,12 @@ function rangoDe(periodo: { desde: string; hasta: string }) {
 }
 
 /** Periodo inmediatamente anterior, del mismo largo, para comparar. */
+/** "2026-09-28" -> "28/09". Para nombrar cada serie en la leyenda. */
+function etiquetaCorta(iso: string): string {
+    const [, mes, dia] = iso.split('-');
+    return `${dia}/${mes}`;
+}
+
 function rangoAnterior(periodo: { desde: string; hasta: string }) {
     const desde = new Date(periodo.desde + 'T00:00:00Z');
     const hasta = new Date(periodo.hasta + 'T00:00:00Z');
@@ -288,14 +301,40 @@ const ventasPorDiaHerramienta: Herramienta = {
         // la serie tambien viene sumada. Sin meta cargada no se dibuja nada.
         // Solo si se va a dibujar la comparativa: son otras tantas consultas.
         const comparar = args.grafico === 'comparar';
+        let serieActualComp: typeof recortada = recortada;
         let serieAnterior: typeof recortada = [];
+
         if (comparar) {
+            const antes = rangoAnterior(periodo);
             const filasAntes: FilaVenta[] = [];
             for (const idsede of sedes.ids) {
-                filasAntes.push(...(await filasDeVentas(idsede, rangoAnterior(periodo))));
+                filasAntes.push(...(await filasDeVentas(idsede, antes)));
             }
-            serieAnterior = ventasPorDia(filasAntes, agrupar).slice(-MAX_PUNTOS);
+            const brutaAnterior = ventasPorDia(filasAntes, agrupar);
+
+            if (agrupar === 'dia') {
+                // Sin rellenar, un dia cerrado desplaza todo lo que viene detras y
+                // la posicion i deja de ser el mismo dia de la semana en ambos.
+                serieActualComp = rellenarDias(serie, periodo.desde, periodo.hasta);
+                serieAnterior = rellenarDias(
+                    brutaAnterior,
+                    antes.rango_start_date,
+                    antes.rango_end_date
+                );
+            } else {
+                serieActualComp = recortada;
+                serieAnterior = brutaAnterior.slice(-MAX_PUNTOS);
+            }
         }
+
+        // Si el eje ya no lleva fechas, el periodo de cada serie tiene que decirse
+        // en la leyenda o no se sabe cual es cual.
+        const etiquetasComparativa = comparar
+            ? {
+                  actual: `${etiquetaCorta(periodo.desde)} a ${etiquetaCorta(periodo.hasta)}`,
+                  anterior: `${etiquetaCorta(rangoAnterior(periodo).rango_start_date)} a ${etiquetaCorta(rangoAnterior(periodo).rango_end_date)}`
+              }
+            : { actual: 'Este periodo', anterior: 'Periodo anterior' };
 
         const metas = await Promise.all(sedes.ids.map((id) => metaDeSede(id)));
         const diaria = metas.reduce((t, m) => t + (m?.diaria ?? 0), 0);
@@ -342,11 +381,12 @@ const ventasPorDiaHerramienta: Herramienta = {
                             bloqueComparativaDias(
                                 'comparativa_dias',
                                 'Este periodo contra el anterior',
-                                recortada,
+                                serieActualComp,
                                 serieAnterior,
-                                'Este periodo',
-                                'Periodo anterior',
-                                lineaMeta
+                                etiquetasComparativa.actual,
+                                etiquetasComparativa.anterior,
+                                lineaMeta,
+                                agrupar
                             ),
                         combo: () =>
                             bloqueComboVentas('combo_dia', tituloSerie + ' y tickets', recortada, lineaMeta),

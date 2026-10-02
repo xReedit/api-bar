@@ -5,7 +5,12 @@ import { ErrorValidacion } from '../dash/errores';
 import { resolverSedes } from './sedes';
 import { pronostico } from './clima';
 import { avanceDeMeta, metaDeSede, AvanceMeta } from '../dash/metas';
-import { alertasOperativas, detalleOperaciones, TipoDetalle } from '../dash/alertas';
+import {
+    alertasOperativas,
+    detalleOperaciones,
+    operacionesPorDia,
+    TipoDetalle
+} from '../dash/alertas';
 import { ventasPorHorario, nombreDia } from '../dash/horarios';
 import { consultarModulo, MODULOS, NombreModulo } from '../dash/modulos';
 import * as encuestasDash from '../encuesta.dash.service';
@@ -740,7 +745,11 @@ const alertas: Herramienta = {
         return {
             periodo: { desde: periodo.desde, hasta: periodo.hasta },
             sedes: sedes.nombres,
-            indicadores: datos.indicadores,
+            ventas_del_periodo: datos.ventasDelPeriodo,
+            indicadores: datos.indicadores.map((i) => ({
+                ...i,
+                pct_sobre_ventas: i.pctSobreVentas
+            })),
             anomalias: disparadas,
             quien_borra: datos.borradosPorUsuario,
             quien_anula: datos.anuladosPorUsuario,
@@ -1311,6 +1320,12 @@ const operacionesDetalle: Herramienta = {
                     enum: ['pedidos_anulados', 'ventas_anuladas', 'items_borrados', 'egresos_caja'],
                     description: 'Que operaciones detallar.'
                 },
+                grafico: PARAM_GRAFICO(
+                    ['lista', 'por_dia'],
+                    'lista = cada operacion con su monto, para ver cuales fueron. ' +
+                        'por_dia = columnas con el monto de cada dia, para ver CUANDO se ' +
+                        'concentra. Si preguntan por dias, fechas o cuando pasa, es por_dia.'
+                ),
                 limite: { type: 'integer', minimum: 1, maximum: 30 }
             },
             required: ['tipo'],
@@ -1333,6 +1348,14 @@ const operacionesDetalle: Herramienta = {
 
         const total = operaciones.reduce((t, o) => t + o.monto, 0);
 
+        // Agrupado aparte y no sobre `operaciones`: esa lista viene cortada en 30
+        // filas, asi que repartirla por dia daria un reparto falso.
+        const porDia = await operacionesPorDia(tipo, sedes.ids, periodo.desde, periodo.hasta);
+        const diaPeor = porDia.reduce(
+            (mx, d) => (!mx || d.monto > mx.monto ? d : mx),
+            null as (typeof porDia)[number] | null
+        );
+
         return {
             periodo: { desde: periodo.desde, hasta: periodo.hasta },
             sedes: sedes.nombres,
@@ -1341,19 +1364,52 @@ const operacionesDetalle: Herramienta = {
             monto_total: redondear(total),
             operaciones,
             sin_motivo: operaciones.filter((o) => !o.motivo).length,
+            // El reparto por dia va SIEMPRE en la respuesta aunque no se dibuje:
+            // es lo que permite contestar "que dias se borra mas" sin contar a ojo
+            // una lista truncada.
+            por_dia: porDia,
+            dia_con_mas_monto: diaPeor,
             link: `/caja?desde=${periodo.desde}&hasta=${periodo.hasta}`,
-            bloques: operaciones.length
-                ? ([
-                      bloqueTablaGenerica(
-                          'tabla_operaciones',
-                          titulizarTipo(tipo),
-                          operaciones.map((o) => ({
-                              referencia: o.referencia,
-                              monto: o.monto
-                          }))
-                      )
-                  ].filter(Boolean) as Bloque[])
+            bloques: (operaciones.length
+                ? elegirVista(
+                      args.grafico,
+                      {
+                          lista: () => [
+                              bloqueTablaGenerica(
+                                  'tabla_operaciones',
+                                  titulizarTipo(tipo),
+                                  operaciones.map((o) => ({
+                                      referencia: o.referencia,
+                                      monto: o.monto
+                                  }))
+                              )
+                          ],
+                          por_dia: () => [
+                              bloqueComboVentas(
+                                  'operaciones_por_dia',
+                                  `${titulizarTipo(tipo)} por dia`,
+                                  porDia.map((d) => ({
+                                      fecha: d.fecha,
+                                      total: d.monto,
+                                      transacciones: d.cantidad
+                                  }))
+                              )
+                          ],
+                          auto: () => [
+                              bloqueTablaGenerica(
+                                  'tabla_operaciones',
+                                  titulizarTipo(tipo),
+                                  operaciones.map((o) => ({
+                                      referencia: o.referencia,
+                                      monto: o.monto
+                                  }))
+                              )
+                          ]
+                      },
+                      'auto'
+                  )
                 : []
+            ).filter(Boolean) as Bloque[]
         };
     }
 };

@@ -23,6 +23,8 @@ export interface Indicador {
     cantidadAnterior: number;
     montoAnterior: number;
     variacionPct: number | null;
+    /** Cuanto pesa sobre lo vendido en el periodo. Null si no hubo ventas. */
+    pctSobreVentas: number | null;
     /** true cuando se dispara respecto al periodo anterior. */
     anomalo: boolean;
 }
@@ -34,6 +36,8 @@ export interface PorUsuario {
 }
 
 export interface AlertasOperativas {
+    /** Vendido en el periodo: sin esto no se puede decir si un monto es mucho. */
+    ventasDelPeriodo: number;
     indicadores: Indicador[];
     borradosPorUsuario: PorUsuario[];
     anuladosPorUsuario: PorUsuario[];
@@ -41,12 +45,27 @@ export interface AlertasOperativas {
     motivosFrecuentes: Array<{ motivo: string; veces: number }>;
 }
 
+/** Desde aqui, lo borrado o anulado pesa demasiado sobre la venta del periodo. */
+const PESO_SOSPECHOSO_PCT = 2;
+
 /**
- * Umbral de anomalia: el doble que el periodo anterior, con un minimo absoluto
- * para no gritar porque se paso de 1 a 3. Es deliberadamente simple: el objetivo
- * es senalar donde mirar, no clasificar fraude.
+ * Dos formas de saltar, porque hay dos formas de que esto sea un problema.
+ *
+ * Por FRECUENCIA: se borra el doble que el periodo anterior. Util para pillar un
+ * cambio de habito.
+ *
+ * Por PESO: el monto pasa del 2% de lo vendido. Esta hacia falta. Mirando solo
+ * la cantidad, S/ 3,957 en items borrados repartidos en 30 registros se leia
+ * como "nada raro", cuando es plata que entro al pedido y salio sin cobrarse.
+ * Un monto no se juzga solo: se juzga contra lo que se vendio.
  */
-function esAnomalo(cantidad: number, anterior: number): boolean {
+function esAnomalo(
+    cantidad: number,
+    anterior: number,
+    monto: number,
+    ventas: number
+): boolean {
+    if (ventas > 0 && (monto / ventas) * 100 >= PESO_SOSPECHOSO_PCT) return true;
     if (cantidad < 5) return false;
     if (anterior === 0) return cantidad >= 10;
     return cantidad >= anterior * 2;
@@ -82,6 +101,64 @@ export type TipoDetalle =
     | 'ventas_anuladas'
     | 'items_borrados'
     | 'egresos_caja';
+
+export interface DiaOperaciones {
+    fecha: string;
+    cantidad: number;
+    monto: number;
+}
+
+/** De donde sale cada tipo: tabla, columna de fecha, de monto y filtro. */
+const ORIGEN: Record<TipoDetalle, { sql: (sedes: string) => string }> = {
+    pedidos_anulados: {
+        sql: (sedes) => `SELECT DATE_FORMAT(p.fecha_hora, '%Y-%m-%d') f, COUNT(*) c, SUM(p.total_r) m
+            FROM pedido p WHERE p.idsede IN (${sedes}) AND p.estado = 3`
+    },
+    ventas_anuladas: {
+        sql: (sedes) => `SELECT DATE_FORMAT(rp.fecha_hora, '%Y-%m-%d') f, COUNT(*) c, SUM(rp.total) m
+            FROM registro_pago rp WHERE rp.idsede IN (${sedes}) AND rp.estado = 1`
+    },
+    items_borrados: {
+        sql: (sedes) => `SELECT DATE_FORMAT(p.fecha_hora, '%Y-%m-%d') f, COUNT(*) c, SUM(pd.ptotal_r) m
+            FROM pedido_detalle pd INNER JOIN pedido p ON p.idpedido = pd.idpedido
+            WHERE p.idsede IN (${sedes}) AND pd.borrado = 1`
+    },
+    egresos_caja: {
+        sql: (sedes) => `SELECT DATE_FORMAT(ic.fecha_hora, '%Y-%m-%d') f, COUNT(*) c, SUM(ic.monto) m
+            FROM ie_caja ic WHERE ic.idsede IN (${sedes}) AND ic.tipo = 2 AND ic.estado = 0`
+    }
+};
+
+/**
+ * El mismo dato, repartido por dia.
+ *
+ * `detalleOperaciones` corta en 30 filas para no inundar al modelo, asi que
+ * agrupar a partir de ella daria un reparto falso: el dia mas caro puede estar
+ * fuera del corte. Esto cuenta sobre el total, sin limite.
+ */
+export async function operacionesPorDia(
+    tipo: TipoDetalle,
+    idsedes: number[],
+    desde: string,
+    hasta: string
+): Promise<DiaOperaciones[]> {
+    const sedes = listaSedes(idsedes);
+    if (!sedes) return [];
+
+    const col = tipo === 'egresos_caja' ? 'ic.fecha_hora' : tipo === 'ventas_anuladas' ? 'rp.fecha_hora' : 'p.fecha_hora';
+
+    const filas: any = await prisma.$queryRawUnsafe(
+        `${ORIGEN[tipo].sql(sedes)}
+           AND ${col} >= '${desde} 00:00:00' AND ${col} <= '${hasta} 23:59:59'
+         GROUP BY f ORDER BY f`
+    );
+
+    return (filas ?? []).map((r: any) => ({
+        fecha: String(r.f ?? ''),
+        cantidad: Number(r.c) || 0,
+        monto: redondear(Number(r.m) || 0)
+    }));
+}
 
 export interface OperacionDetalle {
     referencia: string;
@@ -212,7 +289,7 @@ export async function alertasOperativas(
     hastaAnterior: string
 ): Promise<AlertasOperativas> {
     const sedes = listaSedes(idsedes);
-    if (!sedes) return { indicadores: [], borradosPorUsuario: [], anuladosPorUsuario: [], egresosPorUsuario: [], motivosFrecuentes: [] };
+    if (!sedes) return { ventasDelPeriodo: 0, indicadores: [], borradosPorUsuario: [], anuladosPorUsuario: [], egresosPorUsuario: [], motivosFrecuentes: [] };
 
     const entre = (col: string, a: string, b: string) => `${col} >= '${a} 00:00:00' AND ${col} <= '${b} 23:59:59'`;
 
@@ -258,6 +335,14 @@ export async function alertasOperativas(
         ['egresos_caja', 'Salidas de caja', sqlEgresos]
     ];
 
+    // La referencia contra la que se juzga todo lo demas. Sin esto, decir si
+    // S/ 3,957 en borrados es mucho o poco es adivinar.
+    const ventas = await unaFila(`
+        SELECT COUNT(*) cantidad, COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))),0) monto
+        FROM registro_pago rp
+        WHERE rp.idsede IN (${sedes}) AND rp.estado = 0
+          AND ${entre('rp.fecha_hora', desde, hasta)}`);
+
     const indicadores: Indicador[] = [];
     for (const [clave, etiqueta, sql] of definiciones) {
         const hoy = await unaFila(sql(desde, hasta));
@@ -270,7 +355,8 @@ export async function alertasOperativas(
             cantidadAnterior: antes.cantidad,
             montoAnterior: antes.monto,
             variacionPct: variacion(hoy.cantidad, antes.cantidad),
-            anomalo: esAnomalo(hoy.cantidad, antes.cantidad)
+            pctSobreVentas: ventas.monto ? redondear((hoy.monto / ventas.monto) * 100) : null,
+            anomalo: esAnomalo(hoy.cantidad, antes.cantidad, hoy.monto, ventas.monto)
         });
     }
 
@@ -310,6 +396,7 @@ export async function alertasOperativas(
         GROUP BY TRIM(pd.motivo_borrado) ORDER BY veces DESC LIMIT 5`);
 
     return {
+        ventasDelPeriodo: ventas.monto,
         indicadores,
         borradosPorUsuario,
         anuladosPorUsuario,

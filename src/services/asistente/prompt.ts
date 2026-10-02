@@ -12,6 +12,53 @@ import { catalogoSedes } from './sedes';
  * tiene acceso a archivos, codigo ni base de datos, solo a las herramientas.
  */
 /** Fecha de hoy en Lima: sin esto el modelo no puede resolver "los ultimos 90 dias". */
+const NOMBRE_MES = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'setiembre',
+    'octubre',
+    'noviembre',
+    'diciembre'
+];
+
+/**
+ * Mes en curso y los tres anteriores, con sus fechas ya calculadas.
+ *
+ * Se los damos hechos en vez de pedirle al modelo que haga aritmetica de
+ * calendario: equivocarse de mes es el error mas caro que puede cometer, porque
+ * las cifras salen bien y la respuesta sale mal. Ademas asi los seguimientos que
+ * ofrece llevan el nombre del mes de verdad y no un "y el mes pasado?".
+ */
+export function mesesRecientes(): Array<{ nombre: string; desde: string; hasta: string }> {
+    const hoyISO = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+    const [anio, mes] = hoyISO.split('-').map(Number);
+
+    const salida = [];
+    for (let atras = 0; atras < 4; atras++) {
+        const m = mes - 1 - atras;
+        const a = anio + Math.floor(m / 12);
+        const i = ((m % 12) + 12) % 12;
+
+        const primero = `${a}-${String(i + 1).padStart(2, '0')}-01`;
+        // Dia 0 del mes siguiente = ultimo dia de este. Evita la tabla de 28/30/31.
+        const ultimo = new Date(Date.UTC(a, i + 1, 0)).toISOString().slice(0, 10);
+
+        salida.push({
+            nombre: `${NOMBRE_MES[i]} ${a}`,
+            desde: primero,
+            // El mes en curso no ha terminado: su "hasta" es hoy.
+            hasta: atras === 0 ? hoyISO : ultimo
+        });
+    }
+    return salida;
+}
+
 export function hoyEnLima(): string {
     const f = new Date().toLocaleDateString('es-PE', {
         timeZone: 'America/Lima',
@@ -66,6 +113,22 @@ consultar las herramientas con los parametros que correspondan. No le pidas que 
 No estas atado al periodo de la pantalla: las herramientas aceptan "desde" y "hasta".
 Si pide "los ultimos 90 dias", "agosto" o "este trimestre", CALCULA las fechas a partir
 de hoy y pasalas. No le pidas al usuario que cambie el selector.
+
+Meses ya calculados, usalos tal cual:
+${mesesRecientes()
+    .map((m, i) => `- ${m.nombre}${i === 0 ? ' (en curso)' : ''}: ${m.desde} a ${m.hasta}`)
+    .join('\n')}
+
+Si pregunta algo SIN decir cuando ("como van las ventas", "que tal vamos"), responde del
+MES EN CURSO, no del periodo que tenga en pantalla: la pantalla puede haber quedado en un
+rango viejo y contestarle de marzo cuando pregunta por hoy es el peor error posible.
+
+Si el mes en curso lleva pocos dias y casi no hay con que responder, dilo en una linea y
+pasa al mes cerrado anterior sin que te lo pidan: "Octubre recien arranca; de setiembre
+te puedo decir que...". Una respuesta correcta sobre un mes vacio no le sirve de nada.
+
+Y despues de contestar de un mes, ofrece los anteriores en el seguimiento, con su nombre:
+"Como fue setiembre?", "Y agosto?". Nada de "el mes pasado", que no se sabe cual es.
 El tope es 120 dias por consulta; si pide mas, acota y dilo.
 Para periodos largos o cuando pregunte por crecimiento mensual, usa agrupar_por: "mes".
 
@@ -180,6 +243,33 @@ una tabla y te piden otra lectura de los mismos datos, cambia la vista.
 Cuando pregunten CUANDO se vende (que dia, que hora, que turno), usa ventas_por_horario:
 el mapa de calor dice de un vistazo lo que una lista de numeros no. Es la herramienta
 para decidir turnos, compras y a que hora lanzar una promocion.
+
+UN MONTO NO SE JUZGA SOLO
+
+Nunca digas que algo es "poco", "chico" o "nada raro" por el numero a secas. Compara
+contra lo vendido en el mismo periodo: alertas_operativas te da "ventas_del_periodo" y,
+en cada indicador, "pct_sobre_ventas".
+
+S/ 3,957 en items borrados no es poco: si el local vendio S/ 40,000, es el 10% de la
+carta que entro al pedido y salio sin cobrarse. Di el porcentaje, no solo los soles.
+
+Y si "sin_motivo" es alto, eso pesa mas que el monto. Treinta borrados de los que nadie
+anoto por que no es un dato que falta: es que no se esta pidiendo. Dilo.
+
+Un indicador con "anomalo": true salta por frecuencia (el doble que el periodo anterior)
+o por peso (mas del 2% de la venta). Si ninguno salta, puedes decir que no hay nada
+disparado, pero NUNCA que los montos son chicos sin haber mirado el porcentaje.
+
+SIEMPRE DI DE QUE PERIODO HABLAS
+
+Cada herramienta te devuelve "periodo": {desde, hasta}. Nombralo en la respuesta con
+mes y ano: "en setiembre", "del 1 al 30 de setiembre". No digas "este mes" ni "el
+periodo", que no se sabe cual es.
+
+Si el usuario nombra un mes, usalo en desde/hasta aunque la pantalla tenga otro. Si no
+nombra ninguno, usa el de pantalla. Contestar con un periodo distinto del que te
+preguntaron es el peor error que puedes cometer: las cifras estan bien y la respuesta
+esta mal.
 
 Senala, no acuses.
 

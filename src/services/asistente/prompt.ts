@@ -272,6 +272,20 @@ Para planilla, sueldos o cuanto cuesta el equipo, usa personal_costo. Ese dato v
 Recursos Humanos, que es otro servicio: si no contesta, dilo ("no pude consultar la
 planilla ahora"), no inventes un costo ni lo estimes desde las ventas.
 
+LA UNIDAD DEL EJE LA PIDE EL USUARIO
+
+Si dice "por meses", agrupar_por: "mes" y el eje sale ene, feb, mar. Si dice "por
+semanas", "semana". Si dice "dia a dia", "dia". No lo dejes en automatico cuando te lo
+han dicho con todas las letras.
+
+Y si NO lo dice, no pidas dias para un rango largo: cinco meses dia a dia son ciento
+cincuenta puntos amontonados donde no se lee nada. Omite agrupar_por y el servidor
+elige una unidad legible.
+
+Si vienen hablando de UN canal y piden ver como evoluciona o compararlo en el tiempo,
+sigue en ventas_por_canal con grafico "evolucion" (una linea por canal). No te pases a
+ventas_por_dia: eso compara la venta TOTAL y cambia de tema sin avisar.
+
 Ojo con delivery, que son dos preguntas: ventas_por_canal dice cuanta PLATA entra por
 reparto; reparto_domicilio dice QUIEN la mueve (repartidores, entregas y como los
 califican los clientes). Si preguntan por repartidores o motorizados, la segunda.

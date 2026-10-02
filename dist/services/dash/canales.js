@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.canalPorDia = exports.ventasPorCanal = void 0;
+exports.canalesEnElTiempo = exports.granularidadPara = exports.ventasPorCanal = void 0;
 var client_1 = require("@prisma/client");
 var agregados_1 = require("./agregados");
 var prisma = new client_1.PrismaClient();
@@ -70,22 +70,54 @@ function ventasPorCanal(idsedes, desde, hasta) {
     });
 }
 exports.ventasPorCanal = ventasPorCanal;
-/** Serie diaria de un canal, para ver si crece o se cae. */
-function canalPorDia(idsedes, canal, desde, hasta) {
+/** Como agrupa MySQL cada granularidad. La semana arranca en lunes. */
+var FORMATO = {
+    dia: "DATE_FORMAT(rp.fecha_hora, '%Y-%m-%d')",
+    semana: "DATE_FORMAT(DATE_SUB(rp.fecha_hora, INTERVAL WEEKDAY(rp.fecha_hora) DAY), '%Y-%m-%d')",
+    mes: "DATE_FORMAT(rp.fecha_hora, '%Y-%m')"
+};
+/**
+ * Granularidad que deja un grafico legible.
+ *
+ * Cinco meses en barras diarias son ciento cincuenta columnas y un eje que no
+ * se lee: el dato esta, pero no comunica nada. Se elige por el largo del rango
+ * y no por lo que pida quien llama, salvo que lo imponga a proposito.
+ */
+function granularidadPara(desde, hasta) {
+    var dias = (new Date(hasta + 'T00:00:00Z').getTime() - new Date(desde + 'T00:00:00Z').getTime()) /
+        86400000 +
+        1;
+    if (dias <= 45)
+        return 'dia';
+    if (dias <= 180)
+        return 'semana';
+    return 'mes';
+}
+exports.granularidadPara = granularidadPara;
+/**
+ * Los canales a lo largo del tiempo.
+ *
+ * Sin `canal` devuelve todos, que es lo que hace falta para compararlos: una
+ * linea por canal sobre el mismo eje. Con `canal`, solo ese.
+ */
+function canalesEnElTiempo(idsedes, desde, hasta, agrupar, canal) {
     return __awaiter(this, void 0, void 0, function () {
-        var sedes, seguro, filas;
+        var sedes, filtro, filas;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     sedes = listaSedes(idsedes);
                     if (!sedes)
                         return [2 /*return*/, []];
-                    seguro = canal.replace(/['\\]/g, '');
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT DATE_FORMAT(rp.fecha_hora, '%Y-%m-%d') fecha,\n                COUNT(*) transacciones,\n                COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) total\n         FROM registro_pago rp\n         LEFT JOIN tipo_consumo tc ON tc.idtipo_consumo = rp.idtipo_consumo\n         WHERE rp.idsede IN (".concat(sedes, ") AND rp.estado = 0\n           AND COALESCE(tc.descripcion, 'SIN CANAL') = '").concat(seguro, "'\n           AND rp.fecha_hora >= '").concat(desde, " 00:00:00'\n           AND rp.fecha_hora <= '").concat(hasta, " 23:59:59'\n         GROUP BY fecha\n         ORDER BY fecha"))];
+                    filtro = canal
+                        ? "AND COALESCE(tc.descripcion, 'SIN CANAL') = '".concat(canal.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ ]/g, ''), "'")
+                        : '';
+                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT ".concat(FORMATO[agrupar], " periodo,\n                COALESCE(tc.descripcion, 'SIN CANAL') canal,\n                COUNT(*) transacciones,\n                COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) total\n         FROM registro_pago rp\n         LEFT JOIN tipo_consumo tc ON tc.idtipo_consumo = rp.idtipo_consumo\n         WHERE rp.idsede IN (").concat(sedes, ") AND rp.estado = 0\n           AND rp.fecha_hora >= '").concat(desde, " 00:00:00'\n           AND rp.fecha_hora <= '").concat(hasta, " 23:59:59'\n           ").concat(filtro, "\n         GROUP BY periodo, canal\n         ORDER BY periodo"))];
                 case 1:
                     filas = _a.sent();
                     return [2 /*return*/, (filas !== null && filas !== void 0 ? filas : []).map(function (f) { return ({
-                            fecha: String(f.fecha),
+                            periodo: String(f.periodo),
+                            canal: String(f.canal),
                             total: (0, agregados_1.redondear)(Number(f.total) || 0),
                             transacciones: Number(f.transacciones) || 0
                         }); })];
@@ -93,4 +125,4 @@ function canalPorDia(idsedes, canal, desde, hasta) {
         });
     });
 }
-exports.canalPorDia = canalPorDia;
+exports.canalesEnElTiempo = canalesEnElTiempo;

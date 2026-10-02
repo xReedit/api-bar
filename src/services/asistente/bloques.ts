@@ -369,6 +369,40 @@ export function bloqueRankingUsuarios(
 }
 
 /**
+ * Los canales a lo largo del tiempo, una linea por canal.
+ *
+ * El eje lo marca la granularidad con la que se consulto: si son meses, pone
+ * "mar 2026"; si son dias, "15/03". Antes esto solo existia dia a dia, asi que
+ * pedir cinco meses devolvia ciento cincuenta puntos amontonados y el eje no se
+ * podia leer.
+ */
+export function bloqueEvolucionCanales(
+    id: string,
+    titulo: string,
+    periodos: string[],
+    canales: string[],
+    valores: Map<string, number>
+): Bloque {
+    return {
+        id,
+        tipo: 'grafico',
+        titulo,
+        grafico: {
+            apex: 'line',
+            categorias: periodos.map(etiquetaFecha),
+            series: canales.map((canal) => ({
+                name: canal,
+                data: periodos.map((per) => valores.get(`${per}|${canal}`) ?? 0)
+            })),
+            formatoValor: 'moneda',
+            altoMovil: 260,
+            altoEscritorio: 320,
+            leyenda: true
+        }
+    };
+}
+
+/**
  * Reparto por canal en dona.
  *
  * Tres o cuatro partes que suman el total: es el caso para el que sirve una

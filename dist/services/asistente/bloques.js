@@ -9,7 +9,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 exports.__esModule = true;
-exports.bloqueTablaGenerica = exports.bloqueTablaInventario = exports.bloqueTablaMargen = exports.bloqueDispersionMargen = exports.bloqueRadialMetas = exports.bloqueMapaHorario = exports.bloquePendiente = exports.bloqueMancuernaMetas = exports.bloqueComboVentas = exports.bloqueComparativaDias = exports.bloqueDonaCanales = exports.bloqueRankingUsuarios = exports.bloqueKpisAlertas = exports.bloqueKpisResumen = exports.bloqueTreemap = exports.bloqueMedidor = exports.bloqueRankingMetas = exports.bloqueClima = exports.bloqueTablaProductos = exports.bloqueBarrasLocales = exports.bloqueRankingLocales = exports.bloqueSerieDiaria = exports.bloqueKpis = void 0;
+exports.bloqueTablaGenerica = exports.bloqueTablaInventario = exports.bloqueTablaMargen = exports.bloqueDispersionMargen = exports.bloqueRadialMetas = exports.bloqueMapaHorario = exports.bloquePendiente = exports.bloqueMancuernaMetas = exports.bloqueComboVentas = exports.bloqueComparativaDias = exports.bloqueDonaCanales = exports.bloqueEvolucionCanales = exports.bloqueRankingUsuarios = exports.bloqueKpisAlertas = exports.bloqueKpisResumen = exports.bloqueTreemap = exports.bloqueMedidor = exports.bloqueRankingMetas = exports.bloqueClima = exports.bloqueTablaProductos = exports.bloqueBarrasLocales = exports.bloqueRankingLocales = exports.bloqueSerieDiaria = exports.bloqueKpis = void 0;
 var agregados_1 = require("../dash/agregados");
 /**
  * Constructores de bloques visuales.
@@ -317,6 +317,34 @@ function bloqueRankingUsuarios(id, titulo, usuarios) {
     };
 }
 exports.bloqueRankingUsuarios = bloqueRankingUsuarios;
+/**
+ * Los canales a lo largo del tiempo, una linea por canal.
+ *
+ * El eje lo marca la granularidad con la que se consulto: si son meses, pone
+ * "mar 2026"; si son dias, "15/03". Antes esto solo existia dia a dia, asi que
+ * pedir cinco meses devolvia ciento cincuenta puntos amontonados y el eje no se
+ * podia leer.
+ */
+function bloqueEvolucionCanales(id, titulo, periodos, canales, valores) {
+    return {
+        id: id,
+        tipo: 'grafico',
+        titulo: titulo,
+        grafico: {
+            apex: 'line',
+            categorias: periodos.map(etiquetaFecha),
+            series: canales.map(function (canal) { return ({
+                name: canal,
+                data: periodos.map(function (per) { var _a; return (_a = valores.get("".concat(per, "|").concat(canal))) !== null && _a !== void 0 ? _a : 0; })
+            }); }),
+            formatoValor: 'moneda',
+            altoMovil: 260,
+            altoEscritorio: 320,
+            leyenda: true
+        }
+    };
+}
+exports.bloqueEvolucionCanales = bloqueEvolucionCanales;
 /**
  * Reparto por canal en dona.
  *

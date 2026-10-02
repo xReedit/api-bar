@@ -43,34 +43,75 @@ exports.crearProveedorOpenAI = void 0;
 var axios_1 = __importDefault(require("axios"));
 var tipos_1 = require("../tipos");
 /**
- * Proveedor OpenAI via HTTP (axios ya es dependencia; no hace falta el SDK).
+ * Proveedor OpenAI por la API de Responses (axios ya es dependencia; no hace
+ * falta el SDK).
  *
- * Todo lo especifico de OpenAI vive aqui: el mapeo de roles, el formato de
- * tool_calls y la forma de la respuesta. El resto del asistente no lo sabe.
+ * POR QUE /v1/responses Y NO /v1/chat/completions
+ * Los modelos nuevos de razonamiento rechazan `reasoning_effort` junto con
+ * herramientas en chat/completions: o renuncias al razonamiento o renuncias a
+ * las herramientas, y este asistente no funciona sin herramientas. Responses
+ * admite las dos cosas, que es la unica razon del cambio.
+ *
+ * QUE CAMBIA RESPECTO A chat/completions
+ *  - `messages` pasa a ser `input`, una lista de ITEMS y no solo de mensajes.
+ *  - Las herramientas van planas: {type, name, parameters}, sin anidar en
+ *    `function`.
+ *  - La llamada a herramienta vuelve como un item `function_call` dentro de
+ *    `output`, y su resultado se devuelve como `function_call_output`, enlazado
+ *    por `call_id` (no por `tool_call_id`).
+ *  - El texto vive en items `message` con partes `output_text`.
+ *
+ * Todo eso se queda aqui dentro: el resto del asistente sigue hablando el
+ * contrato neutro de `tipos.ts`.
  */
-var URL = 'https://api.openai.com/v1/chat/completions';
-var ROLES = {
-    sistema: 'system',
-    usuario: 'user',
-    asistente: 'assistant',
-    herramienta: 'tool'
+var URL = 'https://api.openai.com/v1/responses';
+/** La escala neutra en los nombres de OpenAI. */
+var ESFUERZO_OPENAI = {
+    off: 'none',
+    medio: 'medium',
+    alto: 'high',
+    max: 'max'
 };
-function aFormatoOpenAI(m) {
+/** `developer` es el papel con el que Responses nombra las instrucciones de sistema. */
+var ROLES = {
+    sistema: 'developer',
+    usuario: 'user',
+    asistente: 'assistant'
+};
+/**
+ * Un mensaje del contrato neutro puede convertirse en VARIOS items: un turno
+ * del asistente con dos llamadas a herramienta son dos items `function_call`
+ * mas, si hablo, uno de texto.
+ */
+function aItems(m) {
     var _a;
-    var base = { role: ROLES[m.rol], content: m.contenido };
     if (m.rol === 'herramienta') {
-        base.tool_call_id = m.idLlamada;
+        return [
+            {
+                type: 'function_call_output',
+                call_id: m.idLlamada,
+                output: m.contenido
+            }
+        ];
     }
+    var items = [];
     if (m.rol === 'asistente' && ((_a = m.llamadas) === null || _a === void 0 ? void 0 : _a.length)) {
-        base.tool_calls = m.llamadas.map(function (l) { return ({
-            id: l.id,
-            type: 'function',
-            "function": { name: l.nombre, arguments: JSON.stringify(l.argumentos) }
-        }); });
-        // OpenAI exige content null cuando hay tool_calls
-        base.content = m.contenido || null;
+        if (m.contenido) {
+            items.push({ role: 'assistant', content: m.contenido });
+        }
+        for (var _i = 0, _b = m.llamadas; _i < _b.length; _i++) {
+            var l = _b[_i];
+            items.push({
+                type: 'function_call',
+                call_id: l.id,
+                name: l.nombre,
+                arguments: JSON.stringify(l.argumentos)
+            });
+        }
+        return items;
     }
-    return base;
+    items.push({ role: ROLES[m.rol], content: m.contenido });
+    return items;
 }
 /** Los argumentos llegan como string; si vienen rotos, objeto vacio y que falle la validacion. */
 function parsearArgumentos(json) {
@@ -82,101 +123,108 @@ function parsearArgumentos(json) {
         return {};
     }
 }
+/** El texto puede venir repartido en varias partes `output_text`. */
+function textoDe(items) {
+    var partes = items
+        .filter(function (i) { return i.type === 'message'; })
+        .flatMap(function (i) { var _a; return (_a = i.content) !== null && _a !== void 0 ? _a : []; })
+        .filter(function (c) { return c.type === 'output_text'; })
+        .map(function (c) { var _a; return (_a = c.text) !== null && _a !== void 0 ? _a : ''; });
+    var texto = partes.join('').trim();
+    return texto.length ? texto : null;
+}
 function crearProveedorOpenAI() {
     var apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
         throw new Error('OPENAI_API_KEY no configurada');
     }
     var modelo = process.env.IA_MODELO || 'gpt-4o-mini';
-    // Se descubre en la primera llamada y se queda: los modelos de razonamiento
-    // (o1, o3, gpt-5...) y los clasicos (gpt-4o y familia) no comparten los
-    // parametros de muestreo.
-    var familia = /^(o\d|gpt-5)/i.test(modelo)
-        ? 'razonamiento'
-        : 'clasico';
+    // Los modelos clasicos no aceptan `reasoning`. Se deduce del nombre y, si la
+    // API se queja, se corrige sola en el catch.
+    var aceptaRazonamiento = /^(o\d|gpt-5)/i.test(modelo);
     var reintentado = false;
     return {
         nombre: 'openai',
         modelo: modelo,
         chat: function (mensajes, herramientas, forzar) {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
             return __awaiter(this, void 0, void 0, function () {
-                var esfuerzo, cuerpo, data, err_1, detalle, esDeParametro, mensaje, toolCalls;
-                return __generator(this, function (_p) {
-                    switch (_p.label) {
+                var esfuerzo, cuerpo, data, err_1, detalle, esDeParametro, items;
+                return __generator(this, function (_m) {
+                    switch (_m.label) {
                         case 0:
                             esfuerzo = (0, tipos_1.leerEsfuerzo)();
                             reintentado = false;
                             cuerpo = {
                                 model: modelo,
-                                messages: mensajes.map(aFormatoOpenAI)
+                                input: mensajes.flatMap(aItems),
+                                // Sin esto, Responses guarda el hilo en OpenAI. El asistente ya
+                                // maneja su propio historial y no hace falta dejar copia fuera.
+                                store: false
                             };
-                            // OpenAI tiene dos familias de modelos y cada una rechaza el parametro
-                            // de la otra: los clasicos aceptan temperature y no conocen
-                            // reasoning_effort; los de razonamiento al reves, y ademas traen un
-                            // esfuerzo por defecto que choca con las herramientas si no se apaga
-                            // a mano. Como el nombre del modelo no dice de que familia es, se
-                            // manda la version mas probable y se reintenta con la otra si la API
-                            // se queja del parametro. Una peticion de mas la primera vez, y nunca
-                            // mas gracias a la cache de abajo.
-                            if (esfuerzo === 'off') {
-                                if (familia === 'razonamiento')
-                                    cuerpo.reasoning_effort = 'none';
-                                else
-                                    cuerpo.temperature = 0.2;
+                            if (aceptaRazonamiento) {
+                                // La escala neutra cae una a una en la de OpenAI. 'none' y no
+                                // 'minimal': 'minimal' no lo admiten todos los modelos, 'none' si.
+                                // Con herramientas, esto SOLO funciona por Responses.
+                                cuerpo.reasoning = { effort: ESFUERZO_OPENAI[esfuerzo] };
                             }
-                            else {
-                                // 'max' no existe en OpenAI: se mapea a 'high'.
-                                cuerpo.reasoning_effort = esfuerzo === 'medio' ? 'medium' : 'high';
+                            else if (esfuerzo === 'off') {
+                                cuerpo.temperature = 0.2;
                             }
                             if (herramientas.length > 0) {
+                                // Planas, sin el envoltorio `function` de chat/completions.
                                 cuerpo.tools = herramientas.map(function (h) { return ({
                                     type: 'function',
-                                    "function": {
-                                        name: h.nombre,
-                                        description: h.descripcion,
-                                        parameters: h.parametros
-                                    }
+                                    name: h.nombre,
+                                    description: h.descripcion,
+                                    parameters: h.parametros
                                 }); });
-                                cuerpo.tool_choice = forzar
-                                    ? { type: 'function', "function": { name: forzar } }
-                                    : 'auto';
+                                cuerpo.tool_choice = forzar ? { type: 'function', name: forzar } : 'auto';
                             }
-                            _p.label = 1;
+                            _m.label = 1;
                         case 1:
-                            _p.trys.push([1, 3, , 4]);
+                            _m.trys.push([1, 3, , 4]);
                             return [4 /*yield*/, axios_1["default"].post(URL, cuerpo, {
                                     headers: {
                                         Authorization: "Bearer ".concat(apiKey),
                                         'Content-Type': 'application/json'
                                     },
-                                    timeout: 60000
+                                    timeout: 120000
                                 })];
                         case 2:
-                            (data = (_p.sent()).data);
+                            (data = (_m.sent()).data);
                             return [3 /*break*/, 4];
                         case 3:
-                            err_1 = _p.sent();
+                            err_1 = _m.sent();
                             detalle = (_e = (_d = (_c = (_b = (_a = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.message) !== null && _d !== void 0 ? _d : err_1 === null || err_1 === void 0 ? void 0 : err_1.message) !== null && _e !== void 0 ? _e : '';
-                            esDeParametro = /reasoning_effort|temperature/i.test(detalle) && ((_f = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _f === void 0 ? void 0 : _f.status) === 400;
+                            esDeParametro = ((_f = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _f === void 0 ? void 0 : _f.status) === 400 && /reasoning|temperature/i.test(detalle);
                             if (esDeParametro && !reintentado) {
                                 reintentado = true;
-                                familia = familia === 'razonamiento' ? 'clasico' : 'razonamiento';
+                                aceptaRazonamiento = !aceptaRazonamiento;
                                 return [2 /*return*/, this.chat(mensajes, herramientas, forzar)];
                             }
                             throw new Error("OpenAI (".concat((_h = (_g = err_1 === null || err_1 === void 0 ? void 0 : err_1.response) === null || _g === void 0 ? void 0 : _g.status) !== null && _h !== void 0 ? _h : 'sin estado', "): ").concat(detalle));
                         case 4:
-                            mensaje = (_l = (_k = (_j = data === null || data === void 0 ? void 0 : data.choices) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.message) !== null && _l !== void 0 ? _l : {};
-                            toolCalls = (_m = mensaje.tool_calls) !== null && _m !== void 0 ? _m : [];
+                            items = (_j = data === null || data === void 0 ? void 0 : data.output) !== null && _j !== void 0 ? _j : [];
                             return [2 /*return*/, {
-                                    texto: (_o = mensaje.content) !== null && _o !== void 0 ? _o : null,
-                                    llamadas: toolCalls.map(function (t) { return ({
-                                        id: t.id,
-                                        nombre: t["function"].name,
-                                        argumentos: parsearArgumentos(t["function"].arguments)
-                                    }); }),
+                                    texto: textoDe(items),
+                                    llamadas: items
+                                        .filter(function (i) { return i.type === 'function_call'; })
+                                        .map(function (i) {
+                                        var _a;
+                                        return ({
+                                            id: String(i.call_id),
+                                            nombre: String(i.name),
+                                            argumentos: parsearArgumentos((_a = i.arguments) !== null && _a !== void 0 ? _a : '{}')
+                                        });
+                                    }),
                                     uso: (data === null || data === void 0 ? void 0 : data.usage)
-                                        ? { entrada: data.usage.prompt_tokens, salida: data.usage.completion_tokens }
+                                        ? {
+                                            entrada: data.usage.input_tokens,
+                                            salida: data.usage.output_tokens,
+                                            // Responses informa el ahorro de cache aqui dentro.
+                                            cacheLeido: (_l = (_k = data.usage.input_tokens_details) === null || _k === void 0 ? void 0 : _k.cached_tokens) !== null && _l !== void 0 ? _l : 0
+                                        }
                                         : undefined
                                 }];
                     }

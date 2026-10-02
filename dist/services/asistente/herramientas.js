@@ -1142,26 +1142,33 @@ var canales = {
                     description: 'Para seguir UN canal dia a dia. Tal como viene en el reparto: ' +
                         '"DELIVERY", "PARA LLEVAR", "CONSUMIR EN EL LOCAL". Omitir para ' +
                         'ver todos.'
-                }, grafico: PARAM_GRAFICO(['dona', 'barras', 'tendencia'], 'dona = cuanto pesa cada canal. barras = comparar sus montos. ' +
-                    'tendencia = la serie diaria de UN canal, requiere el parametro canal.') }),
+                }, agrupar_por: {
+                    type: 'string',
+                    "enum": ['dia', 'semana', 'mes'],
+                    description: 'Cada cuanto se agrupa la evolucion. Omitir para que lo elija el ' +
+                        'servidor segun el largo del rango: cinco meses en barras diarias ' +
+                        'son 150 columnas y un eje ilegible.'
+                }, grafico: PARAM_GRAFICO(['dona', 'barras', 'evolucion'], 'dona = cuanto pesa cada canal ahora. barras = comparar sus montos. ' +
+                    'evolucion = como viene cada canal EN EL TIEMPO, una linea por canal. ' +
+                    'Si piden comparar canales por meses, o si uno crece o cae, es evolucion.') }),
             additionalProperties: false
         }
     },
     ejecutar: function (args, ctx) {
         var _a;
         return __awaiter(this, void 0, void 0, function () {
-            var sedes, periodo, actual, antes, total, anterior, canalesConPeso, pedido, serieCanal, _b;
-            return __generator(this, function (_c) {
-                switch (_c.label) {
+            var sedes, periodo, actual, antes, total, anterior, canalesConPeso, pedido, agrupar, enElTiempo, periodos, nombresCanal, porClave;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
                         sedes = (0, sedes_1.resolverSedes)(args.sedes, ctx);
                         periodo = periodoDe(args, ctx);
                         return [4 /*yield*/, (0, canales_1.ventasPorCanal)(sedes.ids, periodo.desde, periodo.hasta)];
                     case 1:
-                        actual = _c.sent();
+                        actual = _b.sent();
                         return [4 /*yield*/, (0, canales_1.ventasPorCanal)(sedes.ids, rangoAnterior(periodo).rango_start_date, rangoAnterior(periodo).rango_end_date)];
                     case 2:
-                        antes = _c.sent();
+                        antes = _b.sent();
                         total = actual.reduce(function (t, c) { return t + c.total; }, 0);
                         anterior = new Map(antes.map(function (c) { return [c.canal, c]; }));
                         canalesConPeso = actual.map(function (c) {
@@ -1169,22 +1176,22 @@ var canales = {
                             return (__assign(__assign({}, c), { participacion_pct: total ? (0, agregados_1.redondear)((c.total / total) * 100) : 0, vs_anterior_pct: (0, agregados_1.variacionPct)(c.total, (_b = (_a = anterior.get(c.canal)) === null || _a === void 0 ? void 0 : _a.total) !== null && _b !== void 0 ? _b : 0) }));
                         });
                         pedido = String((_a = args.canal) !== null && _a !== void 0 ? _a : '').toUpperCase();
-                        if (!pedido) return [3 /*break*/, 4];
-                        return [4 /*yield*/, (0, canales_1.canalPorDia)(sedes.ids, pedido, periodo.desde, periodo.hasta)];
+                        agrupar = ['dia', 'semana', 'mes'].includes(String(args.agrupar_por))
+                            ? String(args.agrupar_por)
+                            : (0, canales_1.granularidadPara)(periodo.desde, periodo.hasta);
+                        return [4 /*yield*/, (0, canales_1.canalesEnElTiempo)(sedes.ids, periodo.desde, periodo.hasta, agrupar, pedido || undefined)];
                     case 3:
-                        _b = _c.sent();
-                        return [3 /*break*/, 5];
-                    case 4:
-                        _b = [];
-                        _c.label = 5;
-                    case 5:
-                        serieCanal = _b;
+                        enElTiempo = _b.sent();
+                        periodos = Array.from(new Set(enElTiempo.map(function (p) { return p.periodo; }))).sort();
+                        nombresCanal = Array.from(new Set(enElTiempo.map(function (p) { return p.canal; })));
+                        porClave = new Map(enElTiempo.map(function (p) { return ["".concat(p.periodo, "|").concat(p.canal), p.total]; }));
                         return [2 /*return*/, {
                                 periodo: { desde: periodo.desde, hasta: periodo.hasta },
                                 sedes: sedes.nombres,
                                 total_general: (0, agregados_1.redondear)(total),
                                 canales: canalesConPeso,
-                                serie_del_canal: serieCanal.length ? { canal: pedido, dias: serieCanal } : null,
+                                agrupado_por: agrupar,
+                                evolucion: periodos.map(function (per) { return (__assign({ periodo: per }, Object.fromEntries(nombresCanal.map(function (c) { var _a; return [c, (_a = porClave.get("".concat(per, "|").concat(c))) !== null && _a !== void 0 ? _a : 0]; })))); }),
                                 como_leerlo: 'El canal sale de como se marco la venta en el POS (tipo de consumo). ' +
                                     'Si un canal aparece en cero puede ser que no se este marcando, no que ' +
                                     'no exista.',
@@ -1200,14 +1207,28 @@ var canales = {
                                                 ticket: c.ticketPromedio
                                             }); }))
                                         ]; },
-                                        tendencia: function () {
-                                            return serieCanal.length
-                                                ? [(0, bloques_1.bloqueSerieDiaria)('serie_canal', "".concat(pedido, " dia a dia"), serieCanal)]
+                                        evolucion: function () {
+                                            return periodos.length > 1
+                                                ? [
+                                                    (0, bloques_1.bloqueEvolucionCanales)('evolucion_canales', pedido
+                                                        ? "".concat(pedido, " por ").concat(agrupar)
+                                                        : "Canales por ".concat(agrupar), periodos, nombresCanal, porClave)
+                                                ]
                                                 : [(0, bloques_1.bloqueDonaCanales)('dona_canales', 'Reparto por canal', canalesConPeso)];
                                         },
-                                        auto: function () { return [
-                                            (0, bloques_1.bloqueDonaCanales)('dona_canales', 'Reparto por canal', canalesConPeso)
-                                        ]; }
+                                        // La dona responde "cuanto pesa cada canal", que es la
+                                        // pregunta de un periodo corto. En cuanto el rango abarca
+                                        // varios periodos, lo que se quiere saber es si suben o
+                                        // bajan, y eso una dona no lo puede mostrar.
+                                        auto: function () {
+                                            return periodos.length > 2
+                                                ? [
+                                                    (0, bloques_1.bloqueEvolucionCanales)('evolucion_canales', "Canales por ".concat(agrupar), periodos, nombresCanal, porClave)
+                                                ]
+                                                : [
+                                                    (0, bloques_1.bloqueDonaCanales)('dona_canales', 'Reparto por canal', canalesConPeso)
+                                                ];
+                                        }
                                     }, 'auto')
                                     : []).filter(Boolean)
                             }];

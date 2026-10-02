@@ -19,7 +19,12 @@ import {
     TipoDetalle
 } from '../dash/alertas';
 import { ventasPorHorario, nombreDia } from '../dash/horarios';
-import { ventasPorCanal, canalPorDia } from '../dash/canales';
+import {
+    ventasPorCanal,
+    canalesEnElTiempo,
+    granularidadPara,
+    Granularidad
+} from '../dash/canales';
 import { costoPersonal } from '../dash/rrhh';
 import { repartidoresDeSede, totalRepartidores } from '../dash/repartidores';
 import { consultarModulo, MODULOS, NombreModulo } from '../dash/modulos';
@@ -35,6 +40,7 @@ import {
     bloqueTablaInventario,
     bloqueDispersionMargen,
     bloqueDonaCanales,
+    bloqueEvolucionCanales,
     bloqueKpisAlertas,
     bloqueKpisResumen,
     bloqueRankingUsuarios,
@@ -1160,10 +1166,19 @@ const canales: Herramienta = {
                         '"DELIVERY", "PARA LLEVAR", "CONSUMIR EN EL LOCAL". Omitir para ' +
                         'ver todos.'
                 },
+                agrupar_por: {
+                    type: 'string',
+                    enum: ['dia', 'semana', 'mes'],
+                    description:
+                        'Cada cuanto se agrupa la evolucion. Omitir para que lo elija el ' +
+                        'servidor segun el largo del rango: cinco meses en barras diarias ' +
+                        'son 150 columnas y un eje ilegible.'
+                },
                 grafico: PARAM_GRAFICO(
-                    ['dona', 'barras', 'tendencia'],
-                    'dona = cuanto pesa cada canal. barras = comparar sus montos. ' +
-                        'tendencia = la serie diaria de UN canal, requiere el parametro canal.'
+                    ['dona', 'barras', 'evolucion'],
+                    'dona = cuanto pesa cada canal ahora. barras = comparar sus montos. ' +
+                        'evolucion = como viene cada canal EN EL TIEMPO, una linea por canal. ' +
+                        'Si piden comparar canales por meses, o si uno crece o cae, es evolucion.'
                 )
             },
             additionalProperties: false
@@ -1191,16 +1206,36 @@ const canales: Herramienta = {
         }));
 
         const pedido = String(args.canal ?? '').toUpperCase();
-        const serieCanal = pedido
-            ? await canalPorDia(sedes.ids, pedido, periodo.desde, periodo.hasta)
-            : [];
+
+        // La granularidad la decide el largo del rango salvo que la impongan: es
+        // lo que evita que cinco meses salgan como 150 barras diarias.
+        const agrupar: Granularidad = ['dia', 'semana', 'mes'].includes(String(args.agrupar_por))
+            ? (String(args.agrupar_por) as Granularidad)
+            : granularidadPara(periodo.desde, periodo.hasta);
+
+        const enElTiempo = await canalesEnElTiempo(
+            sedes.ids,
+            periodo.desde,
+            periodo.hasta,
+            agrupar,
+            pedido || undefined
+        );
+
+        // Una serie por canal sobre el mismo eje de periodos.
+        const periodos = Array.from(new Set(enElTiempo.map((p) => p.periodo))).sort();
+        const nombresCanal = Array.from(new Set(enElTiempo.map((p) => p.canal)));
+        const porClave = new Map(enElTiempo.map((p) => [`${p.periodo}|${p.canal}`, p.total]));
 
         return {
             periodo: { desde: periodo.desde, hasta: periodo.hasta },
             sedes: sedes.nombres,
             total_general: redondear(total),
             canales: canalesConPeso,
-            serie_del_canal: serieCanal.length ? { canal: pedido, dias: serieCanal } : null,
+            agrupado_por: agrupar,
+            evolucion: periodos.map((per) => ({
+                periodo: per,
+                ...Object.fromEntries(nombresCanal.map((c) => [c, porClave.get(`${per}|${c}`) ?? 0]))
+            })),
             como_leerlo:
                 'El canal sale de como se marco la venta en el POS (tipo de consumo). ' +
                 'Si un canal aparece en cero puede ser que no se este marcando, no que ' +
@@ -1223,13 +1258,42 @@ const canales: Herramienta = {
                                   }))
                               )
                           ],
-                          tendencia: () =>
-                              serieCanal.length
-                                  ? [bloqueSerieDiaria('serie_canal', `${pedido} dia a dia`, serieCanal)]
+                          evolucion: () =>
+                              periodos.length > 1
+                                  ? [
+                                        bloqueEvolucionCanales(
+                                            'evolucion_canales',
+                                            pedido
+                                                ? `${pedido} por ${agrupar}`
+                                                : `Canales por ${agrupar}`,
+                                            periodos,
+                                            nombresCanal,
+                                            porClave
+                                        )
+                                    ]
                                   : [bloqueDonaCanales('dona_canales', 'Reparto por canal', canalesConPeso)],
-                          auto: () => [
-                              bloqueDonaCanales('dona_canales', 'Reparto por canal', canalesConPeso)
-                          ]
+                          // La dona responde "cuanto pesa cada canal", que es la
+                          // pregunta de un periodo corto. En cuanto el rango abarca
+                          // varios periodos, lo que se quiere saber es si suben o
+                          // bajan, y eso una dona no lo puede mostrar.
+                          auto: () =>
+                              periodos.length > 2
+                                  ? [
+                                        bloqueEvolucionCanales(
+                                            'evolucion_canales',
+                                            `Canales por ${agrupar}`,
+                                            periodos,
+                                            nombresCanal,
+                                            porClave
+                                        )
+                                    ]
+                                  : [
+                                        bloqueDonaCanales(
+                                            'dona_canales',
+                                            'Reparto por canal',
+                                            canalesConPeso
+                                        )
+                                    ]
                       },
                       'auto'
                   )

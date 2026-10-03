@@ -13,6 +13,7 @@ import { generarYSubirTicket } from "../services/ticket.image.service";
 import { generarCartaTachada, resolverCartaTachado } from "../services/carta.tachado.service";
 import { leerIndice } from "../services/carta.indice.service";
 import { variantesTelefono } from "../services/telefono";
+import { esperarConTope, EN_PROCESO } from "../services/espera";
 import axios from "axios";
 import { logger } from '../utils/logger';
 
@@ -311,51 +312,75 @@ router.post('/generar-comprobante', async (req, res) => {
             );
         };
 
-        try {
-            const URL_RESTOBAR = process.env.URL_RESTOBAR || 'http://localhost:3000';
-            const resp = await axios.post(`${URL_RESTOBAR}/bot/generar-comprobante`, {
-                idorg: Number(idorg), idsede: Number(idsede), idpedido: Number(prev.idpedido),
-                tipo, num_doc: numDoc, items, subtotales
-            }, { timeout: 40000, headers: { 'x-bot-key': botKey } });
-            const d: any = resp.data;
-
-            if (!d?.success) {
-                if (d?.reintentable === false) {
-                    // Estado incierto o definitivo (apifac caído, montos, sede):
-                    // bloquear reintentos del bot para no duplicar documentos.
-                    await marcar({ estado: 'bloqueado', error: d?.error || 'el comprobante quedó en proceso; solicítalo en caja' });
-                } else {
-                    // Error corregible (ej. RUC mal escrito): liberar para reintento.
-                    await liberar();
-                }
-                return res.status(200).json({ success: false, error: d?.error || 'no se pudo emitir el comprobante en este momento' });
-            }
-
-            // El CPE YA está emitido: pase lo que pase con la persistencia,
-            // el número y el link se entregan al cliente (perderlos = doble
-            // emisión en caja). El fallo de persistencia solo se loguea fuerte.
+        // La emisión (apifac/SUNAT + consulta DNI/RUC) puede tardar 20-40 s, y el bot
+        // solo espera 20 s (y backend-pedidos 30 s el turno entero del bot). Por eso
+        // la emisión corre aparte y TERMINA y PERSISTE su resultado aunque ya le
+        // hayamos respondido al bot: si se demora, el bot recibe "se está generando"
+        // y al volver a pedirlo obtiene el comprobante guardado (idempotente).
+        const emitir = async (): Promise<any> => {
             try {
-                await marcar({ numero: d.numero, url_pdf: d.url_pdf, num_doc: numDoc, external_id: d.external_id });
+                const URL_RESTOBAR = process.env.URL_RESTOBAR || 'http://localhost:3000';
+                const resp = await axios.post(`${URL_RESTOBAR}/bot/generar-comprobante`, {
+                    idorg: Number(idorg), idsede: Number(idsede), idpedido: Number(prev.idpedido),
+                    tipo, num_doc: numDoc, items, subtotales
+                }, { timeout: 40000, headers: { 'x-bot-key': botKey } });
+                const d: any = resp.data;
+
+                if (!d?.success) {
+                    if (d?.reintentable === false) {
+                        // Estado incierto o definitivo (apifac caído, montos, sede):
+                        // bloquear reintentos del bot para no duplicar documentos.
+                        await marcar({ estado: 'bloqueado', error: d?.error || 'el comprobante quedó en proceso; solicítalo en caja' });
+                    } else {
+                        // Error corregible (ej. RUC mal escrito): liberar para reintento.
+                        await liberar();
+                    }
+                    return { success: false, error: d?.error || 'no se pudo emitir el comprobante en este momento' };
+                }
+
+                // El CPE YA está emitido: pase lo que pase con la persistencia,
+                // el número y el link se entregan al cliente (perderlos = doble
+                // emisión en caja). El fallo de persistencia solo se loguea fuerte.
+                try {
+                    await marcar({ numero: d.numero, url_pdf: d.url_pdf, num_doc: numDoc, external_id: d.external_id });
+                } catch (e: any) {
+                    logger.error(`generar-comprobante: EMITIDO ${d.numero} (${d.external_id}) pero NO persistido para sesión ${session_id}:`, e?.message);
+                }
+                logger.info(`generar-comprobante: emitido ${d.numero} para sesión ${session_id}`);
+                return { success: true, numero: d.numero, url_pdf: d.url_pdf };
             } catch (e: any) {
-                logger.error(`generar-comprobante: EMITIDO ${d.numero} (${d.external_id}) pero NO persistido para sesión ${session_id}:`, e?.message);
+                // Autorización mal configurada (CHATBOT_BOT_KEY desincronizada):
+                // no se llegó a emitir — liberar para que un reintento funcione
+                // cuando se corrija la config.
+                const status = e?.response?.status;
+                if (status === 401 || status === 403) {
+                    logger.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
+                    try { await liberar(); } catch { /* queda emitiendo con TTL */ }
+                    return { success: false, error: 'la emisión de comprobantes no está disponible en este momento; solicítalo en caja' };
+                }
+                // Red caída a mitad de camino = estado incierto: NO liberar (el CPE
+                // pudo emitirse); que lo resuelva caja antes que duplicar.
+                logger.error('generar-comprobante: fallo llamando a backend-pedidos:', e?.message);
+                try { await marcar({ estado: 'bloqueado', error: 'el comprobante quedó en proceso; solicítalo en caja' }); } catch { /* claim queda como emitiendo, expira por TTL */ }
+                return { success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' };
             }
-            return res.status(200).json({ success: true, numero: d.numero, url_pdf: d.url_pdf });
-        } catch (e: any) {
-            // Autorización mal configurada (CHATBOT_BOT_KEY desincronizada):
-            // no se llegó a emitir — liberar para que un reintento funcione
-            // cuando se corrija la config.
-            const status = e?.response?.status;
-            if (status === 401 || status === 403) {
-                logger.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
-                try { await liberar(); } catch { /* queda emitiendo con TTL */ }
-                return res.status(200).json({ success: false, error: 'la emisión de comprobantes no está disponible en este momento; solicítalo en caja' });
-            }
-            // Red caída a mitad de camino = estado incierto: NO liberar (el CPE
-            // pudo emitirse); que lo resuelva caja antes que duplicar.
-            logger.error('generar-comprobante: fallo llamando a backend-pedidos:', e?.message);
-            try { await marcar({ estado: 'bloqueado', error: 'el comprobante quedó en proceso; solicítalo en caja' }); } catch { /* claim queda como emitiendo, expira por TTL */ }
-            return res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' });
+        };
+
+        // Nunca rechaza: si algo revienta después de haber respondido, solo se loguea.
+        const emision = emitir().catch((e: any) => {
+            logger.error(`generar-comprobante: error no controlado en la emisión de la sesión ${session_id}:`, e?.message);
+            return { success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' };
+        });
+        const topeMs = Number(process.env.CHATBOT_COMPROBANTE_ESPERA_MS) || 10000;
+        const resultado = await esperarConTope(emision, topeMs);
+        if (resultado === EN_PROCESO) {
+            return res.status(200).json({
+                success: false,
+                en_proceso: true,
+                error: 'tu comprobante se está generando; dile al cliente que en unos segundos te lo vuelva a pedir y vuelve a llamar a esta herramienta con los mismos datos'
+            });
         }
+        return res.status(200).json(resultado);
     } catch (error: any) {
         logger.error('Error en /generar-comprobante:', error?.message);
         return res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; puedes pedirlo en caja' });

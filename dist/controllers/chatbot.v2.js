@@ -102,6 +102,7 @@ var ticket_image_service_1 = require("../services/ticket.image.service");
 var carta_tachado_service_1 = require("../services/carta.tachado.service");
 var carta_indice_service_1 = require("../services/carta.indice.service");
 var telefono_1 = require("../services/telefono");
+var espera_1 = require("../services/espera");
 var axios_1 = __importDefault(require("axios"));
 var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
@@ -333,32 +334,31 @@ router.get('/comprobante/:idsede/:documento/:fecha/:importe', function (req, res
 // emisión de backend-pedidos (/bot/generar-comprobante). Idempotente por
 // sesión: repetir la solicitud devuelve el mismo comprobante.
 router.post('/generar-comprobante', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, session_id_1, idorg, idsede, tipo, num_doc, val, numDoc, rows, prev, estructura, previo, antiguedadMs, _b, items, subtotales, botKey, claimed, marcar, liberar, URL_RESTOBAR, resp, d, e_1, e_2, status, _c, _d, error_2;
-    var _e;
-    return __generator(this, function (_f) {
-        switch (_f.label) {
+    var _a, session_id_1, idorg_1, idsede_1, tipo_1, num_doc, val, numDoc_1, rows, prev_1, estructura, previo, antiguedadMs, _b, items_1, subtotales_1, botKey_1, claimed, marcar_1, liberar_1, emitir, emision, topeMs, resultado, error_2;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
             case 0:
-                _f.trys.push([0, 24, , 25]);
-                _a = req.body || {}, session_id_1 = _a.session_id, idorg = _a.idorg, idsede = _a.idsede, tipo = _a.tipo, num_doc = _a.num_doc;
-                val = (0, comprobante_helpers_1.validarDocumento)(String(tipo || ''), String(num_doc || ''));
-                if (!session_id_1 || !idsede || !val.ok) {
+                _c.trys.push([0, 4, , 5]);
+                _a = req.body || {}, session_id_1 = _a.session_id, idorg_1 = _a.idorg, idsede_1 = _a.idsede, tipo_1 = _a.tipo, num_doc = _a.num_doc;
+                val = (0, comprobante_helpers_1.validarDocumento)(String(tipo_1 || ''), String(num_doc || ''));
+                if (!session_id_1 || !idsede_1 || !val.ok) {
                     return [2 /*return*/, res.status(200).json({ success: false, error: val.error || 'faltan datos' })];
                 }
-                numDoc = String(num_doc).replace(/\D/g, '');
+                numDoc_1 = String(num_doc).replace(/\D/g, '');
                 return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT estructura, estado, idpedido, DATE(created_at) = CURDATE() AS es_hoy\n             FROM pedido_preview WHERE id = ? LIMIT 1", String(session_id_1))];
             case 1:
-                rows = _f.sent();
-                prev = rows === null || rows === void 0 ? void 0 : rows[0];
-                if (!prev || prev.estado !== 'confirmed' || !prev.idpedido || !Number(prev.es_hoy)) {
+                rows = _c.sent();
+                prev_1 = rows === null || rows === void 0 ? void 0 : rows[0];
+                if (!prev_1 || prev_1.estado !== 'confirmed' || !prev_1.idpedido || !Number(prev_1.es_hoy)) {
                     return [2 /*return*/, res.status(200).json({
                             success: false,
                             error: 'no hay un pedido confirmado hoy en esta conversación; para consumos anteriores usa la consulta de comprobantes'
                         })];
                 }
-                estructura = typeof prev.estructura === 'string' ? JSON.parse(prev.estructura) : prev.estructura;
+                estructura = typeof prev_1.estructura === 'string' ? JSON.parse(prev_1.estructura) : prev_1.estructura;
                 previo = estructura === null || estructura === void 0 ? void 0 : estructura._comprobante;
                 if (previo === null || previo === void 0 ? void 0 : previo.numero) {
-                    if (String(previo.num_doc) === numDoc) {
+                    if (String(previo.num_doc) === numDoc_1) {
                         return [2 /*return*/, res.status(200).json({ success: true, numero: previo.numero, url_pdf: previo.url_pdf, ya_emitido: true })];
                     }
                     return [2 /*return*/, res.status(200).json({ success: false, error: "ya se emiti\u00F3 el comprobante ".concat(previo.numero, " para este pedido; para cambios ac\u00E9rcate a caja") })];
@@ -373,21 +373,21 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
                 if ((previo === null || previo === void 0 ? void 0 : previo.estado) === 'bloqueado') {
                     return [2 /*return*/, res.status(200).json({ success: false, error: previo.error || 'el comprobante quedó en proceso; solicítalo en caja' })];
                 }
-                _b = (0, comprobante_helpers_1.mapearEstructuraAComprobante)(estructura), items = _b.items, subtotales = _b.subtotales;
-                if (!items[0].items.length || !subtotales.length) {
+                _b = (0, comprobante_helpers_1.mapearEstructuraAComprobante)(estructura), items_1 = _b.items, subtotales_1 = _b.subtotales;
+                if (!items_1[0].items.length || !subtotales_1.length) {
                     return [2 /*return*/, res.status(200).json({ success: false, error: 'no se pudo leer el detalle del pedido; solicítalo en caja' })];
                 }
-                botKey = process.env.CHATBOT_BOT_KEY || '';
-                if (!botKey) {
+                botKey_1 = process.env.CHATBOT_BOT_KEY || '';
+                if (!botKey_1) {
                     return [2 /*return*/, res.status(200).json({ success: false, error: 'la emisión de comprobantes no está habilitada todavía; solicítalo en caja' })];
                 }
                 return [4 /*yield*/, prisma.$executeRawUnsafe("UPDATE pedido_preview\n             SET estructura = JSON_SET(estructura, '$._comprobante', CAST(? AS JSON))\n             WHERE id = ? AND JSON_EXTRACT(estructura, '$._comprobante') IS NULL", JSON.stringify({ estado: 'emitiendo', ts: Date.now() }), String(session_id_1))];
             case 2:
-                claimed = _f.sent();
+                claimed = _c.sent();
                 if (Number(claimed) === 0) {
                     return [2 /*return*/, res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' })];
                 }
-                marcar = function (obj) { return __awaiter(void 0, void 0, void 0, function () {
+                marcar_1 = function (obj) { return __awaiter(void 0, void 0, void 0, function () {
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0: return [4 /*yield*/, prisma.$queryRawUnsafe("UPDATE pedido_preview SET estructura = JSON_SET(estructura, '$._comprobante', CAST(? AS JSON)) WHERE id = ?", JSON.stringify(obj), String(session_id_1))];
@@ -397,7 +397,7 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
                         }
                     });
                 }); };
-                liberar = function () { return __awaiter(void 0, void 0, void 0, function () {
+                liberar_1 = function () { return __awaiter(void 0, void 0, void 0, function () {
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0: return [4 /*yield*/, prisma.$queryRawUnsafe("UPDATE pedido_preview SET estructura = JSON_REMOVE(estructura, '$._comprobante') WHERE id = ?", String(session_id_1))];
@@ -407,86 +407,111 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
                         }
                     });
                 }); };
-                _f.label = 3;
+                emitir = function () { return __awaiter(void 0, void 0, void 0, function () {
+                    var URL_RESTOBAR, resp, d, e_1, e_2, status, _a, _b;
+                    var _c;
+                    return __generator(this, function (_d) {
+                        switch (_d.label) {
+                            case 0:
+                                _d.trys.push([0, 10, , 20]);
+                                URL_RESTOBAR = process.env.URL_RESTOBAR || 'http://localhost:3000';
+                                return [4 /*yield*/, axios_1["default"].post("".concat(URL_RESTOBAR, "/bot/generar-comprobante"), {
+                                        idorg: Number(idorg_1), idsede: Number(idsede_1), idpedido: Number(prev_1.idpedido),
+                                        tipo: tipo_1,
+                                        num_doc: numDoc_1,
+                                        items: items_1,
+                                        subtotales: subtotales_1
+                                    }, { timeout: 40000, headers: { 'x-bot-key': botKey_1 } })];
+                            case 1:
+                                resp = _d.sent();
+                                d = resp.data;
+                                if (!!(d === null || d === void 0 ? void 0 : d.success)) return [3 /*break*/, 6];
+                                if (!((d === null || d === void 0 ? void 0 : d.reintentable) === false)) return [3 /*break*/, 3];
+                                // Estado incierto o definitivo (apifac caído, montos, sede):
+                                // bloquear reintentos del bot para no duplicar documentos.
+                                return [4 /*yield*/, marcar_1({ estado: 'bloqueado', error: (d === null || d === void 0 ? void 0 : d.error) || 'el comprobante quedó en proceso; solicítalo en caja' })];
+                            case 2:
+                                // Estado incierto o definitivo (apifac caído, montos, sede):
+                                // bloquear reintentos del bot para no duplicar documentos.
+                                _d.sent();
+                                return [3 /*break*/, 5];
+                            case 3: 
+                            // Error corregible (ej. RUC mal escrito): liberar para reintento.
+                            return [4 /*yield*/, liberar_1()];
+                            case 4:
+                                // Error corregible (ej. RUC mal escrito): liberar para reintento.
+                                _d.sent();
+                                _d.label = 5;
+                            case 5: return [2 /*return*/, { success: false, error: (d === null || d === void 0 ? void 0 : d.error) || 'no se pudo emitir el comprobante en este momento' }];
+                            case 6:
+                                _d.trys.push([6, 8, , 9]);
+                                return [4 /*yield*/, marcar_1({ numero: d.numero, url_pdf: d.url_pdf, num_doc: numDoc_1, external_id: d.external_id })];
+                            case 7:
+                                _d.sent();
+                                return [3 /*break*/, 9];
+                            case 8:
+                                e_1 = _d.sent();
+                                logger_1.logger.error("generar-comprobante: EMITIDO ".concat(d.numero, " (").concat(d.external_id, ") pero NO persistido para sesi\u00F3n ").concat(session_id_1, ":"), e_1 === null || e_1 === void 0 ? void 0 : e_1.message);
+                                return [3 /*break*/, 9];
+                            case 9:
+                                logger_1.logger.info("generar-comprobante: emitido ".concat(d.numero, " para sesi\u00F3n ").concat(session_id_1));
+                                return [2 /*return*/, { success: true, numero: d.numero, url_pdf: d.url_pdf }];
+                            case 10:
+                                e_2 = _d.sent();
+                                status = (_c = e_2 === null || e_2 === void 0 ? void 0 : e_2.response) === null || _c === void 0 ? void 0 : _c.status;
+                                if (!(status === 401 || status === 403)) return [3 /*break*/, 15];
+                                logger_1.logger.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
+                                _d.label = 11;
+                            case 11:
+                                _d.trys.push([11, 13, , 14]);
+                                return [4 /*yield*/, liberar_1()];
+                            case 12:
+                                _d.sent();
+                                return [3 /*break*/, 14];
+                            case 13:
+                                _a = _d.sent();
+                                return [3 /*break*/, 14];
+                            case 14: return [2 /*return*/, { success: false, error: 'la emisión de comprobantes no está disponible en este momento; solicítalo en caja' }];
+                            case 15:
+                                // Red caída a mitad de camino = estado incierto: NO liberar (el CPE
+                                // pudo emitirse); que lo resuelva caja antes que duplicar.
+                                logger_1.logger.error('generar-comprobante: fallo llamando a backend-pedidos:', e_2 === null || e_2 === void 0 ? void 0 : e_2.message);
+                                _d.label = 16;
+                            case 16:
+                                _d.trys.push([16, 18, , 19]);
+                                return [4 /*yield*/, marcar_1({ estado: 'bloqueado', error: 'el comprobante quedó en proceso; solicítalo en caja' })];
+                            case 17:
+                                _d.sent();
+                                return [3 /*break*/, 19];
+                            case 18:
+                                _b = _d.sent();
+                                return [3 /*break*/, 19];
+                            case 19: return [2 /*return*/, { success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' }];
+                            case 20: return [2 /*return*/];
+                        }
+                    });
+                }); };
+                emision = emitir()["catch"](function (e) {
+                    logger_1.logger.error("generar-comprobante: error no controlado en la emisi\u00F3n de la sesi\u00F3n ".concat(session_id_1, ":"), e === null || e === void 0 ? void 0 : e.message);
+                    return { success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' };
+                });
+                topeMs = Number(process.env.CHATBOT_COMPROBANTE_ESPERA_MS) || 10000;
+                return [4 /*yield*/, (0, espera_1.esperarConTope)(emision, topeMs)];
             case 3:
-                _f.trys.push([3, 13, , 23]);
-                URL_RESTOBAR = process.env.URL_RESTOBAR || 'http://localhost:3000';
-                return [4 /*yield*/, axios_1["default"].post("".concat(URL_RESTOBAR, "/bot/generar-comprobante"), {
-                        idorg: Number(idorg), idsede: Number(idsede), idpedido: Number(prev.idpedido),
-                        tipo: tipo,
-                        num_doc: numDoc,
-                        items: items,
-                        subtotales: subtotales
-                    }, { timeout: 40000, headers: { 'x-bot-key': botKey } })];
+                resultado = _c.sent();
+                if (resultado === espera_1.EN_PROCESO) {
+                    return [2 /*return*/, res.status(200).json({
+                            success: false,
+                            en_proceso: true,
+                            error: 'tu comprobante se está generando; dile al cliente que en unos segundos te lo vuelva a pedir y vuelve a llamar a esta herramienta con los mismos datos'
+                        })];
+                }
+                return [2 /*return*/, res.status(200).json(resultado)];
             case 4:
-                resp = _f.sent();
-                d = resp.data;
-                if (!!(d === null || d === void 0 ? void 0 : d.success)) return [3 /*break*/, 9];
-                if (!((d === null || d === void 0 ? void 0 : d.reintentable) === false)) return [3 /*break*/, 6];
-                // Estado incierto o definitivo (apifac caído, montos, sede):
-                // bloquear reintentos del bot para no duplicar documentos.
-                return [4 /*yield*/, marcar({ estado: 'bloqueado', error: (d === null || d === void 0 ? void 0 : d.error) || 'el comprobante quedó en proceso; solicítalo en caja' })];
-            case 5:
-                // Estado incierto o definitivo (apifac caído, montos, sede):
-                // bloquear reintentos del bot para no duplicar documentos.
-                _f.sent();
-                return [3 /*break*/, 8];
-            case 6: 
-            // Error corregible (ej. RUC mal escrito): liberar para reintento.
-            return [4 /*yield*/, liberar()];
-            case 7:
-                // Error corregible (ej. RUC mal escrito): liberar para reintento.
-                _f.sent();
-                _f.label = 8;
-            case 8: return [2 /*return*/, res.status(200).json({ success: false, error: (d === null || d === void 0 ? void 0 : d.error) || 'no se pudo emitir el comprobante en este momento' })];
-            case 9:
-                _f.trys.push([9, 11, , 12]);
-                return [4 /*yield*/, marcar({ numero: d.numero, url_pdf: d.url_pdf, num_doc: numDoc, external_id: d.external_id })];
-            case 10:
-                _f.sent();
-                return [3 /*break*/, 12];
-            case 11:
-                e_1 = _f.sent();
-                logger_1.logger.error("generar-comprobante: EMITIDO ".concat(d.numero, " (").concat(d.external_id, ") pero NO persistido para sesi\u00F3n ").concat(session_id_1, ":"), e_1 === null || e_1 === void 0 ? void 0 : e_1.message);
-                return [3 /*break*/, 12];
-            case 12: return [2 /*return*/, res.status(200).json({ success: true, numero: d.numero, url_pdf: d.url_pdf })];
-            case 13:
-                e_2 = _f.sent();
-                status = (_e = e_2 === null || e_2 === void 0 ? void 0 : e_2.response) === null || _e === void 0 ? void 0 : _e.status;
-                if (!(status === 401 || status === 403)) return [3 /*break*/, 18];
-                logger_1.logger.error('generar-comprobante: backend-pedidos rechazó la key (CHATBOT_BOT_KEY desincronizada)');
-                _f.label = 14;
-            case 14:
-                _f.trys.push([14, 16, , 17]);
-                return [4 /*yield*/, liberar()];
-            case 15:
-                _f.sent();
-                return [3 /*break*/, 17];
-            case 16:
-                _c = _f.sent();
-                return [3 /*break*/, 17];
-            case 17: return [2 /*return*/, res.status(200).json({ success: false, error: 'la emisión de comprobantes no está disponible en este momento; solicítalo en caja' })];
-            case 18:
-                // Red caída a mitad de camino = estado incierto: NO liberar (el CPE
-                // pudo emitirse); que lo resuelva caja antes que duplicar.
-                logger_1.logger.error('generar-comprobante: fallo llamando a backend-pedidos:', e_2 === null || e_2 === void 0 ? void 0 : e_2.message);
-                _f.label = 19;
-            case 19:
-                _f.trys.push([19, 21, , 22]);
-                return [4 /*yield*/, marcar({ estado: 'bloqueado', error: 'el comprobante quedó en proceso; solicítalo en caja' })];
-            case 20:
-                _f.sent();
-                return [3 /*break*/, 22];
-            case 21:
-                _d = _f.sent();
-                return [3 /*break*/, 22];
-            case 22: return [2 /*return*/, res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; solicítalo en caja' })];
-            case 23: return [3 /*break*/, 25];
-            case 24:
-                error_2 = _f.sent();
+                error_2 = _c.sent();
                 logger_1.logger.error('Error en /generar-comprobante:', error_2 === null || error_2 === void 0 ? void 0 : error_2.message);
                 return [2 /*return*/, res.status(200).json({ success: false, error: 'no se pudo generar el comprobante en este momento; puedes pedirlo en caja' })];
-            case 25: return [2 /*return*/];
+            case 5: return [2 /*return*/];
         }
     });
 }); });

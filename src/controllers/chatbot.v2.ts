@@ -12,6 +12,7 @@ import { JsonPrintService } from "../services/json.print.services";
 import { generarYSubirTicket } from "../services/ticket.image.service";
 import { generarCartaTachada, resolverCartaTachado } from "../services/carta.tachado.service";
 import { leerIndice } from "../services/carta.indice.service";
+import { variantesTelefono } from "../services/telefono";
 import axios from "axios";
 import { logger } from '../utils/logger';
 
@@ -2625,13 +2626,15 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
         });
 
         // Nota manual del cliente (regla fija que el dueño define en el panel Piter).
-        // Match tolerante por teléfono, igual que el lookup de cliente de arriba.
-        const referenciaDB: any = await prisma.$queryRaw`
-            SELECT referencia FROM chatbot_cliente_referencia
-            WHERE idsede = ${idsede}
-              AND REPLACE(telefono, ' ', '') LIKE ${'%' + telefonoLimpio + '%'}
-            ORDER BY idchatbot_cliente_referencia DESC LIMIT 1`;
-        const referencia_chatbot = referenciaDB?.[0]?.referencia || '';
+        // Antes era `guardado LIKE %telefono_completo%`: una nota guardada con 9 dígitos
+        // ("906…") nunca contenía el "51906…" que llega de WhatsApp y el bot no la veía.
+        // Ahora se busca por las variantes del mismo número (canónica + legacy 9 dígitos).
+        const referenciaDB = await prisma.chatbot_cliente_referencia.findFirst({
+            where: { idsede: Number(idsede), telefono: { in: variantesTelefono(telefonoLimpio) } },
+            orderBy: { updated_at: 'desc' },
+            select: { referencia: true }
+        });
+        const referencia_chatbot = referenciaDB?.referencia || '';
 
         res.status(200).json({
             negocio: negocio,

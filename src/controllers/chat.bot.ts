@@ -8,6 +8,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { construirIndice, leerIndice, guardarIndice } from "../services/carta.indice.service";
 import { generarCartaTachada, invalidarVentana } from "../services/carta.tachado.service";
 import { auth, authSede } from "../middleware/auth";
+import { normalizarTelefono, variantesTelefono } from "../services/telefono";
 import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
@@ -1052,32 +1053,55 @@ router.get("/get-telefono-bloqueado/:telefono/:idsede", async (req, res) => {
 // guardar / actualizar la referencia (nota manual) de un cliente para el chatbot.
 // El chatbot la lee en /contexto y la respeta como regla fija del cliente.
 router.post("/guardar-referencia-cliente", async (req, res, next) => {
-    const { idsede, telefono, referencia } = req.body;
-    const tel = String(telefono ?? '').trim();
-    if (!idsede || !tel) return res.status(400).send({ error: 'idsede y telefono son requeridos' });
-    const texto = String(referencia ?? '').trim();
-    // referencia vacía = borrar la nota (upsert con texto vacío no aporta).
-    if (texto === '') {
+    const idsede = Number(req.body?.idsede);
+    // Siempre en forma canónica (51 + 9 dígitos): el panel recibe el número de
+    // WhatsApp y el operador lo teclea sin 51; antes quedaban en formatos distintos.
+    const tel = normalizarTelefono(req.body?.telefono);
+    if (!Number.isInteger(idsede) || !tel) return res.status(400).send({ error: 'idsede y telefono son requeridos' });
+    const texto = String(req.body?.referencia ?? '').trim();
+    try {
+        // Se borran también las variantes legacy (ej. guardada con 9 dígitos) para
+        // que no quede una nota vieja duplicada compitiendo con la nueva.
         await prisma.chatbot_cliente_referencia.deleteMany({
-            where: { idsede: Number(idsede), telefono: tel }
-        }).catch(next);
-        return res.status(200).send({ referencia: '' });
+            where: { idsede, telefono: { in: variantesTelefono(tel) } }
+        });
+        // referencia vacía = borrar la nota.
+        if (texto === '') return res.status(200).send({ referencia: '' });
+        const rpt = await prisma.chatbot_cliente_referencia.create({
+            data: { idsede, telefono: tel, referencia: texto }
+        });
+        res.status(200).send(rpt);
+    } catch (err) {
+        next(err);
     }
-    const rpt = await prisma.chatbot_cliente_referencia.upsert({
-        where: { idsede_telefono: { idsede: Number(idsede), telefono: tel } },
-        update: { referencia: texto, updated_at: new Date() },
-        create: { idsede: Number(idsede), telefono: tel, referencia: texto }
-    }).catch(next);
-    res.status(200).send(rpt);
 })
 
-// consultar la referencia (nota manual) de un cliente
-router.get("/get-referencia-cliente/:telefono/:idsede", async (req, res) => {
-    const { telefono, idsede } = req.params;
-    const rpt = await prisma.chatbot_cliente_referencia.findUnique({
-        where: { idsede_telefono: { idsede: Number(idsede), telefono: telefono } }
-    });
-    res.status(200).send({ referencia: rpt?.referencia || '' });
+// consultar la referencia (nota manual) de un cliente — tolerante al formato
+router.get("/get-referencia-cliente/:telefono/:idsede", async (req, res, next) => {
+    try {
+        const rpt = await prisma.chatbot_cliente_referencia.findFirst({
+            where: { idsede: Number(req.params.idsede), telefono: { in: variantesTelefono(req.params.telefono) } },
+            orderBy: { updated_at: 'desc' }
+        });
+        res.status(200).send({ referencia: rpt?.referencia || '' });
+    } catch (err) {
+        next(err);
+    }
+})
+
+// Listado de clientes con referencia de la sede (pestaña "Con referencia" del panel).
+// Lleva auth + authSede: son datos de clientes y sin candado cualquiera los leería.
+router.get("/referencias-cliente/:idsede", auth, authSede, async (req, res, next) => {
+    try {
+        const rpt = await prisma.chatbot_cliente_referencia.findMany({
+            where: { idsede: Number(req.params.idsede) },
+            select: { telefono: true, referencia: true, updated_at: true },
+            orderBy: { updated_at: 'desc' }
+        });
+        res.status(200).send(rpt);
+    } catch (err) {
+        next(err);
+    }
 })
 
 // horarios por dia y hora

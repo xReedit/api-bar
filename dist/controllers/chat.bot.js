@@ -84,6 +84,7 @@ var s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 var carta_indice_service_1 = require("../services/carta.indice.service");
 var carta_tachado_service_1 = require("../services/carta.tachado.service");
 var auth_1 = require("../middleware/auth");
+var telefono_1 = require("../services/telefono");
 var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
 var router = express.Router();
@@ -1307,48 +1308,91 @@ router.get("/get-telefono-bloqueado/:telefono/:idsede", function (req, res) { re
 // guardar / actualizar la referencia (nota manual) de un cliente para el chatbot.
 // El chatbot la lee en /contexto y la respeta como regla fija del cliente.
 router.post("/guardar-referencia-cliente", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, idsede, telefono, referencia, tel, texto, rpt;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    var idsede, tel, texto, rpt, err_3;
+    var _a, _b, _c, _d;
+    return __generator(this, function (_e) {
+        switch (_e.label) {
             case 0:
-                _a = req.body, idsede = _a.idsede, telefono = _a.telefono, referencia = _a.referencia;
-                tel = String(telefono !== null && telefono !== void 0 ? telefono : '').trim();
-                if (!idsede || !tel)
+                idsede = Number((_a = req.body) === null || _a === void 0 ? void 0 : _a.idsede);
+                tel = (0, telefono_1.normalizarTelefono)((_b = req.body) === null || _b === void 0 ? void 0 : _b.telefono);
+                if (!Number.isInteger(idsede) || !tel)
                     return [2 /*return*/, res.status(400).send({ error: 'idsede y telefono son requeridos' })];
-                texto = String(referencia !== null && referencia !== void 0 ? referencia : '').trim();
-                if (!(texto === '')) return [3 /*break*/, 2];
-                return [4 /*yield*/, prisma.chatbot_cliente_referencia.deleteMany({
-                        where: { idsede: Number(idsede), telefono: tel }
-                    })["catch"](next)];
+                texto = String((_d = (_c = req.body) === null || _c === void 0 ? void 0 : _c.referencia) !== null && _d !== void 0 ? _d : '').trim();
+                _e.label = 1;
             case 1:
-                _b.sent();
-                return [2 /*return*/, res.status(200).send({ referencia: '' })];
-            case 2: return [4 /*yield*/, prisma.chatbot_cliente_referencia.upsert({
-                    where: { idsede_telefono: { idsede: Number(idsede), telefono: tel } },
-                    update: { referencia: texto, updated_at: new Date() },
-                    create: { idsede: Number(idsede), telefono: tel, referencia: texto }
-                })["catch"](next)];
+                _e.trys.push([1, 4, , 5]);
+                // Se borran también las variantes legacy (ej. guardada con 9 dígitos) para
+                // que no quede una nota vieja duplicada compitiendo con la nueva.
+                return [4 /*yield*/, prisma.chatbot_cliente_referencia.deleteMany({
+                        where: { idsede: idsede, telefono: { "in": (0, telefono_1.variantesTelefono)(tel) } }
+                    })];
+            case 2:
+                // Se borran también las variantes legacy (ej. guardada con 9 dígitos) para
+                // que no quede una nota vieja duplicada compitiendo con la nueva.
+                _e.sent();
+                // referencia vacía = borrar la nota.
+                if (texto === '')
+                    return [2 /*return*/, res.status(200).send({ referencia: '' })];
+                return [4 /*yield*/, prisma.chatbot_cliente_referencia.create({
+                        data: { idsede: idsede, telefono: tel, referencia: texto }
+                    })];
             case 3:
-                rpt = _b.sent();
+                rpt = _e.sent();
                 res.status(200).send(rpt);
-                return [2 /*return*/];
+                return [3 /*break*/, 5];
+            case 4:
+                err_3 = _e.sent();
+                next(err_3);
+                return [3 /*break*/, 5];
+            case 5: return [2 /*return*/];
         }
     });
 }); });
-// consultar la referencia (nota manual) de un cliente
-router.get("/get-referencia-cliente/:telefono/:idsede", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, telefono, idsede, rpt;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+// consultar la referencia (nota manual) de un cliente — tolerante al formato
+router.get("/get-referencia-cliente/:telefono/:idsede", function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var rpt, err_4;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _a = req.params, telefono = _a.telefono, idsede = _a.idsede;
-                return [4 /*yield*/, prisma.chatbot_cliente_referencia.findUnique({
-                        where: { idsede_telefono: { idsede: Number(idsede), telefono: telefono } }
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, prisma.chatbot_cliente_referencia.findFirst({
+                        where: { idsede: Number(req.params.idsede), telefono: { "in": (0, telefono_1.variantesTelefono)(req.params.telefono) } },
+                        orderBy: { updated_at: 'desc' }
                     })];
             case 1:
-                rpt = _b.sent();
+                rpt = _a.sent();
                 res.status(200).send({ referencia: (rpt === null || rpt === void 0 ? void 0 : rpt.referencia) || '' });
-                return [2 /*return*/];
+                return [3 /*break*/, 3];
+            case 2:
+                err_4 = _a.sent();
+                next(err_4);
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); });
+// Listado de clientes con referencia de la sede (pestaña "Con referencia" del panel).
+// Lleva auth + authSede: son datos de clientes y sin candado cualquiera los leería.
+router.get("/referencias-cliente/:idsede", auth_1.auth, auth_1.authSede, function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var rpt, err_5;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, prisma.chatbot_cliente_referencia.findMany({
+                        where: { idsede: Number(req.params.idsede) },
+                        select: { telefono: true, referencia: true, updated_at: true },
+                        orderBy: { updated_at: 'desc' }
+                    })];
+            case 1:
+                rpt = _a.sent();
+                res.status(200).send(rpt);
+                return [3 /*break*/, 3];
+            case 2:
+                err_5 = _a.sent();
+                next(err_5);
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); });

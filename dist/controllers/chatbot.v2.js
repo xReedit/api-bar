@@ -101,6 +101,7 @@ var json_print_services_1 = require("../services/json.print.services");
 var ticket_image_service_1 = require("../services/ticket.image.service");
 var carta_tachado_service_1 = require("../services/carta.tachado.service");
 var carta_indice_service_1 = require("../services/carta.indice.service");
+var telefono_1 = require("../services/telefono");
 var axios_1 = __importDefault(require("axios"));
 var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
@@ -2196,11 +2197,11 @@ router.get('/info-pedido/:session_id', function (req, res) { return __awaiter(vo
 }); });
 router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, idorg, idsede, telefono, sede, categoria, sedeConfig, tiposEntrega, metodosPago, idsAceptados_2, horariosDB, horaActual, diaActual, mapaDias_2, horarioAtencion_2, horarioPrincipal_2, diasArray, parametros, modoCartaTachado, agotadosManual, idx, estaAbierto, nombreDiaActual, horaActualStr, horaAbre, horaCierra, generarMensajeHorario, negocio, telefonoLimpio, clienteDB, cliente, idclienteDB, totalPedidos, direccionPwa, historialDB, historial, rpt, carta, opcionesPorItem_2, productos_2, itemsVistos_2, referenciaDB, referencia_chatbot, error_15;
-    var _b, _c, _d, _e, _f, _g, _h, _j;
-    return __generator(this, function (_k) {
-        switch (_k.label) {
+    var _b, _c, _d, _e, _f, _g, _h;
+    return __generator(this, function (_j) {
+        switch (_j.label) {
             case 0:
-                _k.trys.push([0, 17, , 18]);
+                _j.trys.push([0, 17, , 18]);
                 _a = req.params, idorg = _a.idorg, idsede = _a.idsede, telefono = _a.telefono;
                 return [4 /*yield*/, prisma.sede.findFirst({
                         where: {
@@ -2217,7 +2218,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 1:
-                sede = _k.sent();
+                sede = _j.sent();
                 if (!sede) {
                     return [2 /*return*/, res.status(404).json({
                             success: false,
@@ -2238,7 +2239,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 2:
-                categoria = _k.sent();
+                categoria = _j.sent();
                 return [4 /*yield*/, prisma.sede_costo_delivery.findFirst({
                         where: {
                             idsede: Number(idsede),
@@ -2246,7 +2247,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 3:
-                sedeConfig = _k.sent();
+                sedeConfig = _j.sent();
                 return [4 /*yield*/, prisma.tipo_consumo.findMany({
                         where: {
                             idsede: Number(idsede),
@@ -2259,7 +2260,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 4:
-                tiposEntrega = _k.sent();
+                tiposEntrega = _j.sent();
                 return [4 /*yield*/, prisma.tipo_pago.findMany({
                         where: {
                             estado: 0,
@@ -2271,7 +2272,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         }
                     })];
             case 5:
-                metodosPago = _k.sent();
+                metodosPago = _j.sent();
                 idsAceptados_2 = String(sede.metodo_pago_aceptados_chatbot || '')
                     .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
                 if (idsAceptados_2.length > 0) {
@@ -2279,7 +2280,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 }
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_20 || (templateObject_20 = __makeTemplateObject(["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"], ["\n            SELECT de as hora_inicio, a as hora_fin, numdia, desdia \n            FROM sede_horario_trabajo \n            WHERE idsede = ", " AND estado = 0\n            ORDER BY idsede_horario_trabajo"])), idsede)];
             case 6:
-                horariosDB = _k.sent();
+                horariosDB = _j.sent();
                 horaActual = new Date();
                 diaActual = horaActual.getDay();
                 mapaDias_2 = {
@@ -2319,11 +2320,11 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 if (!(modoCartaTachado === 'manual')) return [3 /*break*/, 8];
                 return [4 /*yield*/, (0, carta_indice_service_1.leerIndice)(Number(idsede))];
             case 7:
-                idx = _k.sent();
+                idx = _j.sent();
                 if (!idx)
                     logger_1.logger.warn('[contexto] modo manual sin indice, agotados_manual vacio', idsede);
                 agotadosManual = ((idx === null || idx === void 0 ? void 0 : idx.lineas) || []).filter(function (l) { return l.agotado; }).map(function (l) { return l.texto; });
-                _k.label = 8;
+                _j.label = 8;
             case 8:
                 estaAbierto = false;
                 nombreDiaActual = mapaDias_2[diaActual === 0 ? '1' : (diaActual + 1).toString()];
@@ -2387,19 +2388,19 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 telefonoLimpio = telefono.replace(/\s/g, '');
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_21 || (templateObject_21 = __makeTemplateObject(["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"], ["\n            SELECT c.idcliente, c.nombres, c.direccion, c.telefono \n            FROM cliente c \n            INNER JOIN cliente_sede cs ON cs.idcliente = c.idcliente\n            WHERE cs.idsede = ", " AND c.idorg = ", " \n            AND REPLACE(c.telefono, ' ', '') LIKE ", "\n            LIMIT 1"])), idsede, idorg, '%' + telefonoLimpio + '%')];
             case 9:
-                clienteDB = _k.sent();
+                clienteDB = _j.sent();
                 cliente = null;
                 if (!(clienteDB && clienteDB.length > 0)) return [3 /*break*/, 13];
                 idclienteDB = clienteDB[0].idcliente;
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_22 || (templateObject_22 = __makeTemplateObject(["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"], ["\n                SELECT COUNT(*) as total FROM pedido\n                WHERE idcliente = ", "\n                AND idsede = ", "\n                AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"])), idclienteDB, idsede)];
             case 10:
-                totalPedidos = _k.sent();
+                totalPedidos = _j.sent();
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_23 || (templateObject_23 = __makeTemplateObject(["\n                SELECT direccion, referencia, latitude, longitude FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"], ["\n                SELECT direccion, referencia, latitude, longitude FROM cliente_pwa_direccion\n                WHERE idcliente = ", "\n                ORDER BY idcliente_pwa_direccion DESC LIMIT 1"])), idclienteDB)];
             case 11:
-                direccionPwa = _k.sent();
+                direccionPwa = _j.sent();
                 return [4 /*yield*/, prisma.$queryRaw(templateObject_24 || (templateObject_24 = __makeTemplateObject(["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"], ["\n                SELECT DATE_FORMAT(p.fecha_hora, '%d/%m/%Y') AS fecha,\n                       tc.descripcion AS canal,\n                       (SELECT GROUP_CONCAT(CONCAT(pd.cantidad,'x ',pd.descripcion) SEPARATOR ', ')\n                        FROM pedido_detalle pd WHERE pd.idpedido = p.idpedido) AS items,\n                       (SELECT GROUP_CONCAT(DISTINCT tp.descripcion SEPARATOR ', ')\n                        FROM registro_pago_detalle rpd\n                        INNER JOIN tipo_pago tp USING(idtipo_pago)\n                        WHERE rpd.idregistro_pago = p.idregistro_pago) AS pago\n                FROM pedido p\n                INNER JOIN tipo_consumo tc USING(idtipo_consumo)\n                WHERE p.idcliente = ", " AND p.idsede = ", "\n                ORDER BY p.idpedido DESC LIMIT 5"])), idclienteDB, idsede)];
             case 12:
-                historialDB = _k.sent();
+                historialDB = _j.sent();
                 historial = (historialDB || [])
                     .filter(function (h) { return h.items; })
                     .map(function (h) { return ({
@@ -2422,14 +2423,14 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                     historial: historial,
                     encontrado: true
                 };
-                _k.label = 13;
+                _j.label = 13;
             case 13: return [4 /*yield*/, prisma.$queryRaw(templateObject_25 || (templateObject_25 = __makeTemplateObject(["call porcedure_pwa_pedido_carta(", ",", ",1)"], ["call porcedure_pwa_pedido_carta(", ",", ",1)"])), idorg, idsede)];
             case 14:
-                rpt = _k.sent();
+                rpt = _j.sent();
                 carta = ((_h = rpt[0]) === null || _h === void 0 ? void 0 : _h.f0) || [];
                 return [4 /*yield*/, mapaOpcionesPorItem(Number(idsede))];
             case 15:
-                opcionesPorItem_2 = _k.sent();
+                opcionesPorItem_2 = _j.sent();
                 productos_2 = [];
                 itemsVistos_2 = new Set();
                 carta.forEach(function (categoria) {
@@ -2456,10 +2457,14 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                         });
                     });
                 });
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_26 || (templateObject_26 = __makeTemplateObject(["\n            SELECT referencia FROM chatbot_cliente_referencia\n            WHERE idsede = ", "\n              AND REPLACE(telefono, ' ', '') LIKE ", "\n            ORDER BY idchatbot_cliente_referencia DESC LIMIT 1"], ["\n            SELECT referencia FROM chatbot_cliente_referencia\n            WHERE idsede = ", "\n              AND REPLACE(telefono, ' ', '') LIKE ", "\n            ORDER BY idchatbot_cliente_referencia DESC LIMIT 1"])), idsede, '%' + telefonoLimpio + '%')];
+                return [4 /*yield*/, prisma.chatbot_cliente_referencia.findFirst({
+                        where: { idsede: Number(idsede), telefono: { "in": (0, telefono_1.variantesTelefono)(telefonoLimpio) } },
+                        orderBy: { updated_at: 'desc' },
+                        select: { referencia: true }
+                    })];
             case 16:
-                referenciaDB = _k.sent();
-                referencia_chatbot = ((_j = referenciaDB === null || referenciaDB === void 0 ? void 0 : referenciaDB[0]) === null || _j === void 0 ? void 0 : _j.referencia) || '';
+                referenciaDB = _j.sent();
+                referencia_chatbot = (referenciaDB === null || referenciaDB === void 0 ? void 0 : referenciaDB.referencia) || '';
                 res.status(200).json({
                     negocio: negocio,
                     cliente: cliente,
@@ -2468,7 +2473,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                 });
                 return [3 /*break*/, 18];
             case 17:
-                error_15 = _k.sent();
+                error_15 = _j.sent();
                 // Log del error real: antes era mudo y un fallo aquí dejaba al bot
                 // sin carta/menú sin pista alguna en los logs.
                 logger_1.logger.error('Error en /chatbot/contexto:', error_15);
@@ -2482,4 +2487,4 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
     });
 }); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18, templateObject_19, templateObject_20, templateObject_21, templateObject_22, templateObject_23, templateObject_24, templateObject_25, templateObject_26;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15, templateObject_16, templateObject_17, templateObject_18, templateObject_19, templateObject_20, templateObject_21, templateObject_22, templateObject_23, templateObject_24, templateObject_25;

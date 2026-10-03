@@ -55,7 +55,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.guardarRespuesta = exports.validarVenta = exports.buscarPreguntas = exports.buscarPublicacion = exports.horaLima = exports.calcularMetricas = exports.validarRespuestas = exports.normalizarPreguntas = exports.TOPE_DIARIO_QR = exports.VENTA_DIAS = exports.TOKEN_RE = exports.ErrorEncuesta = void 0;
+exports.guardarRespuesta = exports.validarVenta = exports.contarRespuestasHoy = exports.buscarPreguntas = exports.buscarPublicacion = exports.horaLima = exports.calcularMetricas = exports.validarRespuestas = exports.normalizarPreguntas = exports.TOPE_DIARIO_QR = exports.VENTA_DIAS = exports.TOKEN_RE = exports.ErrorEncuesta = void 0;
 // Encuesta publica: resolver el link, validar la respuesta del cliente y guardarla.
 // Tablas del POS legacy (migraciones 031/032): enc_canal_sede, enc_publicacion, enc_encuesta,
 // enc_pregunta, enc_respuesta, enc_respuesta_detalle. Solo $queryRaw parametrizado: estas tablas no
@@ -225,6 +225,20 @@ var buscarPreguntas = function (idencuesta) { return __awaiter(void 0, void 0, v
     });
 }); };
 exports.buscarPreguntas = buscarPreguntas;
+/** Respuestas del dia en la sede (todos los canales). Lo muestra la tablet para invitar a participar. */
+var contarRespuestasHoy = function (idsede) { return __awaiter(void 0, void 0, void 0, function () {
+    var filas;
+    var _a, _b;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n        SELECT COUNT(*) AS n FROM enc_respuesta WHERE idsede = ", " AND fecha_local = ", ""], ["\n        SELECT COUNT(*) AS n FROM enc_respuesta WHERE idsede = ", " AND fecha_local = ", ""])), idsede, (0, exports.horaLima)().fecha)];
+            case 1:
+                filas = _c.sent();
+                return [2 /*return*/, Number((_b = (_a = filas[0]) === null || _a === void 0 ? void 0 : _a.n) !== null && _b !== void 0 ? _b : 0)];
+        }
+    });
+}); };
+exports.contarRespuestasHoy = contarRespuestasHoy;
 /**
  * Venta del link de comprobante: debe ser de la misma sede, de hace menos de VENTA_DIAS y sin responder.
  * La firma ya se valido antes; aqui solo reglas de negocio.
@@ -235,7 +249,7 @@ var validarVenta = function (idpago, idsede, ahora) {
         var filas, f, fecha;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n        SELECT rp.idregistro_pago, rp.idsede, rp.fecha_hora,\n               p.idpedido, p.idusuario, p.nummesa, p.total,\n               (SELECT COUNT(*) FROM enc_respuesta r WHERE r.idregistro_pago = rp.idregistro_pago) AS respondidas\n        FROM registro_pago rp\n        LEFT JOIN pedido p ON p.idpedido = (SELECT MIN(p2.idpedido) FROM pedido p2 WHERE p2.idregistro_pago = rp.idregistro_pago)\n        WHERE rp.idregistro_pago = ", "\n        LIMIT 1"], ["\n        SELECT rp.idregistro_pago, rp.idsede, rp.fecha_hora,\n               p.idpedido, p.idusuario, p.nummesa, p.total,\n               (SELECT COUNT(*) FROM enc_respuesta r WHERE r.idregistro_pago = rp.idregistro_pago) AS respondidas\n        FROM registro_pago rp\n        LEFT JOIN pedido p ON p.idpedido = (SELECT MIN(p2.idpedido) FROM pedido p2 WHERE p2.idregistro_pago = rp.idregistro_pago)\n        WHERE rp.idregistro_pago = ", "\n        LIMIT 1"])), idpago)];
+                case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n        SELECT rp.idregistro_pago, rp.idsede, rp.fecha_hora,\n               p.idpedido, p.idusuario, p.nummesa, p.total,\n               (SELECT COUNT(*) FROM enc_respuesta r WHERE r.idregistro_pago = rp.idregistro_pago) AS respondidas\n        FROM registro_pago rp\n        LEFT JOIN pedido p ON p.idpedido = (SELECT MIN(p2.idpedido) FROM pedido p2 WHERE p2.idregistro_pago = rp.idregistro_pago)\n        WHERE rp.idregistro_pago = ", "\n        LIMIT 1"], ["\n        SELECT rp.idregistro_pago, rp.idsede, rp.fecha_hora,\n               p.idpedido, p.idusuario, p.nummesa, p.total,\n               (SELECT COUNT(*) FROM enc_respuesta r WHERE r.idregistro_pago = rp.idregistro_pago) AS respondidas\n        FROM registro_pago rp\n        LEFT JOIN pedido p ON p.idpedido = (SELECT MIN(p2.idpedido) FROM pedido p2 WHERE p2.idregistro_pago = rp.idregistro_pago)\n        WHERE rp.idregistro_pago = ", "\n        LIMIT 1"])), idpago)];
                 case 1:
                     filas = _a.sent();
                     f = filas[0];
@@ -283,24 +297,24 @@ var guardarRespuesta = function (datos) { return __awaiter(void 0, void 0, void 
                         var _a, _b, _c, _d, _e, _f;
                         return __generator(this, function (_g) {
                             switch (_g.label) {
-                                case 0: return [4 /*yield*/, tx.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n                SELECT idenc_encuesta FROM enc_publicacion\n                WHERE idenc_publicacion = ", " AND activa = 1 LOCK IN SHARE MODE"], ["\n                SELECT idenc_encuesta FROM enc_publicacion\n                WHERE idenc_publicacion = ", " AND activa = 1 LOCK IN SHARE MODE"])), pub.idenc_publicacion)];
+                                case 0: return [4 /*yield*/, tx.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n                SELECT idenc_encuesta FROM enc_publicacion\n                WHERE idenc_publicacion = ", " AND activa = 1 LOCK IN SHARE MODE"], ["\n                SELECT idenc_encuesta FROM enc_publicacion\n                WHERE idenc_publicacion = ", " AND activa = 1 LOCK IN SHARE MODE"])), pub.idenc_publicacion)];
                                 case 1:
                                     vigente = _g.sent();
                                     if (!vigente[0] || Number(vigente[0].idenc_encuesta) !== pub.idenc_encuesta) {
                                         throw new ErrorEncuesta(409, 'ENCUESTA_CAMBIO', 'La encuesta se actualizo. Vuelve a empezar.');
                                     }
                                     if (!(pub.canal === 'qr_local' && ip)) return [3 /*break*/, 3];
-                                    return [4 /*yield*/, tx.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n                    SELECT COUNT(*) AS respuestas_hoy FROM enc_respuesta\n                    WHERE ip = ", " AND idenc_publicacion = ", " AND respondido_en >= ", ""], ["\n                    SELECT COUNT(*) AS respuestas_hoy FROM enc_respuesta\n                    WHERE ip = ", " AND idenc_publicacion = ", " AND respondido_en >= ", ""])), ip, pub.idenc_publicacion, fecha + ' 00:00:00')];
+                                    return [4 /*yield*/, tx.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n                    SELECT COUNT(*) AS respuestas_hoy FROM enc_respuesta\n                    WHERE ip = ", " AND idenc_publicacion = ", " AND respondido_en >= ", ""], ["\n                    SELECT COUNT(*) AS respuestas_hoy FROM enc_respuesta\n                    WHERE ip = ", " AND idenc_publicacion = ", " AND respondido_en >= ", ""])), ip, pub.idenc_publicacion, fecha + ' 00:00:00')];
                                 case 2:
                                     hoy = _g.sent();
                                     if (Number((_b = (_a = hoy[0]) === null || _a === void 0 ? void 0 : _a.respuestas_hoy) !== null && _b !== void 0 ? _b : 0) >= exports.TOPE_DIARIO_QR) {
                                         throw new ErrorEncuesta(429, 'DEMASIADAS_SOLICITUDES', 'Ya recibimos muchas respuestas desde esta conexion hoy. ¡Gracias!');
                                     }
                                     _g.label = 3;
-                                case 3: return [4 /*yield*/, tx.$executeRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n                INSERT INTO enc_respuesta (idenc_publicacion, idenc_encuesta, idorg, idsede, canal, respondido_en, fecha_local,\n                    idregistro_pago, idpedido, idusuario_atendio, nummesa, total_pedido,\n                    csat_prom, nps_valor, nps_cat, ces_valor, tiene_comentario, ip)\n                VALUES (", ", ", ", ", ", ", ", ", ", ", ", ", ",\n                    ", ", ", ", ", ",\n                    ", ", ", ",\n                    ", ", ", ", ", ", ", ", ", ", ", ")"], ["\n                INSERT INTO enc_respuesta (idenc_publicacion, idenc_encuesta, idorg, idsede, canal, respondido_en, fecha_local,\n                    idregistro_pago, idpedido, idusuario_atendio, nummesa, total_pedido,\n                    csat_prom, nps_valor, nps_cat, ces_valor, tiene_comentario, ip)\n                VALUES (", ", ", ", ", ", ", ", ", ", ", ", ", ",\n                    ", ", ", ", ", ",\n                    ", ", ", ",\n                    ", ", ", ", ", ", ", ", ", ", ", ")"])), pub.idenc_publicacion, pub.idenc_encuesta, pub.idorg, pub.idsede, pub.canal, fechaHora, fecha, (_c = venta === null || venta === void 0 ? void 0 : venta.idregistro_pago) !== null && _c !== void 0 ? _c : null, (_d = venta === null || venta === void 0 ? void 0 : venta.idpedido) !== null && _d !== void 0 ? _d : null, (_e = venta === null || venta === void 0 ? void 0 : venta.idusuario) !== null && _e !== void 0 ? _e : null, (_f = venta === null || venta === void 0 ? void 0 : venta.nummesa) !== null && _f !== void 0 ? _f : null, total, m.csat_prom, m.nps_valor, m.nps_cat, m.ces_valor, m.tiene_comentario, ip)];
+                                case 3: return [4 /*yield*/, tx.$executeRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["\n                INSERT INTO enc_respuesta (idenc_publicacion, idenc_encuesta, idorg, idsede, canal, respondido_en, fecha_local,\n                    idregistro_pago, idpedido, idusuario_atendio, nummesa, total_pedido,\n                    csat_prom, nps_valor, nps_cat, ces_valor, tiene_comentario, ip)\n                VALUES (", ", ", ", ", ", ", ", ", ", ", ", ", ",\n                    ", ", ", ", ", ",\n                    ", ", ", ",\n                    ", ", ", ", ", ", ", ", ", ", ", ")"], ["\n                INSERT INTO enc_respuesta (idenc_publicacion, idenc_encuesta, idorg, idsede, canal, respondido_en, fecha_local,\n                    idregistro_pago, idpedido, idusuario_atendio, nummesa, total_pedido,\n                    csat_prom, nps_valor, nps_cat, ces_valor, tiene_comentario, ip)\n                VALUES (", ", ", ", ", ", ", ", ", ", ", ", ", ",\n                    ", ", ", ", ", ",\n                    ", ", ", ",\n                    ", ", ", ", ", ", ", ", ", ", ", ")"])), pub.idenc_publicacion, pub.idenc_encuesta, pub.idorg, pub.idsede, pub.canal, fechaHora, fecha, (_c = venta === null || venta === void 0 ? void 0 : venta.idregistro_pago) !== null && _c !== void 0 ? _c : null, (_d = venta === null || venta === void 0 ? void 0 : venta.idpedido) !== null && _d !== void 0 ? _d : null, (_e = venta === null || venta === void 0 ? void 0 : venta.idusuario) !== null && _e !== void 0 ? _e : null, (_f = venta === null || venta === void 0 ? void 0 : venta.nummesa) !== null && _f !== void 0 ? _f : null, total, m.csat_prom, m.nps_valor, m.nps_cat, m.ces_valor, m.tiene_comentario, ip)];
                                 case 4:
                                     _g.sent();
-                                    return [4 /*yield*/, tx.$queryRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["SELECT LAST_INSERT_ID() AS id"], ["SELECT LAST_INSERT_ID() AS id"])))];
+                                    return [4 /*yield*/, tx.$queryRaw(templateObject_8 || (templateObject_8 = __makeTemplateObject(["SELECT LAST_INSERT_ID() AS id"], ["SELECT LAST_INSERT_ID() AS id"])))];
                                 case 5:
                                     id = _g.sent();
                                     idrespuesta = id[0].id;
@@ -309,7 +323,7 @@ var guardarRespuesta = function (datos) { return __awaiter(void 0, void 0, void 
                                 case 6:
                                     if (!(_i < validas_1.length)) return [3 /*break*/, 9];
                                     v = validas_1[_i];
-                                    return [4 /*yield*/, tx.$executeRaw(templateObject_8 || (templateObject_8 = __makeTemplateObject(["\n                    INSERT INTO enc_respuesta_detalle (idenc_respuesta, idenc_pregunta, pregunta_texto, tipo, orden, valor_num, valor_texto)\n                    VALUES (", ", ", ", ", ", ", ", ", ",\n                        ", ", ", ")"], ["\n                    INSERT INTO enc_respuesta_detalle (idenc_respuesta, idenc_pregunta, pregunta_texto, tipo, orden, valor_num, valor_texto)\n                    VALUES (", ", ", ", ", ", ", ", ", ",\n                        ", ", ", ")"])), idrespuesta, v.pregunta.id, v.pregunta.texto, v.pregunta.tipo, v.pregunta.orden, v.valor_num, v.valor_texto)];
+                                    return [4 /*yield*/, tx.$executeRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["\n                    INSERT INTO enc_respuesta_detalle (idenc_respuesta, idenc_pregunta, pregunta_texto, tipo, orden, valor_num, valor_texto)\n                    VALUES (", ", ", ", ", ", ", ", ", ",\n                        ", ", ", ")"], ["\n                    INSERT INTO enc_respuesta_detalle (idenc_respuesta, idenc_pregunta, pregunta_texto, tipo, orden, valor_num, valor_texto)\n                    VALUES (", ", ", ", ", ", ", ", ", ",\n                        ", ", ", ")"])), idrespuesta, v.pregunta.id, v.pregunta.texto, v.pregunta.tipo, v.pregunta.orden, v.valor_num, v.valor_texto)];
                                 case 7:
                                     _g.sent();
                                     _g.label = 8;
@@ -335,4 +349,4 @@ var guardarRespuesta = function (datos) { return __awaiter(void 0, void 0, void 
     });
 }); };
 exports.guardarRespuesta = guardarRespuesta;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9;

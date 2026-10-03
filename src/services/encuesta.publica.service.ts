@@ -191,6 +191,13 @@ export const buscarPreguntas = async (idencuesta: number): Promise<Pregunta[]> =
         SELECT idenc_pregunta AS id, orden, tipo, texto, obligatorio, opciones
         FROM enc_pregunta WHERE idenc_encuesta = ${idencuesta} ORDER BY orden`);
 
+/** Respuestas del dia en la sede (todos los canales). Lo muestra la tablet para invitar a participar. */
+export const contarRespuestasHoy = async (idsede: number): Promise<number> => {
+    const filas = await prisma.$queryRaw<{ n: bigint }[]>`
+        SELECT COUNT(*) AS n FROM enc_respuesta WHERE idsede = ${idsede} AND fecha_local = ${horaLima().fecha}`;
+    return Number(filas[0]?.n ?? 0);
+};
+
 /**
  * Venta del link de comprobante: debe ser de la misma sede, de hace menos de VENTA_DIAS y sin responder.
  * La firma ya se valido antes; aqui solo reglas de negocio.

@@ -2,7 +2,10 @@
 // El panel recibe "51906828331" de WhatsApp pero el operador teclea "906828331":
 // sin normalizar, la nota se guardaba en un formato y se buscaba en el otro.
 export const normalizarTelefono = (raw: string): string => {
-    const d = String(raw ?? '').replace(/\D/g, '');
+    // WhatsApp puede mandar "51988938939:0@s.whatsapp.net": el ":0" es el
+    // dispositivo, no parte del número. Quitar solo no-dígitos lo pegaba al final.
+    const base = String(raw ?? '').split('@')[0].split(':')[0];
+    const d = base.replace(/\D/g, '');
     return d.length === 9 && d.startsWith('9') ? `51${d}` : d;
 };
 

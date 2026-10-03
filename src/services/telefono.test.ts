@@ -18,6 +18,11 @@ describe('normalizarTelefono', () => {
         expect(normalizarTelefono('123456789012345')).toBe('123456789012345');
     });
 
+    it('quita el sufijo de dispositivo de WhatsApp (":0") y el dominio del JID', () => {
+        expect(normalizarTelefono('51988938939:0')).toBe('51988938939');
+        expect(normalizarTelefono('51988938939:12@s.whatsapp.net')).toBe('51988938939');
+    });
+
     it('sin dígitos ⇒ cadena vacía', () => {
         expect(normalizarTelefono('  -- ')).toBe('');
     });

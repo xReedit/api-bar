@@ -103,6 +103,8 @@ var carta_tachado_service_1 = require("../services/carta.tachado.service");
 var carta_indice_service_1 = require("../services/carta.indice.service");
 var telefono_1 = require("../services/telefono");
 var espera_1 = require("../services/espera");
+// misma regla de stock que usa la imagen tachada (una sola definición)
+var menu_stock_1 = require("../services/menu.stock");
 var axios_1 = __importDefault(require("axios"));
 var logger_1 = require("../utils/logger");
 var prisma = new client_1.PrismaClient();
@@ -673,7 +675,7 @@ router.get("/menu/:idorg/:idsede", function (req, res) { return __awaiter(void 0
                                 return;
                             }
                             itemsVistos_1.add(claveUnica);
-                            var stockNumerico = item.cantidad === 'ND' ? 1000 : Number(item.cantidad) || 0;
+                            var stockNumerico = (0, menu_stock_1.stockNumerico)(item.cantidad);
                             var marcador = opcionesPorItem_1.get(Number(item.iditem));
                             productos_1.push({
                                 iditem: item.iditem,
@@ -2468,7 +2470,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', function (req, res) { return __
                                 return;
                             }
                             itemsVistos_2.add(claveUnica);
-                            var stockNumerico = item.cantidad === 'ND' ? 1000 : Number(item.cantidad) || 0;
+                            var stockNumerico = (0, menu_stock_1.stockNumerico)(item.cantidad);
                             var marcador = opcionesPorItem_2.get(Number(item.iditem));
                             productos_2.push({
                                 iditem: Number(item.iditem),

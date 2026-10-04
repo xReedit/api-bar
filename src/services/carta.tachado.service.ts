@@ -9,6 +9,7 @@ import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { leerIndice, urlCartaBase, type IndiceCarta, type LineaIndexada } from './carta.indice.service';
 import type { Caja } from './carta.ocr.service';
+import { itemsDelMenu } from './menu.stock';
 import { logger } from '../utils/logger';
 
 const bucket = () => process.env.AWS_BUCKET_NAME || 'papaya-comercio-files';
@@ -37,20 +38,11 @@ export const obtenerAgotados = async (
     idsede: number, modo: 'manual' | 'auto', idx: IndiceCarta, prisma: any
 ): Promise<LineaIndexada[]> => {
     if (modo === 'manual') return idx.lineas.filter((l) => l.agotado);
-    // auto: stock del día en carta_lista.cantidad <= 0, cruzado por iditem del match.
-    // is_visible_cliente invertido en carta_lista: 0 = visible (ver Task 3).
-    // cantidad = 'ND' es "sin control de stock" (siempre disponible; el contexto lo mapea
-    // a stock 1000): hay que excluirlo a mano porque MySQL castea 'ND' a 0 y tacharía todo
-    // el menú. Verificado en la sede 13: 150 filas ND / 87 con <= 0 / 43 con > 0.
-    const rows = await prisma.$queryRawUnsafe(
-        `SELECT DISTINCT cl.iditem
-         FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem
-         WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0
-           AND cl.cantidad IS NOT NULL AND cl.cantidad <> 'ND'
-           AND CAST(cl.cantidad AS DECIMAL(10,2)) <= 0`,
-        Number(idsede)
-    ) as { iditem: number }[];
-    const agotados = new Set((rows || []).map((r) => Number(r.iditem)));
+    // auto: agotado = stock <= 0 según la carta del día del procedure, el MISMO dato
+    // con el que el bot dice "se agotó" en la conversación (antes se leía
+    // carta_lista.cantidad aparte y no coincidía: el bot avisaba pero no se tachaba).
+    const items = await itemsDelMenu(prisma, idsede);
+    const agotados = new Set(items.filter((it) => it.stock <= 0).map((it) => it.iditem));
     return idx.lineas.filter((l) => l.iditem !== null && agotados.has(l.iditem));
 };
 

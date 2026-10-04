@@ -14,6 +14,8 @@ import { generarCartaTachada, resolverCartaTachado } from "../services/carta.tac
 import { leerIndice } from "../services/carta.indice.service";
 import { variantesTelefono } from "../services/telefono";
 import { esperarConTope, EN_PROCESO } from "../services/espera";
+// misma regla de stock que usa la imagen tachada (una sola definición)
+import { stockNumerico as stockDeItem } from "../services/menu.stock";
 import axios from "axios";
 import { logger } from '../utils/logger';
 
@@ -553,7 +555,7 @@ router.get("/menu/:idorg/:idsede", async (req, res) => {
                     
                     itemsVistos.add(claveUnica);
                     
-                    const stockNumerico = item.cantidad === 'ND' ? 1000 : Number(item.cantidad) || 0;
+                    const stockNumerico = stockDeItem(item.cantidad);
                     
                     const marcador = opcionesPorItem.get(Number(item.iditem));
 
@@ -2633,7 +2635,7 @@ router.get('/contexto/:idorg/:idsede/:telefono', async (req, res) => {
                     
                     itemsVistos.add(claveUnica);
                     
-                    const stockNumerico = item.cantidad === 'ND' ? 1000 : Number(item.cantidad) || 0;
+                    const stockNumerico = stockDeItem(item.cantidad);
                     
                     const marcador = opcionesPorItem.get(Number(item.iditem));
 

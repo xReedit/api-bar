@@ -59,6 +59,7 @@ process.env.FONTCONFIG_PATH = process.env.FONTCONFIG_PATH || path_1["default"].j
 var sharp_1 = __importDefault(require("sharp"));
 var client_s3_1 = require("@aws-sdk/client-s3");
 var carta_indice_service_1 = require("./carta.indice.service");
+var menu_stock_1 = require("./menu.stock");
 var logger_1 = require("../utils/logger");
 var bucket = function () { return process.env.AWS_BUCKET_NAME || 'papaya-comercio-files'; };
 var region = function () { return process.env.AWS_REGION || 'us-east-2'; };
@@ -84,16 +85,16 @@ var hashAgotados = function (nombres) {
 };
 exports.hashAgotados = hashAgotados;
 var obtenerAgotados = function (idsede, modo, idx, prisma) { return __awaiter(void 0, void 0, void 0, function () {
-    var rows, agotados;
+    var items, agotados;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 if (modo === 'manual')
                     return [2 /*return*/, idx.lineas.filter(function (l) { return l.agotado; })];
-                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT DISTINCT cl.iditem\n         FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem\n         WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0\n           AND cl.cantidad IS NOT NULL AND cl.cantidad <> 'ND'\n           AND CAST(cl.cantidad AS DECIMAL(10,2)) <= 0", Number(idsede))];
+                return [4 /*yield*/, (0, menu_stock_1.itemsDelMenu)(prisma, idsede)];
             case 1:
-                rows = _a.sent();
-                agotados = new Set((rows || []).map(function (r) { return Number(r.iditem); }));
+                items = _a.sent();
+                agotados = new Set(items.filter(function (it) { return it.stock <= 0; }).map(function (it) { return it.iditem; }));
                 return [2 /*return*/, idx.lineas.filter(function (l) { return l.iditem !== null && agotados.has(l.iditem); })];
         }
     });

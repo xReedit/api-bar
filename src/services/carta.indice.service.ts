@@ -4,6 +4,7 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { detectarTexto, extraerLineas, type LineaCarta } from './carta.ocr.service';
 import { matchLineas } from './carta.match.service';
+import { itemsDelMenu } from './menu.stock';
 import { logger } from '../utils/logger';
 
 const bucket = () => process.env.AWS_BUCKET_NAME || 'papaya-comercio-files';
@@ -103,18 +104,10 @@ export const construirIndice = async (idsede: number, prisma: any): Promise<Resu
             return { indice: null, motivo: 'carta_demasiado_larga', lineas: extraido.lineas.length, max };
         }
 
-        // OJO: en carta_lista el flag está INVERTIDO respecto a categoria.visible_cliente.
-        // Es un Boolean @default(false) (schema.prisma) y las queries de producción del repo
-        // leen 0 = visible al cliente (ver chat.bot.ts:660). Con '1' la lista sale casi vacía
-        // y ninguna línea de la carta llega a enlazarse con su item.
-        // i.estado = 0 excluye items dados de baja que siguen en carta_lista: si no, uno de
-        // ellos puede ganarle el match greedy al item correcto y el tachado cae en la línea mala.
-        const items = await prisma.$queryRawUnsafe(
-            `SELECT DISTINCT i.iditem, i.descripcion
-             FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem
-             WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0`,
-            Number(idsede)
-        ) as { iditem: number; descripcion: string }[];
+        // Candidatos = la carta del día del procedure del POS (la misma que ve el bot), no
+        // todo carta_lista de la sede: así la línea solo puede enlazarse a un plato que hoy
+        // está en la carta, y el iditem coincide con el del stock que decide qué se tacha.
+        const items = await itemsDelMenu(prisma, idsede);
 
         const agotadosPrevios = new Set(
             (previo?.lineas || []).filter((l) => l.agotado).map((l) => l.texto)

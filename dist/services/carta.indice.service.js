@@ -54,6 +54,7 @@ exports.construirIndice = exports.guardarIndice = exports.leerIndice = exports.u
 var client_s3_1 = require("@aws-sdk/client-s3");
 var carta_ocr_service_1 = require("./carta.ocr.service");
 var carta_match_service_1 = require("./carta.match.service");
+var menu_stock_1 = require("./menu.stock");
 var logger_1 = require("../utils/logger");
 var bucket = function () { return process.env.AWS_BUCKET_NAME || 'papaya-comercio-files'; };
 var region = function () { return process.env.AWS_REGION || 'us-east-2'; };
@@ -193,7 +194,7 @@ var construirIndice = function (idsede, prisma) { return __awaiter(void 0, void 
                 _a.sent();
                 logger_1.logger.warn("[carta-idx] carta demasiado larga (".concat(extraido.lineas.length, " lineas > ").concat(max, "), tachado desactivado"), idsede);
                 return [2 /*return*/, { indice: null, motivo: 'carta_demasiado_larga', lineas: extraido.lineas.length, max: max }];
-            case 6: return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT DISTINCT i.iditem, i.descripcion\n             FROM carta_lista cl JOIN item i ON i.iditem = cl.iditem\n             WHERE i.idsede = ? AND cl.estado = 0 AND i.estado = 0 AND cl.is_visible_cliente = 0", Number(idsede))];
+            case 6: return [4 /*yield*/, (0, menu_stock_1.itemsDelMenu)(prisma, idsede)];
             case 7:
                 items = _a.sent();
                 agotadosPrevios_1 = new Set(((previo === null || previo === void 0 ? void 0 : previo.lineas) || []).filter(function (l) { return l.agotado; }).map(function (l) { return l.texto; }));

@@ -55,7 +55,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.guardarRespuesta = exports.validarVenta = exports.contarRespuestasHoy = exports.buscarPreguntas = exports.buscarPublicacion = exports.horaLima = exports.calcularMetricas = exports.validarRespuestas = exports.normalizarPreguntas = exports.TOPE_DIARIO_QR = exports.VENTA_DIAS = exports.TOKEN_RE = exports.ErrorEncuesta = void 0;
+exports.guardarRespuesta = exports.validarVenta = exports.contarRespuestas = exports.buscarPreguntas = exports.buscarPublicacion = exports.horaLima = exports.calcularMetricas = exports.validarRespuestas = exports.normalizarPreguntas = exports.TOPE_DIARIO_QR = exports.VENTA_DIAS = exports.TOKEN_RE = exports.ErrorEncuesta = void 0;
 // Encuesta publica: resolver el link, validar la respuesta del cliente y guardarla.
 // Tablas del POS legacy (migraciones 031/032): enc_canal_sede, enc_publicacion, enc_encuesta,
 // enc_pregunta, enc_respuesta, enc_respuesta_detalle. Solo $queryRaw parametrizado: estas tablas no
@@ -225,20 +225,20 @@ var buscarPreguntas = function (idencuesta) { return __awaiter(void 0, void 0, v
     });
 }); };
 exports.buscarPreguntas = buscarPreguntas;
-/** Respuestas del dia en la sede (todos los canales). Lo muestra la tablet para invitar a participar. */
-var contarRespuestasHoy = function (idsede) { return __awaiter(void 0, void 0, void 0, function () {
+/** Respuestas de la sede (todos los canales), del dia y en total. Lo muestra la tablet para invitar a participar. */
+var contarRespuestas = function (idsede) { return __awaiter(void 0, void 0, void 0, function () {
     var filas;
-    var _a, _b;
-    return __generator(this, function (_c) {
-        switch (_c.label) {
-            case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n        SELECT COUNT(*) AS n FROM enc_respuesta WHERE idsede = ", " AND fecha_local = ", ""], ["\n        SELECT COUNT(*) AS n FROM enc_respuesta WHERE idsede = ", " AND fecha_local = ", ""])), idsede, (0, exports.horaLima)().fecha)];
+    var _a, _b, _c, _d;
+    return __generator(this, function (_e) {
+        switch (_e.label) {
+            case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n        SELECT COUNT(*) AS total, COALESCE(SUM(fecha_local = ", "), 0) AS hoy\n        FROM enc_respuesta WHERE idsede = ", ""], ["\n        SELECT COUNT(*) AS total, COALESCE(SUM(fecha_local = ", "), 0) AS hoy\n        FROM enc_respuesta WHERE idsede = ", ""])), (0, exports.horaLima)().fecha, idsede)];
             case 1:
-                filas = _c.sent();
-                return [2 /*return*/, Number((_b = (_a = filas[0]) === null || _a === void 0 ? void 0 : _a.n) !== null && _b !== void 0 ? _b : 0)];
+                filas = _e.sent();
+                return [2 /*return*/, { hoy: Number((_b = (_a = filas[0]) === null || _a === void 0 ? void 0 : _a.hoy) !== null && _b !== void 0 ? _b : 0), total: Number((_d = (_c = filas[0]) === null || _c === void 0 ? void 0 : _c.total) !== null && _d !== void 0 ? _d : 0) }];
         }
     });
 }); };
-exports.contarRespuestasHoy = contarRespuestasHoy;
+exports.contarRespuestas = contarRespuestas;
 /**
  * Venta del link de comprobante: debe ser de la misma sede, de hace menos de VENTA_DIAS y sin responder.
  * La firma ya se valido antes; aqui solo reglas de negocio.

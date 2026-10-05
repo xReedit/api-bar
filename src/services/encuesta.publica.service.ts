@@ -191,11 +191,12 @@ export const buscarPreguntas = async (idencuesta: number): Promise<Pregunta[]> =
         SELECT idenc_pregunta AS id, orden, tipo, texto, obligatorio, opciones
         FROM enc_pregunta WHERE idenc_encuesta = ${idencuesta} ORDER BY orden`);
 
-/** Respuestas del dia en la sede (todos los canales). Lo muestra la tablet para invitar a participar. */
-export const contarRespuestasHoy = async (idsede: number): Promise<number> => {
-    const filas = await prisma.$queryRaw<{ n: bigint }[]>`
-        SELECT COUNT(*) AS n FROM enc_respuesta WHERE idsede = ${idsede} AND fecha_local = ${horaLima().fecha}`;
-    return Number(filas[0]?.n ?? 0);
+/** Respuestas de la sede (todos los canales), del dia y en total. Lo muestra la tablet para invitar a participar. */
+export const contarRespuestas = async (idsede: number): Promise<{ hoy: number; total: number }> => {
+    const filas = await prisma.$queryRaw<{ hoy: unknown; total: bigint }[]>`
+        SELECT COUNT(*) AS total, COALESCE(SUM(fecha_local = ${horaLima().fecha}), 0) AS hoy
+        FROM enc_respuesta WHERE idsede = ${idsede}`;
+    return { hoy: Number(filas[0]?.hoy ?? 0), total: Number(filas[0]?.total ?? 0) };
 };
 
 /**

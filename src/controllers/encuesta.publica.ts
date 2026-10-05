@@ -16,7 +16,7 @@ import { isIP } from 'net';
 import rateLimit from 'express-rate-limit';
 import { crearNonce, leerNonce, leerVenta, secretoEncuesta } from '../services/encuesta.firma';
 import {
-    contarRespuestasHoy,
+    contarRespuestas,
     buscarPreguntas,
     buscarPublicacion,
     ErrorEncuesta,
@@ -84,7 +84,7 @@ router.get('/:token', limite(60), async (req: Request, res: Response) => {
         const preguntas = await buscarPreguntas(pub.idenc_encuesta);
         if (!preguntas.length) throw new ErrorEncuesta(410, 'SIN_ENCUESTA', 'Esta encuesta ya no esta disponible.');
         // ponytail: solo la tablet muestra el contador; los demas canales no pagan la consulta
-        const respondidasHoy = pub.canal === 'kiosko' ? await contarRespuestasHoy(pub.idsede) : null;
+        const respondidas = pub.canal === 'kiosko' ? await contarRespuestas(pub.idsede) : null;
 
         // solo lo que el cliente necesita: ni idorg/idsede ni datos de la venta
         res.status(200).json({
@@ -95,7 +95,8 @@ router.get('/:token', limite(60), async (req: Request, res: Response) => {
                 texto_inicio: pub.texto_inicio,
                 texto_fin: pub.texto_fin,
                 preguntas: preguntas.map((p) => ({ id: p.id, tipo: p.tipo, texto: p.texto, obligatorio: p.obligatorio, opciones: p.opciones })),
-                respondidas_hoy: respondidasHoy,
+                respondidas_hoy: respondidas?.hoy ?? null,
+                respondidas_total: respondidas?.total ?? null,
                 nonce: crearNonce(secreto, { p: pub.idenc_publicacion, e: pub.idenc_encuesta, v: venta?.idregistro_pago ?? 0, t: Date.now() }),
             },
         });

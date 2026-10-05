@@ -109,39 +109,39 @@ var ventaDelLink = function (secreto, token, v, idsede) { return __awaiter(void 
     });
 }); };
 router.get('/:token', limite(60), function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var secreto, token, pub, venta, preguntas, respondidasHoy, _a, e_1;
-    var _b;
-    return __generator(this, function (_c) {
-        switch (_c.label) {
+    var secreto, token, pub, venta, preguntas, respondidas, _a, e_1;
+    var _b, _c, _d;
+    return __generator(this, function (_e) {
+        switch (_e.label) {
             case 0:
                 secreto = (0, encuesta_firma_1.secretoEncuesta)();
                 token = req.params.token;
-                _c.label = 1;
+                _e.label = 1;
             case 1:
-                _c.trys.push([1, 8, , 9]);
+                _e.trys.push([1, 8, , 9]);
                 return [4 /*yield*/, (0, encuesta_publica_service_1.buscarPublicacion)(token)];
             case 2:
-                pub = _c.sent();
+                pub = _e.sent();
                 return [4 /*yield*/, ventaDelLink(secreto, token, req.query.v, pub.idsede)];
             case 3:
-                venta = _c.sent();
+                venta = _e.sent();
                 if (!venta && CANALES_CON_VENTA.includes(pub.canal))
                     throw new encuesta_publica_service_1.ErrorEncuesta(404, 'LINK_INVALIDO', 'Este enlace no es valido.');
                 return [4 /*yield*/, (0, encuesta_publica_service_1.buscarPreguntas)(pub.idenc_encuesta)];
             case 4:
-                preguntas = _c.sent();
+                preguntas = _e.sent();
                 if (!preguntas.length)
                     throw new encuesta_publica_service_1.ErrorEncuesta(410, 'SIN_ENCUESTA', 'Esta encuesta ya no esta disponible.');
                 if (!(pub.canal === 'kiosko')) return [3 /*break*/, 6];
-                return [4 /*yield*/, (0, encuesta_publica_service_1.contarRespuestasHoy)(pub.idsede)];
+                return [4 /*yield*/, (0, encuesta_publica_service_1.contarRespuestas)(pub.idsede)];
             case 5:
-                _a = _c.sent();
+                _a = _e.sent();
                 return [3 /*break*/, 7];
             case 6:
                 _a = null;
-                _c.label = 7;
+                _e.label = 7;
             case 7:
-                respondidasHoy = _a;
+                respondidas = _a;
                 // solo lo que el cliente necesita: ni idorg/idsede ni datos de la venta
                 res.status(200).json({
                     ok: true,
@@ -151,13 +151,14 @@ router.get('/:token', limite(60), function (req, res) { return __awaiter(void 0,
                         texto_inicio: pub.texto_inicio,
                         texto_fin: pub.texto_fin,
                         preguntas: preguntas.map(function (p) { return ({ id: p.id, tipo: p.tipo, texto: p.texto, obligatorio: p.obligatorio, opciones: p.opciones }); }),
-                        respondidas_hoy: respondidasHoy,
-                        nonce: (0, encuesta_firma_1.crearNonce)(secreto, { p: pub.idenc_publicacion, e: pub.idenc_encuesta, v: (_b = venta === null || venta === void 0 ? void 0 : venta.idregistro_pago) !== null && _b !== void 0 ? _b : 0, t: Date.now() })
+                        respondidas_hoy: (_b = respondidas === null || respondidas === void 0 ? void 0 : respondidas.hoy) !== null && _b !== void 0 ? _b : null,
+                        respondidas_total: (_c = respondidas === null || respondidas === void 0 ? void 0 : respondidas.total) !== null && _c !== void 0 ? _c : null,
+                        nonce: (0, encuesta_firma_1.crearNonce)(secreto, { p: pub.idenc_publicacion, e: pub.idenc_encuesta, v: (_d = venta === null || venta === void 0 ? void 0 : venta.idregistro_pago) !== null && _d !== void 0 ? _d : 0, t: Date.now() })
                     }
                 });
                 return [3 /*break*/, 9];
             case 8:
-                e_1 = _c.sent();
+                e_1 = _e.sent();
                 responderError(res, e_1, 'GET');
                 return [3 /*break*/, 9];
             case 9: return [2 /*return*/];

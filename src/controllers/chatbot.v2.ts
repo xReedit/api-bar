@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { GeocodingService, estimarKmRuta } from "../services/geocoding.service";
 import { costoVariable, decidirDireccionTexto, describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { mapearEstructuraAComprobante, validarDocumento } from "../services/comprobante.helpers";
+import { avisarComprobante } from "../services/aviso.comprobante";
 import { resolverPersonalidad } from "../services/personalidad";
 import { resolverReglas } from "../services/reglas-negocio";
 import { agruparItemsBot, aRespuestaTool, normalizarGruposSP, resolverOpciones } from "../services/subitems.pedido";
@@ -271,7 +272,7 @@ router.post('/generar-comprobante', async (req, res) => {
             if (!previo.ts || antiguedadMs > 5 * 60 * 1000) {
                 return res.status(200).json({ success: false, error: 'el comprobante quedó en proceso; solicítalo en caja' });
             }
-            return res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' });
+            return res.status(200).json({ success: false, error: 'tu comprobante se está generando y le llegará automáticamente a este chat en cuanto esté listo; díselo así al cliente, sin pedirle que lo vuelva a solicitar', en_proceso: true });
         }
         if (previo?.estado === 'bloqueado') {
             return res.status(200).json({ success: false, error: previo.error || 'el comprobante quedó en proceso; solicítalo en caja' });
@@ -298,7 +299,7 @@ router.post('/generar-comprobante', async (req, res) => {
             String(session_id)
         );
         if (Number(claimed) === 0) {
-            return res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' });
+            return res.status(200).json({ success: false, error: 'tu comprobante se está generando y le llegará automáticamente a este chat en cuanto esté listo; díselo así al cliente, sin pedirle que lo vuelva a solicitar', en_proceso: true });
         }
 
         const marcar = async (obj: any) => {
@@ -376,10 +377,13 @@ router.post('/generar-comprobante', async (req, res) => {
         const topeMs = Number(process.env.CHATBOT_COMPROBANTE_ESPERA_MS) || 10000;
         const resultado = await esperarConTope(emision, topeMs);
         if (resultado === EN_PROCESO) {
+            // Cuando termine, el resultado se le escribe al cliente: ya no
+            // depende de que lo vuelva a pedir.
+            emision.then((r: any) => avisarComprobante({ session_id: String(session_id), idorg, idsede, tipo, resultado: r }));
             return res.status(200).json({
                 success: false,
                 en_proceso: true,
-                error: 'tu comprobante se está generando; dile al cliente que en unos segundos te lo vuelva a pedir y vuelve a llamar a esta herramienta con los mismos datos'
+                error: 'tu comprobante se está generando y se le enviará automáticamente a este chat en cuanto esté listo (normalmente menos de un minuto); díselo así al cliente, sin pedirle que lo vuelva a solicitar'
             });
         }
         return res.status(200).json(resultado);

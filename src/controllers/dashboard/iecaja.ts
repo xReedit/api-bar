@@ -151,7 +151,41 @@ router.post("/get-dash-caja", async (req, res) => {
     
         res.status(200).json(cajaFormateada);
     } catch (error) {
-        res.status(500).json(error);        
+        res.status(500).json(error);
+    }
+});
+
+// Cierres de caja del periodo: el snapshot que el POS guarda al cerrar (detalle_cierre) tal cual,
+// para que el dashboard reimprima el ticket. El "dia" respeta hora_cierre_dia de la sede, igual que
+// procedure_module_dash_caja2: un cierre a las 2am con hora_cierre 03:00 cuenta para el dia anterior.
+// ponytail: devuelve el detalle de todos los cierres del rango (~1-20KB c/u); paginar si un mes pesa demasiado.
+const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+router.post("/get-cierres", async (req, res) => {
+    const idsede = Number(req.body?.idsede);
+    const inicio = req.body?.params?.rango_start_date;
+    const fin = req.body?.params?.rango_end_date;
+    if (!Number.isFinite(idsede) || !FECHA_RE.test(inicio) || !FECHA_RE.test(fin)) {
+        return res.status(400).json({ success: false, error: 'idsede o rango de fechas invalido' });
+    }
+    try {
+        const rows: any[] = await prisma.$queryRaw`
+            SELECT b.idusuario_bitacora_cierre AS id, b.idusuario, u.nombres AS usuario_nombre,
+                   sup.nombres AS supervisor_nombre, b.numintentos, b.fecha,
+                   DATE_FORMAT(SUBTIME(b.fecha_hora, IFNULL(so.hora_cierre_dia, '00:00')), '%Y-%m-%d') AS dia,
+                   s.nombre AS sede_nombre, s.ciudad, b.detalle_cierre, b.detalle_titulo
+            FROM usuario_bitacora_cierre b
+            JOIN usuario u ON u.idusuario = b.idusuario
+            LEFT JOIN usuario sup ON sup.idusuario = NULLIF(b.idusuario_supervisor, 0)
+            JOIN sede s ON s.idsede = b.idsede
+            LEFT JOIN sede_opciones so ON so.idsede = b.idsede
+            WHERE b.idsede = ${idsede} AND b.cierre = 1 AND b.detalle_cierre IS NOT NULL
+              AND b.fecha_hora >= CONCAT(${inicio}, ' ', IFNULL(so.hora_cierre_dia, '00:00'))
+              AND b.fecha_hora <  CONCAT(DATE_ADD(${fin}, INTERVAL 1 DAY), ' ', IFNULL(so.hora_cierre_dia, '00:00'))
+            ORDER BY b.fecha_hora DESC`;
+        res.status(200).json(rows.map((r) => ({ ...r, numintentos: Number(r.numintentos ?? 0) })));
+    } catch (error) {
+        logger.error('get-cierres:', error);
+        res.status(500).json({ success: false, error: 'No se pudieron obtener los cierres' });
     }
 });
 

@@ -3,6 +3,17 @@ var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cook
     if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
     return cooked;
 };
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -290,5 +301,39 @@ router.post("/get-dash-caja", function (req, res) { return __awaiter(void 0, voi
         }
     });
 }); });
+// Cierres de caja del periodo: el snapshot que el POS guarda al cerrar (detalle_cierre) tal cual,
+// para que el dashboard reimprima el ticket. El "dia" respeta hora_cierre_dia de la sede, igual que
+// procedure_module_dash_caja2: un cierre a las 2am con hora_cierre 03:00 cuenta para el dia anterior.
+// ponytail: devuelve el detalle de todos los cierres del rango (~1-20KB c/u); paginar si un mes pesa demasiado.
+var FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+router.post("/get-cierres", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var idsede, inicio, fin, rows, error_8;
+    var _a, _b, _c, _d, _e;
+    return __generator(this, function (_f) {
+        switch (_f.label) {
+            case 0:
+                idsede = Number((_a = req.body) === null || _a === void 0 ? void 0 : _a.idsede);
+                inicio = (_c = (_b = req.body) === null || _b === void 0 ? void 0 : _b.params) === null || _c === void 0 ? void 0 : _c.rango_start_date;
+                fin = (_e = (_d = req.body) === null || _d === void 0 ? void 0 : _d.params) === null || _e === void 0 ? void 0 : _e.rango_end_date;
+                if (!Number.isFinite(idsede) || !FECHA_RE.test(inicio) || !FECHA_RE.test(fin)) {
+                    return [2 /*return*/, res.status(400).json({ success: false, error: 'idsede o rango de fechas invalido' })];
+                }
+                _f.label = 1;
+            case 1:
+                _f.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            SELECT b.idusuario_bitacora_cierre AS id, b.idusuario, u.nombres AS usuario_nombre,\n                   sup.nombres AS supervisor_nombre, b.numintentos, b.fecha,\n                   DATE_FORMAT(SUBTIME(b.fecha_hora, IFNULL(so.hora_cierre_dia, '00:00')), '%Y-%m-%d') AS dia,\n                   s.nombre AS sede_nombre, s.ciudad, b.detalle_cierre, b.detalle_titulo\n            FROM usuario_bitacora_cierre b\n            JOIN usuario u ON u.idusuario = b.idusuario\n            LEFT JOIN usuario sup ON sup.idusuario = NULLIF(b.idusuario_supervisor, 0)\n            JOIN sede s ON s.idsede = b.idsede\n            LEFT JOIN sede_opciones so ON so.idsede = b.idsede\n            WHERE b.idsede = ", " AND b.cierre = 1 AND b.detalle_cierre IS NOT NULL\n              -- ADDTIME y no CONCAT: hora_cierre_dia es latin1 y los parametros utf8mb4 (error 1270 al concatenar)\n              AND b.fecha_hora >= ADDTIME(CAST(", " AS DATETIME), IFNULL(so.hora_cierre_dia, '00:00'))\n              AND b.fecha_hora <  ADDTIME(CAST(", " AS DATETIME) + INTERVAL 1 DAY, IFNULL(so.hora_cierre_dia, '00:00'))\n            ORDER BY b.fecha_hora DESC"], ["\n            SELECT b.idusuario_bitacora_cierre AS id, b.idusuario, u.nombres AS usuario_nombre,\n                   sup.nombres AS supervisor_nombre, b.numintentos, b.fecha,\n                   DATE_FORMAT(SUBTIME(b.fecha_hora, IFNULL(so.hora_cierre_dia, '00:00')), '%Y-%m-%d') AS dia,\n                   s.nombre AS sede_nombre, s.ciudad, b.detalle_cierre, b.detalle_titulo\n            FROM usuario_bitacora_cierre b\n            JOIN usuario u ON u.idusuario = b.idusuario\n            LEFT JOIN usuario sup ON sup.idusuario = NULLIF(b.idusuario_supervisor, 0)\n            JOIN sede s ON s.idsede = b.idsede\n            LEFT JOIN sede_opciones so ON so.idsede = b.idsede\n            WHERE b.idsede = ", " AND b.cierre = 1 AND b.detalle_cierre IS NOT NULL\n              -- ADDTIME y no CONCAT: hora_cierre_dia es latin1 y los parametros utf8mb4 (error 1270 al concatenar)\n              AND b.fecha_hora >= ADDTIME(CAST(", " AS DATETIME), IFNULL(so.hora_cierre_dia, '00:00'))\n              AND b.fecha_hora <  ADDTIME(CAST(", " AS DATETIME) + INTERVAL 1 DAY, IFNULL(so.hora_cierre_dia, '00:00'))\n            ORDER BY b.fecha_hora DESC"])), idsede, inicio, fin)];
+            case 2:
+                rows = _f.sent();
+                res.status(200).json(rows.map(function (r) { var _a; return (__assign(__assign({}, r), { numintentos: Number((_a = r.numintentos) !== null && _a !== void 0 ? _a : 0) })); }));
+                return [3 /*break*/, 4];
+            case 3:
+                error_8 = _f.sent();
+                logger_1.logger.error('get-cierres:', error_8);
+                res.status(500).json({ success: false, error: 'No se pudieron obtener los cierres' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); });
 exports["default"] = router;
-var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5;
+var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6;

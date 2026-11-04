@@ -92,6 +92,7 @@ var client_1 = require("@prisma/client");
 var geocoding_service_1 = require("../services/geocoding.service");
 var delivery_zonas_1 = require("../services/delivery.zonas");
 var comprobante_helpers_1 = require("../services/comprobante.helpers");
+var aviso_comprobante_1 = require("../services/aviso.comprobante");
 var personalidad_1 = require("../services/personalidad");
 var reglas_negocio_1 = require("../services/reglas-negocio");
 var subitems_pedido_1 = require("../services/subitems.pedido");
@@ -370,7 +371,7 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
                     if (!previo.ts || antiguedadMs > 5 * 60 * 1000) {
                         return [2 /*return*/, res.status(200).json({ success: false, error: 'el comprobante quedó en proceso; solicítalo en caja' })];
                     }
-                    return [2 /*return*/, res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' })];
+                    return [2 /*return*/, res.status(200).json({ success: false, error: 'tu comprobante se está generando y le llegará automáticamente a este chat en cuanto esté listo; díselo así al cliente, sin pedirle que lo vuelva a solicitar', en_proceso: true })];
                 }
                 if ((previo === null || previo === void 0 ? void 0 : previo.estado) === 'bloqueado') {
                     return [2 /*return*/, res.status(200).json({ success: false, error: previo.error || 'el comprobante quedó en proceso; solicítalo en caja' })];
@@ -387,7 +388,7 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
             case 2:
                 claimed = _c.sent();
                 if (Number(claimed) === 0) {
-                    return [2 /*return*/, res.status(200).json({ success: false, error: 'tu comprobante se está generando, dame unos segundos y pídemelo de nuevo' })];
+                    return [2 /*return*/, res.status(200).json({ success: false, error: 'tu comprobante se está generando y le llegará automáticamente a este chat en cuanto esté listo; díselo así al cliente, sin pedirle que lo vuelva a solicitar', en_proceso: true })];
                 }
                 marcar_1 = function (obj) { return __awaiter(void 0, void 0, void 0, function () {
                     return __generator(this, function (_a) {
@@ -502,10 +503,13 @@ router.post('/generar-comprobante', function (req, res) { return __awaiter(void 
             case 3:
                 resultado = _c.sent();
                 if (resultado === espera_1.EN_PROCESO) {
+                    // Cuando termine, el resultado se le escribe al cliente: ya no
+                    // depende de que lo vuelva a pedir.
+                    emision.then(function (r) { return (0, aviso_comprobante_1.avisarComprobante)({ session_id: String(session_id_1), idorg: idorg_1, idsede: idsede_1, tipo: tipo_1, resultado: r }); });
                     return [2 /*return*/, res.status(200).json({
                             success: false,
                             en_proceso: true,
-                            error: 'tu comprobante se está generando; dile al cliente que en unos segundos te lo vuelva a pedir y vuelve a llamar a esta herramienta con los mismos datos'
+                            error: 'tu comprobante se está generando y se le enviará automáticamente a este chat en cuanto esté listo (normalmente menos de un minuto); díselo así al cliente, sin pedirle que lo vuelva a solicitar'
                         })];
                 }
                 return [2 /*return*/, res.status(200).json(resultado)];

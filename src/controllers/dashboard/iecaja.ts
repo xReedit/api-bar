@@ -179,8 +179,9 @@ router.post("/get-cierres", async (req, res) => {
             JOIN sede s ON s.idsede = b.idsede
             LEFT JOIN sede_opciones so ON so.idsede = b.idsede
             WHERE b.idsede = ${idsede} AND b.cierre = 1 AND b.detalle_cierre IS NOT NULL
-              AND b.fecha_hora >= CONCAT(${inicio}, ' ', IFNULL(so.hora_cierre_dia, '00:00'))
-              AND b.fecha_hora <  CONCAT(DATE_ADD(${fin}, INTERVAL 1 DAY), ' ', IFNULL(so.hora_cierre_dia, '00:00'))
+              -- ADDTIME y no CONCAT: hora_cierre_dia es latin1 y los parametros utf8mb4 (error 1270 al concatenar)
+              AND b.fecha_hora >= ADDTIME(CAST(${inicio} AS DATETIME), IFNULL(so.hora_cierre_dia, '00:00'))
+              AND b.fecha_hora <  ADDTIME(CAST(${fin} AS DATETIME) + INTERVAL 1 DAY, IFNULL(so.hora_cierre_dia, '00:00'))
             ORDER BY b.fecha_hora DESC`;
         res.status(200).json(rows.map((r) => ({ ...r, numintentos: Number(r.numintentos ?? 0) })));
     } catch (error) {

@@ -58,11 +58,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var logger_1 = require("../../utils/logger");
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
@@ -80,7 +82,7 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                 return [2 /*return*/, res.json({ mostrar: false })];
             case 1:
                 _a.trys.push([1, 12, , 13]);
-                return [4 /*yield*/, prisma.sede_suscripcion.findMany({
+                return [4 /*yield*/, prisma_1["default"].sede_suscripcion.findMany({
                         where: {
                             idsede: parseInt(idsede),
                             estado: '0'
@@ -120,7 +122,7 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                 diasRestantes = Math.ceil((fechaProximoPago.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
                 mensaje = 'Le recordamos el pago del servicio.';
                 if (!(diasRestantes > 0 && diasRestantes <= 3)) return [3 /*break*/, 4];
-                return [4 /*yield*/, prisma.sede_estado.updateMany({
+                return [4 /*yield*/, prisma_1["default"].sede_estado.updateMany({
                         where: {
                             idsede: parseInt(idsede),
                             is_advertencia: '0'
@@ -139,7 +141,7 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                 tiempoAdvertencia = 5 + (diasPasados * 3);
                 if (!(diasPasados >= 1 && diasPasados <= 10)) return [3 /*break*/, 6];
                 mensaje = "Estimado cliente, han pasado ".concat(diasPasados, " d\u00EDa").concat(diasPasados > 1 ? 's' : '', " desde la fecha de vencimiento de su pago. Le recordamos amablemente que realice su pago para evitar interrupciones en el servicio.");
-                return [4 /*yield*/, prisma.sede_estado.updateMany({
+                return [4 /*yield*/, prisma_1["default"].sede_estado.updateMany({
                         where: { idsede: parseInt(idsede) },
                         data: {
                             is_bloqueo_contador: '1',
@@ -158,13 +160,13 @@ router.get("/advertencia/:idsede", function (req, res) { return __awaiter(void 0
                 if (!(diasPasados > 20)) return [3 /*break*/, 10];
                 mensaje = "Estimado cliente, su servicio ha sido suspendido debido a la falta de pago. Regularice su pago para reactivar el servicio.";
                 if (!(rpt.activo === '0')) return [3 /*break*/, 9];
-                return [4 /*yield*/, prisma.sede_suscripcion.update({
+                return [4 /*yield*/, prisma_1["default"].sede_suscripcion.update({
                         where: { idsede_suscripcion: rpt.idsede_suscripcion },
                         data: { activo: '1' } // 1 = no activo/suspendido
                     })];
             case 7:
                 _a.sent();
-                return [4 /*yield*/, prisma.sede_estado.updateMany({
+                return [4 /*yield*/, prisma_1["default"].sede_estado.updateMany({
                         where: { idsede: parseInt(idsede) },
                         data: {
                             is_bloqueado: '1',

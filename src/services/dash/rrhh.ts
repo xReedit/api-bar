@@ -1,11 +1,10 @@
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import dotenv from 'dotenv';
 import { logger } from '../../utils/logger';
 dotenv.config();
 
-const prisma = new PrismaClient();
 
 /**
  * Costo de personal, para el asistente.

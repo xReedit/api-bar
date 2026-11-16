@@ -1,8 +1,7 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 
@@ -45,7 +44,6 @@ router.post('/create', async (req: any, res, next) => {
         return res.status(400).send({ success:false, error: 'Error al procesar la solicitud' });        
     }
     
-    prisma.$disconnect();
 });
 
 router.get('/byIdColaborador/:id', async (req: any, res) => {
@@ -61,7 +59,6 @@ router.get('/byIdColaborador/:id', async (req: any, res) => {
     })
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 });
 
 

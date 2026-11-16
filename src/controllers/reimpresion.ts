@@ -1,8 +1,7 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get('/', function (req, res) {
@@ -115,7 +114,6 @@ router.get('/reimprimir-comprobante/:idregistro_pago', async (req: any, res) => 
     }
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 });
 
 

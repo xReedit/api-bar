@@ -2,9 +2,9 @@
 // Tablas del POS legacy (migraciones 031/032): enc_canal_sede, enc_publicacion, enc_encuesta,
 // enc_pregunta, enc_respuesta, enc_respuesta_detalle. Solo $queryRaw parametrizado: estas tablas no
 // estan en schema.prisma y no hace falta `prisma db pull`.
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import prisma from '../utils/prisma';
 
-const prisma = new PrismaClient();
 
 export type Tipo = 'csat' | 'nps' | 'ces' | 'opcion' | 'texto';
 export type Canal = 'kiosko' | 'qr_local' | 'ticket' | 'whatsapp';

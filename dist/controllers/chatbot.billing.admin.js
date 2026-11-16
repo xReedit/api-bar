@@ -49,11 +49,10 @@ exports.__esModule = true;
 // CHATBOT_API_KEY); el dueño del SaaS administra desde ahí, no desde Piter.
 // El panel Piter sigue leyendo únicamente los packs activos por
 // GET /chat-bot/billing/packs (JWT del restaurante).
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var express_1 = __importDefault(require("express"));
 var logger_1 = require("../utils/logger");
 var router = express_1["default"].Router();
-var prisma = new client_1.PrismaClient();
 /** Catálogo completo (incluye inactivos, para poder reactivarlos). */
 router.get('/packs', function (_req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var packs, error_1;
@@ -61,7 +60,7 @@ router.get('/packs', function (_req, res) { return __awaiter(void 0, void 0, voi
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n            SELECT id, conversaciones, precio_soles, activo FROM chatbot_pack\n            ORDER BY activo DESC, precio_soles ASC"], ["\n            SELECT id, conversaciones, precio_soles, activo FROM chatbot_pack\n            ORDER BY activo DESC, precio_soles ASC"])))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n            SELECT id, conversaciones, precio_soles, activo FROM chatbot_pack\n            ORDER BY activo DESC, precio_soles ASC"], ["\n            SELECT id, conversaciones, precio_soles, activo FROM chatbot_pack\n            ORDER BY activo DESC, precio_soles ASC"])))];
             case 1:
                 packs = _a.sent();
                 res.status(200).json({ success: true, packs: packs });
@@ -99,18 +98,18 @@ router.post('/packs', function (req, res) { return __awaiter(void 0, void 0, voi
             case 1:
                 _e.trys.push([1, 7, , 8]);
                 if (!(id === null)) return [3 /*break*/, 3];
-                return [4 /*yield*/, prisma.$executeRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n                INSERT INTO chatbot_pack (conversaciones, precio_soles, activo)\n                VALUES (", ", ", ", ", ")"], ["\n                INSERT INTO chatbot_pack (conversaciones, precio_soles, activo)\n                VALUES (", ", ", ", ", ")"])), conversaciones, precio, activo)];
+                return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n                INSERT INTO chatbot_pack (conversaciones, precio_soles, activo)\n                VALUES (", ", ", ", ", ")"], ["\n                INSERT INTO chatbot_pack (conversaciones, precio_soles, activo)\n                VALUES (", ", ", ", ", ")"])), conversaciones, precio, activo)];
             case 2:
                 _e.sent();
                 return [3 /*break*/, 5];
-            case 3: return [4 /*yield*/, prisma.$executeRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n                UPDATE chatbot_pack SET conversaciones = ", ",\n                    precio_soles = ", ", activo = ", "\n                WHERE id = ", ""], ["\n                UPDATE chatbot_pack SET conversaciones = ", ",\n                    precio_soles = ", ", activo = ", "\n                WHERE id = ", ""])), conversaciones, precio, activo, id)];
+            case 3: return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n                UPDATE chatbot_pack SET conversaciones = ", ",\n                    precio_soles = ", ", activo = ", "\n                WHERE id = ", ""], ["\n                UPDATE chatbot_pack SET conversaciones = ", ",\n                    precio_soles = ", ", activo = ", "\n                WHERE id = ", ""])), conversaciones, precio, activo, id)];
             case 4:
                 afectadas = _e.sent();
                 if (Number(afectadas) === 0) {
                     return [2 /*return*/, res.status(404).json({ success: false, error: 'paquete no encontrado' })];
                 }
                 _e.label = 5;
-            case 5: return [4 /*yield*/, prisma.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n            SELECT id, conversaciones, precio_soles, activo FROM chatbot_pack\n            ORDER BY activo DESC, precio_soles ASC"], ["\n            SELECT id, conversaciones, precio_soles, activo FROM chatbot_pack\n            ORDER BY activo DESC, precio_soles ASC"])))];
+            case 5: return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n            SELECT id, conversaciones, precio_soles, activo FROM chatbot_pack\n            ORDER BY activo DESC, precio_soles ASC"], ["\n            SELECT id, conversaciones, precio_soles, activo FROM chatbot_pack\n            ORDER BY activo DESC, precio_soles ASC"])))];
             case 6:
                 packs = _e.sent();
                 res.status(200).json({ success: true, packs: packs });
@@ -134,7 +133,7 @@ router.get('/pagos', function (req, res) { return __awaiter(void 0, void 0, void
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n            SELECT id, idsede, conversaciones, monto, estado, niubiz_tx, creado_en\n            FROM chatbot_pago ORDER BY id DESC LIMIT ", ""], ["\n            SELECT id, idsede, conversaciones, monto, estado, niubiz_tx, creado_en\n            FROM chatbot_pago ORDER BY id DESC LIMIT ", ""])), limit)];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n            SELECT id, idsede, conversaciones, monto, estado, niubiz_tx, creado_en\n            FROM chatbot_pago ORDER BY id DESC LIMIT ", ""], ["\n            SELECT id, idsede, conversaciones, monto, estado, niubiz_tx, creado_en\n            FROM chatbot_pago ORDER BY id DESC LIMIT ", ""])), limit)];
             case 2:
                 pagos = _a.sent();
                 res.status(200).json({ success: true, pagos: pagos });
@@ -156,7 +155,7 @@ router.get('/activaciones', function (_req, res) { return __awaiter(void 0, void
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            SELECT cs.id, cs.idsede, cs.atendido_en, s.nombre, s.telefono, s.ciudad\n            FROM chatbot_solicitud cs\n            LEFT JOIN sede s ON s.idsede = cs.idsede\n            WHERE cs.estado = 'atendida'\n            ORDER BY cs.atendido_en DESC\n            LIMIT 50"], ["\n            SELECT cs.id, cs.idsede, cs.atendido_en, s.nombre, s.telefono, s.ciudad\n            FROM chatbot_solicitud cs\n            LEFT JOIN sede s ON s.idsede = cs.idsede\n            WHERE cs.estado = 'atendida'\n            ORDER BY cs.atendido_en DESC\n            LIMIT 50"])))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            SELECT cs.id, cs.idsede, cs.atendido_en, s.nombre, s.telefono, s.ciudad\n            FROM chatbot_solicitud cs\n            LEFT JOIN sede s ON s.idsede = cs.idsede\n            WHERE cs.estado = 'atendida'\n            ORDER BY cs.atendido_en DESC\n            LIMIT 50"], ["\n            SELECT cs.id, cs.idsede, cs.atendido_en, s.nombre, s.telefono, s.ciudad\n            FROM chatbot_solicitud cs\n            LEFT JOIN sede s ON s.idsede = cs.idsede\n            WHERE cs.estado = 'atendida'\n            ORDER BY cs.atendido_en DESC\n            LIMIT 50"])))];
             case 1:
                 activaciones = _a.sent();
                 res.status(200).json({ success: true, activaciones: activaciones });

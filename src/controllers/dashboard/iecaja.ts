@@ -1,12 +1,11 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../utils/prisma';
 import dotenv from 'dotenv';
 import { normalizeResponse, normalizeResponseDashCaja } from "../../services/dash.util";
 import { validarYCorregirRangoPeriodo } from "../../utils/utils";
 import { logger } from '../../utils/logger';
 dotenv.config();
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get("/", async (req, res) => {

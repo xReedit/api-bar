@@ -35,11 +35,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.alertasOperativas = exports.detalleOperaciones = exports.operacionesPorDia = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var agregados_1 = require("./agregados");
-var prisma = new client_1.PrismaClient();
 /** Desde aqui, lo borrado o anulado pesa demasiado sobre la venta del periodo. */
 var PESO_SOSPECHOSO_PCT = 2;
 /**
@@ -73,7 +75,7 @@ function unaFila(sql) {
         var r, f;
         return __generator(this, function (_d) {
             switch (_d.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRawUnsafe(sql)];
+                case 0: return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sql)];
                 case 1:
                     r = _d.sent();
                     f = (_a = r === null || r === void 0 ? void 0 : r[0]) !== null && _a !== void 0 ? _a : {};
@@ -91,7 +93,7 @@ function porUsuario(sql) {
         var r;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRawUnsafe(sql)];
+                case 0: return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sql)];
                 case 1:
                     r = _a.sent();
                     return [2 /*return*/, (r !== null && r !== void 0 ? r : []).map(function (f) {
@@ -138,7 +140,7 @@ function operacionesPorDia(tipo, idsedes, desde, hasta) {
                     if (!sedes)
                         return [2 /*return*/, []];
                     col = tipo === 'egresos_caja' ? 'ic.fecha_hora' : tipo === 'ventas_anuladas' ? 'rp.fecha_hora' : 'p.fecha_hora';
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("".concat(ORIGEN[tipo].sql(sedes), "\n           AND ").concat(col, " >= '").concat(desde, " 00:00:00' AND ").concat(col, " <= '").concat(hasta, " 23:59:59'\n         GROUP BY f ORDER BY f"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("".concat(ORIGEN[tipo].sql(sedes), "\n           AND ").concat(col, " >= '").concat(desde, " 00:00:00' AND ").concat(col, " <= '").concat(hasta, " 23:59:59'\n         GROUP BY f ORDER BY f"))];
                 case 1:
                     filas = _a.sent();
                     return [2 /*return*/, (filas !== null && filas !== void 0 ? filas : []).map(function (r) {
@@ -175,7 +177,7 @@ function detalleOperaciones(tipo, idsedes, desde, hasta, limite) {
                     tope = Math.min(Math.max(limite, 1), 30);
                     entre = function (col) { return "".concat(col, " >= '").concat(desde, " 00:00:00' AND ").concat(col, " <= '").concat(hasta, " 23:59:59'"); };
                     if (!(tipo === 'pedidos_anulados')) return [3 /*break*/, 6];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("\n            SELECT p.idpedido, p.numpedido, p.fecha_hora, p.total_r monto,\n                   p.motivo_anular motivo, COALESCE(u.nombres,'SIN USUARIO') usuario\n            FROM pedido p\n            LEFT JOIN usuario u ON u.idusuario = p.idusuario\n            WHERE p.idsede IN (".concat(sedes, ") AND p.estado = 3 AND ").concat(entre('p.fecha_hora'), "\n            ORDER BY p.fecha_hora DESC LIMIT ").concat(tope))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("\n            SELECT p.idpedido, p.numpedido, p.fecha_hora, p.total_r monto,\n                   p.motivo_anular motivo, COALESCE(u.nombres,'SIN USUARIO') usuario\n            FROM pedido p\n            LEFT JOIN usuario u ON u.idusuario = p.idusuario\n            WHERE p.idsede IN (".concat(sedes, ") AND p.estado = 3 AND ").concat(entre('p.fecha_hora'), "\n            ORDER BY p.fecha_hora DESC LIMIT ").concat(tope))];
                 case 1:
                     filas_1 = _d.sent();
                     salida = [];
@@ -184,7 +186,7 @@ function detalleOperaciones(tipo, idsedes, desde, hasta, limite) {
                 case 2:
                     if (!(_i < _c.length)) return [3 /*break*/, 5];
                     f = _c[_i];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("\n                SELECT pd.descripcion producto, pd.cantidad_r cantidad, pd.ptotal_r importe\n                FROM pedido_detalle pd\n                WHERE pd.idpedido = ".concat(Number(f.idpedido), " AND pd.estado = 0\n                ORDER BY pd.idpedido_detalle LIMIT 20"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("\n                SELECT pd.descripcion producto, pd.cantidad_r cantidad, pd.ptotal_r importe\n                FROM pedido_detalle pd\n                WHERE pd.idpedido = ".concat(Number(f.idpedido), " AND pd.estado = 0\n                ORDER BY pd.idpedido_detalle LIMIT 20"))];
                 case 3:
                     items = _d.sent();
                     salida.push({
@@ -209,7 +211,7 @@ function detalleOperaciones(tipo, idsedes, desde, hasta, limite) {
                 case 5: return [2 /*return*/, salida];
                 case 6:
                     if (!(tipo === 'ventas_anuladas')) return [3 /*break*/, 8];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("\n            SELECT rp.idregistro_pago, rp.correlativo, rp.fecha_hora, rp.total monto,\n                   rp.motivo_anular motivo, COALESCE(u.nombres,'SIN USUARIO') usuario,\n                   COALESCE(up.nombres,'') autorizo\n            FROM registro_pago rp\n            LEFT JOIN usuario u ON u.idusuario = rp.idusuario\n            LEFT JOIN usuario up ON up.idusuario = rp.idusuario_permiso\n            WHERE rp.idsede IN (".concat(sedes, ") AND rp.estado = 1 AND ").concat(entre('rp.fecha_hora'), "\n            ORDER BY rp.fecha_hora DESC LIMIT ").concat(tope))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("\n            SELECT rp.idregistro_pago, rp.correlativo, rp.fecha_hora, rp.total monto,\n                   rp.motivo_anular motivo, COALESCE(u.nombres,'SIN USUARIO') usuario,\n                   COALESCE(up.nombres,'') autorizo\n            FROM registro_pago rp\n            LEFT JOIN usuario u ON u.idusuario = rp.idusuario\n            LEFT JOIN usuario up ON up.idusuario = rp.idusuario_permiso\n            WHERE rp.idsede IN (".concat(sedes, ") AND rp.estado = 1 AND ").concat(entre('rp.fecha_hora'), "\n            ORDER BY rp.fecha_hora DESC LIMIT ").concat(tope))];
                 case 7:
                     filas_2 = _d.sent();
                     return [2 /*return*/, (filas_2 !== null && filas_2 !== void 0 ? filas_2 : []).map(function (f) {
@@ -224,7 +226,7 @@ function detalleOperaciones(tipo, idsedes, desde, hasta, limite) {
                         })];
                 case 8:
                     if (!(tipo === 'items_borrados')) return [3 /*break*/, 10];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("\n            SELECT pd.descripcion producto, pd.cantidad_r cantidad, pd.ptotal_r monto,\n                   pd.motivo_borrado motivo, p.numpedido, p.fecha_hora,\n                   COALESCE(u.nombres,'SIN USUARIO') usuario\n            FROM pedido_detalle pd\n            INNER JOIN pedido p ON p.idpedido = pd.idpedido\n            LEFT JOIN usuario u ON u.idusuario = p.idusuario\n            WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1 AND ").concat(entre('p.fecha_hora'), "\n            ORDER BY p.fecha_hora DESC LIMIT ").concat(tope))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("\n            SELECT pd.descripcion producto, pd.cantidad_r cantidad, pd.ptotal_r monto,\n                   pd.motivo_borrado motivo, p.numpedido, p.fecha_hora,\n                   COALESCE(u.nombres,'SIN USUARIO') usuario\n            FROM pedido_detalle pd\n            INNER JOIN pedido p ON p.idpedido = pd.idpedido\n            LEFT JOIN usuario u ON u.idusuario = p.idusuario\n            WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1 AND ").concat(entre('p.fecha_hora'), "\n            ORDER BY p.fecha_hora DESC LIMIT ").concat(tope))];
                 case 9:
                     filas_3 = _d.sent();
                     return [2 /*return*/, (filas_3 !== null && filas_3 !== void 0 ? filas_3 : []).map(function (f) {
@@ -237,7 +239,7 @@ function detalleOperaciones(tipo, idsedes, desde, hasta, limite) {
                                 motivo: f.motivo ? String(f.motivo) : null
                             });
                         })];
-                case 10: return [4 /*yield*/, prisma.$queryRawUnsafe("\n        SELECT ic.idie_caja, ic.fecha_hora, ic.monto, ic.motivo,\n               COALESCE(u.nombres,'SIN USUARIO') usuario\n        FROM ie_caja ic\n        LEFT JOIN usuario u ON u.idusuario = ic.idusuario\n        WHERE ic.idsede IN (".concat(sedes, ") AND ic.tipo = 2 AND ic.estado = 0\n          AND ").concat(entre('ic.fecha_hora'), "\n        ORDER BY CAST(ic.monto AS DECIMAL(10,2)) DESC LIMIT ").concat(tope))];
+                case 10: return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("\n        SELECT ic.idie_caja, ic.fecha_hora, ic.monto, ic.motivo,\n               COALESCE(u.nombres,'SIN USUARIO') usuario\n        FROM ie_caja ic\n        LEFT JOIN usuario u ON u.idusuario = ic.idusuario\n        WHERE ic.idsede IN (".concat(sedes, ") AND ic.tipo = 2 AND ic.estado = 0\n          AND ").concat(entre('ic.fecha_hora'), "\n        ORDER BY CAST(ic.monto AS DECIMAL(10,2)) DESC LIMIT ").concat(tope))];
                 case 11:
                     filas = _d.sent();
                     return [2 /*return*/, (filas !== null && filas !== void 0 ? filas : []).map(function (f) {
@@ -316,7 +318,7 @@ function alertasOperativas(idsedes, desde, hasta, desdeAnterior, hastaAnterior) 
                     return [4 /*yield*/, porUsuario("\n        SELECT u.nombres usuario, COUNT(*) cantidad,\n               COALESCE(SUM(CAST(ic.monto AS DECIMAL(10,2))),0) monto\n        FROM ie_caja ic\n        LEFT JOIN usuario u ON u.idusuario = ic.idusuario\n        WHERE ic.idsede IN (".concat(sedes, ") AND ic.tipo = 2 AND ic.estado = 0\n          AND ").concat(entre('ic.fecha_hora', desde, hasta), "\n        GROUP BY u.nombres ORDER BY monto DESC LIMIT 5"))];
                 case 9:
                     egresosPorUsuario = _b.sent();
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("\n        SELECT TRIM(pd.motivo_borrado) motivo, COUNT(*) veces\n        FROM pedido_detalle pd\n        INNER JOIN pedido p ON p.idpedido = pd.idpedido\n        WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1\n          AND pd.motivo_borrado IS NOT NULL AND TRIM(pd.motivo_borrado) <> ''\n          AND ").concat(entre('p.fecha_hora', desde, hasta), "\n        GROUP BY TRIM(pd.motivo_borrado) ORDER BY veces DESC LIMIT 5"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("\n        SELECT TRIM(pd.motivo_borrado) motivo, COUNT(*) veces\n        FROM pedido_detalle pd\n        INNER JOIN pedido p ON p.idpedido = pd.idpedido\n        WHERE p.idsede IN (".concat(sedes, ") AND pd.borrado = 1\n          AND pd.motivo_borrado IS NOT NULL AND TRIM(pd.motivo_borrado) <> ''\n          AND ").concat(entre('p.fecha_hora', desde, hasta), "\n        GROUP BY TRIM(pd.motivo_borrado) ORDER BY veces DESC LIMIT 5"))];
                 case 10:
                     motivos = _b.sent();
                     return [2 /*return*/, {

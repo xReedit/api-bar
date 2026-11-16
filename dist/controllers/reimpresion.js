@@ -58,10 +58,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
-var prisma = new client_1.PrismaClient();
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado al reimpresion' });
@@ -73,7 +75,7 @@ router.get('/reimprimir-comprobante/:idregistro_pago', function (req, res) { ret
         switch (_a.label) {
             case 0:
                 idregistro_pago = req.params.idregistro_pago;
-                return [4 /*yield*/, prisma.registro_pago.findFirst({
+                return [4 /*yield*/, prisma_1["default"].registro_pago.findFirst({
                         select: { idce: true },
                         where: { idregistro_pago: Number(idregistro_pago) }
                     })];
@@ -84,12 +86,12 @@ router.get('/reimprimir-comprobante/:idregistro_pago', function (req, res) { ret
                     return [2 /*return*/];
                 }
                 _idce = _registro_pago.idce;
-                return [4 /*yield*/, prisma.ce.findFirst({
+                return [4 /*yield*/, prisma_1["default"].ce.findFirst({
                         where: { idce: Number(_idce) }
                     })];
             case 2:
                 comprobante = _a.sent();
-                return [4 /*yield*/, prisma.conf_print.findFirst({
+                return [4 /*yield*/, prisma_1["default"].conf_print.findFirst({
                         where: { idsede: comprobante.idsede }
                     })
                     // armamos los arrays
@@ -105,7 +107,7 @@ router.get('/reimprimir-comprobante/:idregistro_pago', function (req, res) { ret
                     "descripcion": descripcionDocumento,
                     "pie_pagina_comprobante": confPrintSede.pie_pagina_comprobante
                 };
-                return [4 /*yield*/, prisma.registro_pago_subtotal.findMany({
+                return [4 /*yield*/, prisma_1["default"].registro_pago_subtotal.findMany({
                         where: { idregistro_pago: Number(idregistro_pago) }
                     })];
             case 4:
@@ -144,7 +146,7 @@ router.get('/reimprimir-comprobante/:idregistro_pago', function (req, res) { ret
                 ArrayItem = {
                     "0": listItems
                 };
-                return [4 /*yield*/, prisma.sede.findFirst({
+                return [4 /*yield*/, prisma_1["default"].sede.findFirst({
                         where: { idsede: comprobante.idsede }
                     })];
             case 5:
@@ -169,7 +171,6 @@ router.get('/reimprimir-comprobante/:idregistro_pago', function (req, res) { ret
                     "Array_print": {}
                 };
                 res.status(200).send(rpt);
-                prisma.$disconnect();
                 return [2 /*return*/];
         }
     });

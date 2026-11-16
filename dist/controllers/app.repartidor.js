@@ -76,10 +76,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var socket_services_1 = __importDefault(require("../services/socket.services"));
 var logger_1 = require("../utils/logger");
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
@@ -96,7 +95,7 @@ router.post('/list-pedidos-asignados', function (req, res) { return __awaiter(vo
                 idpedidos = req.body.idpedidos;
                 idpedidosArray = idpedidos.split(',').map(Number);
                 placeholders = idpedidosArray.map(function () { return '?'; }).join(',');
-                return [4 /*yield*/, prisma.$queryRawUnsafe.apply(prisma, __spreadArray(["SELECT \n        sub.idpedido,\n        sub.pwa_estado,\n        sub.estado, \n        sub.idcliente,\n        sub.nomcliente, \n        sub.telefono,\n        sub.idsede,\n        sub.nomsede, \n        sub.telefono_sede,\n        sub.isapp,  \n        sub.time_line,\n        sub.json_datos_delivery,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            p.pwa_estado,\n            p.estado,\n            c.idcliente,\n            c.nombres nomcliente, \n            c.telefono, \n            s.idsede,       \n            s.telefono telefono_sede,            \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            ptle.time_line, \n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        left join pedido_time_line_entrega ptle on ptle.idpedido = p.idpedido \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe.apply(prisma_1["default"], __spreadArray(["SELECT \n        sub.idpedido,\n        sub.pwa_estado,\n        sub.estado, \n        sub.idcliente,\n        sub.nomcliente, \n        sub.telefono,\n        sub.idsede,\n        sub.nomsede, \n        sub.telefono_sede,\n        sub.isapp,  \n        sub.time_line,\n        sub.json_datos_delivery,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.metodoPago' AS metodo_pago,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.establecimiento.nombre' AS establecimiento,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.importeTotal' AS importe,\n        sub.json_datos_delivery->>'$.p_header.arrDatosDelivery.propina' AS propina,\n        sub.json_datos_delivery->>'$.p_subtotales' AS p_subtotales\n    FROM (\n        SELECT \n            p.idpedido, \n            p.pwa_estado,\n            p.estado,\n            c.idcliente,\n            c.nombres nomcliente, \n            c.telefono, \n            s.idsede,       \n            s.telefono telefono_sede,            \n            s.nombre nomsede, \n            p.flag_is_cliente isapp,\n            ptle.time_line, \n            CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n        FROM pedido p\n        INNER JOIN cliente c ON c.idcliente = p.idcliente \n        INNER JOIN sede s ON p.idsede = s.idsede  \n        left join pedido_time_line_entrega ptle on ptle.idpedido = p.idpedido \n        WHERE p.idpedido in (".concat(placeholders, ")\n    ) sub")], idpedidosArray, false))];
             case 1:
                 pedidos = _a.sent();
                 ArrayPedidos = [];
@@ -201,7 +200,7 @@ router.get('/detalle-pedido/:idpedido', function (req, res) { return __awaiter(v
         switch (_a.label) {
             case 0:
                 idpedido = req.params.idpedido;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["SELECT \n        p.idpedido, \n        p.pwa_estado,\n        p.estado,\n        c.nombres nomcliente, \n        c.telefono,        \n        s.telefono telefono_sede,\n        p.flag_is_cliente isapp,\n        CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n    FROM pedido p\n    inner join sede s on p.idsede=s.idsede\n    INNER JOIN cliente c ON c.idcliente = p.idcliente     \n    WHERE p.idpedido = ", ""], ["SELECT \n        p.idpedido, \n        p.pwa_estado,\n        p.estado,\n        c.nombres nomcliente, \n        c.telefono,        \n        s.telefono telefono_sede,\n        p.flag_is_cliente isapp,\n        CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n    FROM pedido p\n    inner join sede s on p.idsede=s.idsede\n    INNER JOIN cliente c ON c.idcliente = p.idcliente     \n    WHERE p.idpedido = ", ""])), idpedido)];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["SELECT \n        p.idpedido, \n        p.pwa_estado,\n        p.estado,\n        c.nombres nomcliente, \n        c.telefono,        \n        s.telefono telefono_sede,\n        p.flag_is_cliente isapp,\n        CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n    FROM pedido p\n    inner join sede s on p.idsede=s.idsede\n    INNER JOIN cliente c ON c.idcliente = p.idcliente     \n    WHERE p.idpedido = ", ""], ["SELECT \n        p.idpedido, \n        p.pwa_estado,\n        p.estado,\n        c.nombres nomcliente, \n        c.telefono,        \n        s.telefono telefono_sede,\n        p.flag_is_cliente isapp,\n        CAST(p.json_datos_delivery AS JSON) json_datos_delivery\n    FROM pedido p\n    inner join sede s on p.idsede=s.idsede\n    INNER JOIN cliente c ON c.idcliente = p.idcliente     \n    WHERE p.idpedido = ", ""])), idpedido)];
             case 1:
                 pedido = _a.sent();
                 arrDatosDelivery = pedido[0].json_datos_delivery.p_header.arrDatosDelivery;
@@ -291,7 +290,7 @@ router.post('/save-token-fcm', function (req, res) { return __awaiter(void 0, vo
         switch (_b.label) {
             case 0:
                 _a = req.body, idrepartidor = _a.idrepartidor, token_fcm = _a.token_fcm;
-                return [4 /*yield*/, prisma.repartidor.update({
+                return [4 /*yield*/, prisma_1["default"].repartidor.update({
                         where: {
                             idrepartidor: idrepartidor
                         },
@@ -313,7 +312,7 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
         switch (_b.label) {
             case 0:
                 _a = req.body, order = _a.order, time_line = _a.time_line, idrepartidor = _a.idrepartidor, importePagar = _a.importePagar, importeTotal = _a.importeTotal, propina = _a.propina, entrega = _a.entrega;
-                return [4 /*yield*/, prisma.repartidor.findFirst({
+                return [4 /*yield*/, prisma_1["default"].repartidor.findFirst({
                         select: {
                             idsede_suscrito: true
                         },
@@ -359,7 +358,7 @@ router.post('/marcar-pedido-entregado', function (req, res) { return __awaiter(v
             case 2:
                 _b.trys.push([2, 4, , 5]);
                 // await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["CALL procedure_pwa_delivery_pedido_entregado(", ")"], ["CALL procedure_pwa_delivery_pedido_entregado(", ")"])), JSON.stringify(_dataSend))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["CALL procedure_pwa_delivery_pedido_entregado(", ")"], ["CALL procedure_pwa_delivery_pedido_entregado(", ")"])), JSON.stringify(_dataSend))];
             case 3:
                 // await prisma.$queryRaw`call procedure_pwa_delivery_pedido_entregado('${JSON.stringify(_dataSend)}')`;
                 _b.sent();

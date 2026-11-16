@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import { ErrorValidacion } from '../dash/errores';
 import { redondear, resumenVentas, FilaVenta } from '../dash/agregados';
 import { avanceDeMeta, metaDeSede } from '../dash/metas';
@@ -6,7 +6,6 @@ import { alertasOperativas } from '../dash/alertas';
 import * as dashVentas from '../dash/ventas';
 import { logger } from '../../utils/logger';
 
-const prisma = new PrismaClient();
 
 /**
  * Reglas de alerta: "avisame si pasa esto".

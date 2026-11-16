@@ -2,7 +2,7 @@
 // y cobro con Niubiz. El monto SIEMPRE sale de la BD; el pago se verifica
 // server-side (authorization) y la acreditación al chatbot-go es idempotente
 // por tx_id — reintentar confirmar nunca duplica saldo.
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import axios from 'axios';
 import express, { Request, Response } from 'express';
 import { AuthResult, buildRecargaPayload, validarConfirmar, validarIniciar } from '../services/billing.helpers';
@@ -11,7 +11,6 @@ import * as niubiz from '../services/niubiz.service';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 interface PagoRow {
     id: number;

@@ -13,7 +13,7 @@
  * Solo arranca si en .env está PUSH_WATCHER_ENABLED=true.
  */
 
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import dotenv from 'dotenv';
 import {
     notifyStockAlert,
@@ -26,7 +26,6 @@ import { logger } from '../utils/logger';
 
 dotenv.config();
 
-const prisma = new PrismaClient();
 
 // =============================================================================
 // Config

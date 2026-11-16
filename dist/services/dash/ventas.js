@@ -39,13 +39,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.compararLocales = exports.metaVentaDiaria = exports.ventasDetalle = exports.ventasTotal = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var dash_util_1 = require("../dash.util");
 var utils_1 = require("../../utils/utils");
 var errores_1 = require("./errores");
-var prisma = new client_1.PrismaClient();
 /**
  * Las consultas se arman concatenando (`$executeRawUnsafe`), asi que todo id que
  * entre aqui se valida como entero antes de tocar el SQL. Es la unica barrera:
@@ -99,11 +101,11 @@ function ventasTotal(idsede, params) {
                 case 0:
                     sede = exigirEnteroPositivo(idsede, 'idsede');
                     ssql = "CALL procedure_module_dash_ventas(".concat(sede, ", '").concat(jsonParaSql(params), "')");
-                    return [4 /*yield*/, prisma.$queryRawUnsafe(ssql)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(ssql)];
                 case 1:
                     rpt = _a.sent();
                     sqlExec = rpt[0].f0;
-                    return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sqlExec)];
                 case 2:
                     rptExec = _a.sent();
                     return [2 /*return*/, (0, dash_util_1.normalizeResponseDashVentasTotal)(rptExec)];
@@ -124,7 +126,7 @@ function ventasDetalle(idsede, params) {
                     if (!params || !params.periodo) {
                         throw new errores_1.ErrorValidacion('Se requiere params.periodo');
                     }
-                    return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(_this, void 0, void 0, function () {
+                    return [4 /*yield*/, prisma_1["default"].$transaction(function (tx) { return __awaiter(_this, void 0, void 0, function () {
                             return __generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @xidsede = ".concat(sede))];
@@ -153,7 +155,7 @@ function metaVentaDiaria(idsede) {
             switch (_a.label) {
                 case 0:
                     sede = exigirEnteroPositivo(idsede, 'idsede');
-                    return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["select diaria from sede_meta where idsede = ", " and estado = '0'"], ["select diaria from sede_meta where idsede = ", " and estado = '0'"])), sede)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["select diaria from sede_meta where idsede = ", " and estado = '0'"], ["select diaria from sede_meta where idsede = ", " and estado = '0'"])), sede)];
                 case 1:
                     rpt = _a.sent();
                     return [2 /*return*/, rpt[0] ? rpt[0].diaria : 0];
@@ -175,7 +177,7 @@ function compararLocales(sedes, params) {
                     fechas = (0, utils_1.limitarRangoFechasDashboard)((params === null || params === void 0 ? void 0 : params.rango_start_date) || '', (params === null || params === void 0 ? void 0 : params.rango_end_date) || '');
                     fechaInicio = exigirFechaISO(fechas.fecha_inicio, 'rango_start_date');
                     fechaFin = exigirFechaISO(fechas.fecha_fin, 'rango_end_date');
-                    return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(_this, void 0, void 0, function () {
+                    return [4 /*yield*/, prisma_1["default"].$transaction(function (tx) { return __awaiter(_this, void 0, void 0, function () {
                             return __generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @sedes_json = '".concat(JSON.stringify(listaSedes), "'"))];

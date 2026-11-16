@@ -39,11 +39,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.avanceDeMeta = exports.guardarMeta = exports.listarMetas = exports.metaDeSede = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var agregados_1 = require("./agregados");
-var prisma = new client_1.PrismaClient();
 function aNumero(v) {
     var n = parseFloat(String(v !== null && v !== void 0 ? v : '0').replace(/,/g, ''));
     return Number.isFinite(n) ? n : 0;
@@ -53,7 +55,7 @@ function metaDeSede(idsede) {
         var filas, m, meta;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT diaria, mensual, anual FROM sede_meta\n        WHERE idsede = ", " AND estado = 0 LIMIT 1"], ["\n        SELECT diaria, mensual, anual FROM sede_meta\n        WHERE idsede = ", " AND estado = 0 LIMIT 1"])), idsede)];
+                case 0: return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT diaria, mensual, anual FROM sede_meta\n        WHERE idsede = ", " AND estado = 0 LIMIT 1"], ["\n        SELECT diaria, mensual, anual FROM sede_meta\n        WHERE idsede = ", " AND estado = 0 LIMIT 1"])), idsede)];
                 case 1:
                     filas = _a.sent();
                     m = filas === null || filas === void 0 ? void 0 : filas[0];
@@ -83,7 +85,7 @@ function listarMetas(idsedes) {
                     ids = idsedes.filter(function (n) { return Number.isInteger(n) && n > 0; });
                     if (ids.length === 0)
                         return [2 /*return*/, []];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT s.idsede, s.nombre, m.diaria, m.mensual, m.anual\n         FROM sede s\n         LEFT JOIN sede_meta m ON m.idsede = s.idsede AND m.estado = 0\n         WHERE s.idsede IN (".concat(ids.join(','), ")\n         ORDER BY s.nombre"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT s.idsede, s.nombre, m.diaria, m.mensual, m.anual\n         FROM sede s\n         LEFT JOIN sede_meta m ON m.idsede = s.idsede AND m.estado = 0\n         WHERE s.idsede IN (".concat(ids.join(','), ")\n         ORDER BY s.nombre"))];
                 case 1:
                     filas = _a.sent();
                     return [2 /*return*/, filas.map(function (f) {
@@ -119,16 +121,16 @@ function guardarMeta(idsede, idorg, meta) {
                         mensual: Math.max(0, Number(meta.mensual) || 0),
                         anual: Math.max(0, Number(meta.anual) || 0)
                     };
-                    return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n        SELECT idsede_meta FROM sede_meta WHERE idsede = ", " AND estado = 0 LIMIT 1"], ["\n        SELECT idsede_meta FROM sede_meta WHERE idsede = ", " AND estado = 0 LIMIT 1"])), idsede)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n        SELECT idsede_meta FROM sede_meta WHERE idsede = ", " AND estado = 0 LIMIT 1"], ["\n        SELECT idsede_meta FROM sede_meta WHERE idsede = ", " AND estado = 0 LIMIT 1"])), idsede)];
                 case 1:
                     existentes = _a.sent();
                     hoy = new Date().toISOString().slice(0, 10);
                     if (!(existentes === null || existentes === void 0 ? void 0 : existentes[0])) return [3 /*break*/, 3];
-                    return [4 /*yield*/, prisma.$executeRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n            UPDATE sede_meta\n            SET diaria = ", ",\n                mensual = ", ",\n                anual = ", ",\n                fecha = ", "\n            WHERE idsede_meta = ", ""], ["\n            UPDATE sede_meta\n            SET diaria = ", ",\n                mensual = ", ",\n                anual = ", ",\n                fecha = ", "\n            WHERE idsede_meta = ", ""])), String(valores.diaria), String(valores.mensual), String(valores.anual), hoy, Number(existentes[0].idsede_meta))];
+                    return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n            UPDATE sede_meta\n            SET diaria = ", ",\n                mensual = ", ",\n                anual = ", ",\n                fecha = ", "\n            WHERE idsede_meta = ", ""], ["\n            UPDATE sede_meta\n            SET diaria = ", ",\n                mensual = ", ",\n                anual = ", ",\n                fecha = ", "\n            WHERE idsede_meta = ", ""])), String(valores.diaria), String(valores.mensual), String(valores.anual), hoy, Number(existentes[0].idsede_meta))];
                 case 2:
                     _a.sent();
                     return [3 /*break*/, 5];
-                case 3: return [4 /*yield*/, prisma.$executeRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n            INSERT INTO sede_meta (idorg, idsede, diaria, mensual, anual, fecha, estado)\n            VALUES (", ", ", ", ", ",\n                    ", ", ", ", ", ", 0)"], ["\n            INSERT INTO sede_meta (idorg, idsede, diaria, mensual, anual, fecha, estado)\n            VALUES (", ", ", ", ", ",\n                    ", ", ", ", ", ", 0)"])), idorg, idsede, String(valores.diaria), String(valores.mensual), String(valores.anual), hoy)];
+                case 3: return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n            INSERT INTO sede_meta (idorg, idsede, diaria, mensual, anual, fecha, estado)\n            VALUES (", ", ", ", ", ",\n                    ", ", ", ", ", ", 0)"], ["\n            INSERT INTO sede_meta (idorg, idsede, diaria, mensual, anual, fecha, estado)\n            VALUES (", ", ", ", ", ",\n                    ", ", ", ", ", ", 0)"])), idorg, idsede, String(valores.diaria), String(valores.mensual), String(valores.anual), hoy)];
                 case 4:
                     _a.sent();
                     _a.label = 5;

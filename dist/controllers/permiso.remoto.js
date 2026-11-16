@@ -78,12 +78,14 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     }
     return to.concat(ar || Array.prototype.slice.call(from));
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var format_1 = require("date-fns/format");
 var parseISO_1 = require("date-fns/parseISO");
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
@@ -97,7 +99,7 @@ router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, voi
         switch (_b.label) {
             case 0:
                 link = req.params.link;
-                return [4 /*yield*/, prisma.permiso_remoto.findFirst({
+                return [4 /*yield*/, prisma_1["default"].permiso_remoto.findFirst({
                         where: {
                             link: link.toString()
                         },
@@ -132,13 +134,13 @@ router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, voi
                     estado: '0'
                 };
                 return [4 /*yield*/, Promise.all([
-                        prisma.permiso_remoto.findMany({
+                        prisma_1["default"].permiso_remoto.findMany({
                             take: 10,
                             orderBy: { idpermiso_remoto: 'desc' },
                             where: __assign(__assign({}, deEsteAdmin), { atendido: '0' }),
                             select: campos
                         }),
-                        prisma.permiso_remoto.findMany({
+                        prisma_1["default"].permiso_remoto.findMany({
                             take: 5,
                             orderBy: { idpermiso_remoto: 'desc' },
                             where: __assign(__assign({}, deEsteAdmin), { atendido: { not: '0' } }),
@@ -149,7 +151,7 @@ router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, voi
                 _a = _b.sent(), pendientes = _a[0], respondidas = _a[1];
                 registros = __spreadArray(__spreadArray([], pendientes, true), respondidas, true);
                 if (!!registros.some(function (r) { return r.idpermiso_remoto === permiso.idpermiso_remoto; })) return [3 /*break*/, 4];
-                return [4 /*yield*/, prisma.permiso_remoto.findUnique({
+                return [4 /*yield*/, prisma_1["default"].permiso_remoto.findUnique({
                         where: { idpermiso_remoto: permiso.idpermiso_remoto },
                         select: campos
                     })];
@@ -170,7 +172,6 @@ router.get("/permisos/:link", function (req, res) { return __awaiter(void 0, voi
                 // devolver los resultados
                 // res.status(200).json({ success: true, data: registros });
                 res.status(200).json({ success: true, data: formattedRegistros });
-                prisma.$disconnect();
                 return [2 /*return*/];
         }
     });
@@ -181,7 +182,7 @@ router.put('/update/:id', function (req, res) { return __awaiter(void 0, void 0,
         switch (_a.label) {
             case 0:
                 id = req.params.id;
-                return [4 /*yield*/, prisma.permiso_remoto.updateMany({
+                return [4 /*yield*/, prisma_1["default"].permiso_remoto.updateMany({
                         data: { atendido: '1' },
                         where: {
                             idpermiso_remoto: Number(id)

@@ -69,10 +69,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
-var prisma = new client_1.PrismaClient();
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a sedes' });
@@ -84,7 +86,7 @@ router.post('/create', function (req, res) { return __awaiter(void 0, void 0, vo
         switch (_a.label) {
             case 0:
                 _data = __assign(__assign({}, req.body), { idsede: req['token'].idsede });
-                return [4 /*yield*/, prisma.rrhh_rol.create({
+                return [4 /*yield*/, prisma_1["default"].rrhh_rol.create({
                         data: _data
                     })
                     // res.json(rpt)    
@@ -93,7 +95,6 @@ router.post('/create', function (req, res) { return __awaiter(void 0, void 0, vo
                 rpt = _a.sent();
                 // res.json(rpt)    
                 res.status(200).send(rpt);
-                prisma.$disconnect();
                 return [2 /*return*/];
         }
     });
@@ -105,7 +106,7 @@ router.get('/chatbot-config/:idsede', function (req, res) { return __awaiter(voi
         switch (_a.label) {
             case 0:
                 idsede = req.params.idsede;
-                return [4 /*yield*/, prisma.sede.findUnique({
+                return [4 /*yield*/, prisma_1["default"].sede.findUnique({
                         where: { idsede: Number(idsede) },
                         select: {
                             numero_billetera_chatbot: true,
@@ -132,7 +133,7 @@ router.post('/chatbot-config', function (req, res) { return __awaiter(void 0, vo
                 if (numero && !/^[\d\s+-]+$/.test(numero)) {
                     return [2 /*return*/, res.status(400).send({ success: false, error: 'Número de billetera inválido' })];
                 }
-                return [4 /*yield*/, prisma.sede.update({
+                return [4 /*yield*/, prisma_1["default"].sede.update({
                         where: { idsede: Number(idsede) },
                         data: { numero_billetera_chatbot: numero || null }
                     })];
@@ -150,7 +151,7 @@ router.get('/byIdorg/:id', function (req, res) { return __awaiter(void 0, void 0
         switch (_a.label) {
             case 0:
                 id = req.params.id;
-                return [4 /*yield*/, prisma.sede.findMany({
+                return [4 /*yield*/, prisma_1["default"].sede.findMany({
                         where: { idorg: Number(id) },
                         select: {
                             idsede: true,
@@ -163,7 +164,6 @@ router.get('/byIdorg/:id', function (req, res) { return __awaiter(void 0, void 0
             case 1:
                 rpt = _a.sent();
                 res.status(200).send(rpt);
-                prisma.$disconnect();
                 return [2 /*return*/];
         }
     });

@@ -41,11 +41,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 exports.__esModule = true;
 exports.notifyAnulacionGrande = exports.notifyCierreDia = exports.notifyMetaAlcanzada = exports.notifyStockAlert = exports.shouldSendOncePerDay = exports.sendPushToUser = exports.sendPushToSede = void 0;
 var web_push_1 = __importDefault(require("web-push"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var logger_1 = require("../utils/logger");
 dotenv_1["default"].config();
-var prisma = new client_1.PrismaClient();
 // =============================================================================
 // Configuración VAPID
 // =============================================================================
@@ -79,7 +78,7 @@ function sendPushToSede(idsede, payload) {
                 case 0:
                     if (!ensureVapidConfigured())
                         return [2 /*return*/];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT id, idusuario, idsede, endpoint, p256dh_key, auth_key\n         FROM push_subscriptions\n         WHERE idsede = ? AND enabled = 1", idsede)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT id, idusuario, idsede, endpoint, p256dh_key, auth_key\n         FROM push_subscriptions\n         WHERE idsede = ? AND enabled = 1", idsede)];
                 case 1:
                     subs = _a.sent();
                     return [4 /*yield*/, Promise.all(subs.map(function (s) { return deliverOne(s, payload); }))];
@@ -102,7 +101,7 @@ function sendPushToUser(idusuario, payload) {
                 case 0:
                     if (!ensureVapidConfigured())
                         return [2 /*return*/];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT id, idusuario, idsede, endpoint, p256dh_key, auth_key\n         FROM push_subscriptions\n         WHERE idusuario = ? AND enabled = 1", idusuario)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT id, idusuario, idsede, endpoint, p256dh_key, auth_key\n         FROM push_subscriptions\n         WHERE idusuario = ? AND enabled = 1", idusuario)];
                 case 1:
                     subs = _a.sent();
                     return [4 /*yield*/, Promise.all(subs.map(function (s) { return deliverOne(s, payload); }))];
@@ -135,13 +134,13 @@ function deliverOne(sub, payload) {
                 case 3:
                     err_1 = _b.sent();
                     if (!(err_1.statusCode === 404 || err_1.statusCode === 410)) return [3 /*break*/, 5];
-                    return [4 /*yield*/, prisma.$executeRawUnsafe("UPDATE push_subscriptions SET enabled = 0, last_error = ? WHERE id = ?", "gone:".concat(err_1.statusCode), sub.id)];
+                    return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("UPDATE push_subscriptions SET enabled = 0, last_error = ? WHERE id = ?", "gone:".concat(err_1.statusCode), sub.id)];
                 case 4:
                     _b.sent();
                     return [3 /*break*/, 7];
                 case 5:
                     msg = String((_a = err_1.message) !== null && _a !== void 0 ? _a : err_1).slice(0, 250);
-                    return [4 /*yield*/, prisma.$executeRawUnsafe("UPDATE push_subscriptions SET last_error = ? WHERE id = ?", msg, sub.id)];
+                    return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("UPDATE push_subscriptions SET last_error = ? WHERE id = ?", msg, sub.id)];
                 case 6:
                     _b.sent();
                     _b.label = 7;
@@ -165,7 +164,7 @@ function shouldSendOncePerDay(idsede, evento, fecha) {
             switch (_b.label) {
                 case 0:
                     _b.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, prisma.$executeRawUnsafe("INSERT INTO push_notification_log (idsede, evento, fecha) VALUES (?, ?, ?)", idsede, evento, fecha)];
+                    return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("INSERT INTO push_notification_log (idsede, evento, fecha) VALUES (?, ?, ?)", idsede, evento, fecha)];
                 case 1:
                     result = _b.sent();
                     return [2 /*return*/, Number(result) > 0];

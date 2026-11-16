@@ -1,5 +1,5 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 import { GeocodingService, estimarKmRuta } from "../services/geocoding.service";
 import { costoVariable, decidirDireccionTexto, describirDelivery, resolverModo, resolverResumenFormato, resolverZona, validarZonas } from "../services/delivery.zonas";
 import { mapearEstructuraAComprobante, validarDocumento } from "../services/comprobante.helpers";
@@ -20,7 +20,6 @@ import { stockNumerico as stockDeItem } from "../services/menu.stock";
 import axios from "axios";
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 // Seguimiento del pedido para el chatbot: en qué va, quién lo lleva y cuánto falta.
@@ -225,7 +224,6 @@ router.get('/comprobante/:idsede/:documento/:fecha/:importe', async (req: any, r
         logger.error('Error en /comprobante:', error);
         return res.status(500).json({ success: false, error: 'No se pudo consultar el comprobante' });
     } finally {
-        prisma.$disconnect();
     }
 });
 

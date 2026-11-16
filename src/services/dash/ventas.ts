@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import {
     normalizeResponseDash,
     normalizeResponseDashVentasTotal,
@@ -7,7 +7,6 @@ import {
 import { limitarRangoFechasDashboard } from '../../utils/utils';
 import { ErrorValidacion } from './errores';
 
-const prisma = new PrismaClient();
 
 /**
  * Logica de dashboard de ventas, extraida de los route handlers.

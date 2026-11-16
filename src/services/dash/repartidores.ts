@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import { redondear } from './agregados';
 
-const prisma = new PrismaClient();
 
 /**
  * Reparto a domicilio: quien entrega, cuanto y como lo califican.

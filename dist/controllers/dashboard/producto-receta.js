@@ -63,13 +63,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
 var dashProductos = __importStar(require("../../services/dash/productos"));
 var errores_1 = require("../../services/dash/errores");
 dotenv_1["default"].config();
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
@@ -88,7 +87,7 @@ router.post("/get-productos-receta", function (req, res) { return __awaiter(void
             case 1:
                 _b.trys.push([1, 3, , 4]);
                 ssql = "CALL procedure_module_dash_productos_receta(".concat(idsede, ")");
-                return [4 /*yield*/, prisma.$queryRawUnsafe(ssql)];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(ssql)];
             case 2:
                 rptExec = _b.sent();
                 rptExec = normalizeReceta(rptExec);
@@ -117,7 +116,7 @@ router.post("/get-productos-bodega", function (req, res) { return __awaiter(void
             case 1:
                 _b.trys.push([1, 3, , 4]);
                 ssql = " select p.idproducto, pds.idproducto_stock, p.idproducto_familia idseccion, p.precio, p.precio_unitario, p.precio_venta, pdf.descripcion nom_seccion, p.descripcion nom_producto, a.descripcion nom_almacen            \n            from producto p \n            inner join producto_familia pdf on p.idproducto_familia = pdf.idproducto_familia\n            inner join producto_stock pds on p.idproducto = pds.idproducto\n            inner join almacen a on a.idalmacen = pds.idalmacen \n            where pds.idproducto_stock in (".concat(idproducto_stock, ") and p.idsede = ").concat(idsede, " and p.estado = 0 and a.estado = 0 \n            order by p.descripcion");
-                return [4 /*yield*/, prisma.$queryRawUnsafe(ssql)];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(ssql)];
             case 2:
                 productos = _b.sent();
                 productos.forEach(function (element) {
@@ -176,16 +175,16 @@ router.post("/save-food-cost", function (req, res) { return __awaiter(void 0, vo
                 if (!(_i < items_1.length)) return [3 /*break*/, 8];
                 item = items_1[_i];
                 idsede = item.idsede, iditem = item.iditem, plato = item.plato, precio_venta = item.precio_venta, food_cost = item.food_cost, porcentaje_food_cost = item.porcentaje_food_cost, resumen = item.resumen, receta_sugerida = item.receta_sugerida;
-                return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT id FROM platos_food_cost WHERE idsede = ".concat(idsede, " AND iditem = ").concat(iditem, " LIMIT 1"))];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT id FROM platos_food_cost WHERE idsede = ".concat(idsede, " AND iditem = ").concat(iditem, " LIMIT 1"))];
             case 3:
                 existingRecord = _a.sent();
                 if (!(existingRecord && existingRecord.length > 0)) return [3 /*break*/, 5];
-                return [4 /*yield*/, prisma.$executeRawUnsafe("UPDATE platos_food_cost SET \n                        plato = ?, \n                        precio_venta = ?, \n                        food_cost = ?, \n                        porcentaje_food_cost = ?, \n                        resumen = ?, \n                        receta_sugerida = ?,\n                        updated_at = NOW()\n                    WHERE idsede = ? AND iditem = ?", plato, precio_venta, food_cost, porcentaje_food_cost, resumen, JSON.stringify(receta_sugerida), idsede, iditem)];
+                return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("UPDATE platos_food_cost SET \n                        plato = ?, \n                        precio_venta = ?, \n                        food_cost = ?, \n                        porcentaje_food_cost = ?, \n                        resumen = ?, \n                        receta_sugerida = ?,\n                        updated_at = NOW()\n                    WHERE idsede = ? AND iditem = ?", plato, precio_venta, food_cost, porcentaje_food_cost, resumen, JSON.stringify(receta_sugerida), idsede, iditem)];
             case 4:
                 _a.sent();
                 updated++;
                 return [3 /*break*/, 7];
-            case 5: return [4 /*yield*/, prisma.$executeRawUnsafe("INSERT INTO platos_food_cost (idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, receta_sugerida) \n                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)", idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, JSON.stringify(receta_sugerida))];
+            case 5: return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("INSERT INTO platos_food_cost (idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, receta_sugerida) \n                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)", idsede, iditem, plato, precio_venta, food_cost, porcentaje_food_cost, resumen, JSON.stringify(receta_sugerida))];
             case 6:
                 _a.sent();
                 inserted++;

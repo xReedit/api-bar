@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import { redondear } from './agregados';
 
-const prisma = new PrismaClient();
 
 /**
  * Metas de venta por sede.

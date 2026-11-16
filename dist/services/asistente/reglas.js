@@ -62,16 +62,18 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.marcarDisparada = exports.evaluarSede = exports.borrarRegla = exports.crearRegla = exports.listarReglas = exports.definicionDe = exports.CATALOGO = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var errores_1 = require("../dash/errores");
 var agregados_1 = require("../dash/agregados");
 var metas_1 = require("../dash/metas");
 var alertas_1 = require("../dash/alertas");
 var dashVentas = __importStar(require("../dash/ventas"));
 var logger_1 = require("../../utils/logger");
-var prisma = new client_1.PrismaClient();
 exports.CATALOGO = [
     {
         tipo: 'meta_bajo_pct',
@@ -143,7 +145,7 @@ function listarReglas(idsedes) {
                     ids = idsedes.filter(function (n) { return Number.isInteger(n) && n > 0; });
                     if (ids.length === 0)
                         return [2 /*return*/, []];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT id, idsede, tipo, umbral, descripcion, activa, ultimo_disparo\n         FROM asistente_regla_alerta\n         WHERE idsede IN (".concat(ids.join(','), ")\n         ORDER BY activa DESC, id DESC"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT id, idsede, tipo, umbral, descripcion, activa, ultimo_disparo\n         FROM asistente_regla_alerta\n         WHERE idsede IN (".concat(ids.join(','), ")\n         ORDER BY activa DESC, id DESC"))];
                 case 1:
                     filas = _a.sent();
                     return [2 /*return*/, (filas !== null && filas !== void 0 ? filas : []).map(aRegla)];
@@ -169,10 +171,10 @@ function crearRegla(idorg, idsede, idusuario, tipo, umbral) {
                     }
                     descripcion = def.plantilla(valor);
                     ahora = new Date().toISOString().slice(0, 19).replace('T', ' ');
-                    return [4 /*yield*/, prisma.$executeRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        INSERT INTO asistente_regla_alerta\n            (idorg, idsede, idusuario, tipo, umbral, descripcion, activa, creado_en)\n        VALUES (", ", ", ", ", ", ", ", ", ", ", ", 1, ", ")"], ["\n        INSERT INTO asistente_regla_alerta\n            (idorg, idsede, idusuario, tipo, umbral, descripcion, activa, creado_en)\n        VALUES (", ", ", ", ", ", ", ", ", ", ", ", 1, ", ")"])), idorg, idsede, idusuario, tipo, valor, descripcion, ahora)];
+                    return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        INSERT INTO asistente_regla_alerta\n            (idorg, idsede, idusuario, tipo, umbral, descripcion, activa, creado_en)\n        VALUES (", ", ", ", ", ", ", ", ", ", ", ", 1, ", ")"], ["\n        INSERT INTO asistente_regla_alerta\n            (idorg, idsede, idusuario, tipo, umbral, descripcion, activa, creado_en)\n        VALUES (", ", ", ", ", ", ", ", ", ", ", ", 1, ", ")"])), idorg, idsede, idusuario, tipo, valor, descripcion, ahora)];
                 case 1:
                     _a.sent();
-                    return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n        SELECT id, idsede, tipo, umbral, descripcion, activa, ultimo_disparo\n        FROM asistente_regla_alerta WHERE idsede = ", " ORDER BY id DESC LIMIT 1"], ["\n        SELECT id, idsede, tipo, umbral, descripcion, activa, ultimo_disparo\n        FROM asistente_regla_alerta WHERE idsede = ", " ORDER BY id DESC LIMIT 1"])), idsede)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n        SELECT id, idsede, tipo, umbral, descripcion, activa, ultimo_disparo\n        FROM asistente_regla_alerta WHERE idsede = ", " ORDER BY id DESC LIMIT 1"], ["\n        SELECT id, idsede, tipo, umbral, descripcion, activa, ultimo_disparo\n        FROM asistente_regla_alerta WHERE idsede = ", " ORDER BY id DESC LIMIT 1"])), idsede)];
                 case 2:
                     filas = _a.sent();
                     return [2 /*return*/, aRegla(filas[0])];
@@ -190,7 +192,7 @@ function borrarRegla(id, idsedes) {
                     ids = idsedes.filter(function (n) { return Number.isInteger(n) && n > 0; });
                     if (ids.length === 0)
                         return [2 /*return*/, false];
-                    return [4 /*yield*/, prisma.$executeRawUnsafe("DELETE FROM asistente_regla_alerta WHERE id = ".concat(Number(id), " AND idsede IN (").concat(ids.join(','), ")"))];
+                    return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("DELETE FROM asistente_regla_alerta WHERE id = ".concat(Number(id), " AND idsede IN (").concat(ids.join(','), ")"))];
                 case 1:
                     borradas = _a.sent();
                     return [2 /*return*/, Number(borradas) > 0];
@@ -313,7 +315,7 @@ function marcarDisparada(id, fecha) {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, prisma.$executeRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n        UPDATE asistente_regla_alerta SET ultimo_disparo = ", " WHERE id = ", ""], ["\n        UPDATE asistente_regla_alerta SET ultimo_disparo = ", " WHERE id = ", ""])), fecha, id)];
+                case 0: return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n        UPDATE asistente_regla_alerta SET ultimo_disparo = ", " WHERE id = ", ""], ["\n        UPDATE asistente_regla_alerta SET ultimo_disparo = ", " WHERE id = ", ""])), fecha, id)];
                 case 1:
                     _a.sent();
                     return [2 /*return*/];

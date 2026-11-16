@@ -35,13 +35,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.dashProductos = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var dash_util_1 = require("../dash.util");
 var utils_1 = require("../../utils/utils");
 var errores_1 = require("./errores");
-var prisma = new client_1.PrismaClient();
 /**
  * Logica de dashboard de productos, extraida del route handler.
  * Mismo motivo que services/dash/ventas.ts: un solo camino hacia la cifra.
@@ -96,7 +98,7 @@ function dashProductos(idsede, params) {
                     fechas = (0, utils_1.limitarRangoFechasDashboard)(params === null || params === void 0 ? void 0 : params.rango_start_date, params === null || params === void 0 ? void 0 : params.rango_end_date);
                     fechaInicio = exigirFechaISO(fechas.fecha_inicio, 'rango_start_date');
                     fechaFin = exigirFechaISO(fechas.fecha_fin, 'rango_end_date');
-                    return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(_this, void 0, void 0, function () {
+                    return [4 /*yield*/, prisma_1["default"].$transaction(function (tx) { return __awaiter(_this, void 0, void 0, function () {
                             return __generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0: return [4 /*yield*/, tx.$executeRawUnsafe("SET @xidsede = ".concat(sede))];

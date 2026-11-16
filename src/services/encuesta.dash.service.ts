@@ -1,10 +1,10 @@
 // Encuestas en el dashboard: resultados, alertas de malas experiencias y seguimiento.
 // Contrato: plan/ENCUESTAS-DASHBOARD-PLAN.md del POS legacy. Tablas enc_* (migraciones 031-034), solo $queryRaw
 // parametrizado (no estan en schema.prisma). Las metricas por respuesta ya vienen precalculadas en enc_respuesta.
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { horaLima } from './encuesta.publica.service';
 
-const prisma = new PrismaClient();
 
 export type Canal = 'kiosko' | 'qr_local' | 'ticket' | 'whatsapp';
 export interface Rango { inicio: string; fin: string }

@@ -58,14 +58,16 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.loginDashboard = exports.loginBot = exports.login = void 0;
 var jwt = __importStar(require("jsonwebtoken"));
 var express = __importStar(require("express"));
 var auth_1 = require("../middleware/auth");
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 // const _SECRET_KEY = SECRET_KEY;
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 function login(_usuario) {
     return __awaiter(this, void 0, void 0, function () {
@@ -74,7 +76,7 @@ function login(_usuario) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, prisma.usuario.findFirst({ where: { usuario: _usuario.usuario } })];
+                    return [4 /*yield*/, prisma_1["default"].usuario.findFirst({ where: { usuario: _usuario.usuario } })];
                 case 1:
                     usuario = _a.sent();
                     if (!usuario) {
@@ -107,7 +109,7 @@ function loginBot(_usuario) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, prisma.usuario.findFirst({ where: { usuario: _usuario.usuario } })];
+                    return [4 /*yield*/, prisma_1["default"].usuario.findFirst({ where: { usuario: _usuario.usuario } })];
                 case 1:
                     usuario = _a.sent();
                     if (!usuario) {
@@ -141,7 +143,7 @@ function loginDashboard(_usuario, fromRestobar) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, prisma.usuario.findFirst({ where: { usuario: _usuario.usuario } })];
+                    return [4 /*yield*/, prisma_1["default"].usuario.findFirst({ where: { usuario: _usuario.usuario } })];
                 case 1:
                     usuario = _a.sent();
                     if (!usuario) {
@@ -178,7 +180,7 @@ function datosUser(usuario) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, prisma.sede.findMany({
+                    return [4 /*yield*/, prisma_1["default"].sede.findMany({
                             where: {
                                 idorg: usuario.idorg,
                                 estado: 0

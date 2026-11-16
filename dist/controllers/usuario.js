@@ -63,8 +63,6 @@ exports.loginDashboard = exports.loginRestobarBot = exports.loginRestobar = expo
 var express = __importStar(require("express"));
 var userServices = __importStar(require("../services/usuario.service"));
 var errors_util_1 = require("../utils/errors.util");
-var client_1 = require("@prisma/client");
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 // login user
 var login = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {

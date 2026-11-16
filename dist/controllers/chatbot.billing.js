@@ -81,7 +81,7 @@ exports.__esModule = true;
 // y cobro con Niubiz. El monto SIEMPRE sale de la BD; el pago se verifica
 // server-side (authorization) y la acreditación al chatbot-go es idempotente
 // por tx_id — reintentar confirmar nunca duplica saldo.
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var axios_1 = __importDefault(require("axios"));
 var express_1 = __importDefault(require("express"));
 var billing_helpers_1 = require("../services/billing.helpers");
@@ -89,7 +89,6 @@ var chatbotgo = __importStar(require("../services/chatbotgo.service"));
 var niubiz = __importStar(require("../services/niubiz.service"));
 var logger_1 = require("../utils/logger");
 var router = express_1["default"].Router();
-var prisma = new client_1.PrismaClient();
 /**
  * Un error de axios impreso crudo llena el log con el request entero y esconde
  * lo único que importa (status + body de Niubiz). Los errores de Prisma pasan
@@ -129,7 +128,7 @@ router.get('/packs', function (_req, res) { return __awaiter(void 0, void 0, voi
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n            SELECT id, conversaciones, precio_soles FROM chatbot_pack\n            WHERE activo = 1 ORDER BY conversaciones ASC"], ["\n            SELECT id, conversaciones, precio_soles FROM chatbot_pack\n            WHERE activo = 1 ORDER BY conversaciones ASC"])))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n            SELECT id, conversaciones, precio_soles FROM chatbot_pack\n            WHERE activo = 1 ORDER BY conversaciones ASC"], ["\n            SELECT id, conversaciones, precio_soles FROM chatbot_pack\n            WHERE activo = 1 ORDER BY conversaciones ASC"])))];
             case 1:
                 packs = _a.sent();
                 res.status(200).json({ success: true, packs: packs });
@@ -164,7 +163,7 @@ router.post('/pago/iniciar', function (req, res) { return __awaiter(void 0, void
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 6, , 7]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n            SELECT id, conversaciones, precio_soles FROM chatbot_pack\n            WHERE id = ", " AND activo = 1"], ["\n            SELECT id, conversaciones, precio_soles FROM chatbot_pack\n            WHERE id = ", " AND activo = 1"])), entrada.idPack)];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n            SELECT id, conversaciones, precio_soles FROM chatbot_pack\n            WHERE id = ", " AND activo = 1"], ["\n            SELECT id, conversaciones, precio_soles FROM chatbot_pack\n            WHERE id = ", " AND activo = 1"])), entrada.idPack)];
             case 2:
                 packs = _a.sent();
                 if (!packs.length) {
@@ -172,7 +171,7 @@ router.post('/pago/iniciar', function (req, res) { return __awaiter(void 0, void
                 }
                 pack_1 = packs[0];
                 monto_1 = Number(pack_1.precio_soles);
-                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                return [4 /*yield*/, prisma_1["default"].$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
                         var idRows;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
@@ -230,7 +229,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 20, , 21]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n            SELECT id, idsede, conversaciones, monto, estado, niubiz_tx FROM chatbot_pago\n            WHERE id = ", ""], ["\n            SELECT id, idsede, conversaciones, monto, estado, niubiz_tx FROM chatbot_pago\n            WHERE id = ", ""])), entrada.purchaseNumber)];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n            SELECT id, idsede, conversaciones, monto, estado, niubiz_tx FROM chatbot_pago\n            WHERE id = ", ""], ["\n            SELECT id, idsede, conversaciones, monto, estado, niubiz_tx FROM chatbot_pago\n            WHERE id = ", ""])), entrada.purchaseNumber)];
             case 2:
                 pagos = _a.sent();
                 if (!pagos.length) {
@@ -246,7 +245,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
                 if (pago.estado !== 'pendiente') {
                     return [2 /*return*/, res.status(409).json({ success: false, error: "pago en estado ".concat(pago.estado) })];
                 }
-                return [4 /*yield*/, prisma.$executeRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            UPDATE chatbot_pago SET estado = 'procesando' WHERE id = ", " AND estado = 'pendiente'"], ["\n            UPDATE chatbot_pago SET estado = 'procesando' WHERE id = ", " AND estado = 'pendiente'"])), pago.id)];
+                return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            UPDATE chatbot_pago SET estado = 'procesando' WHERE id = ", " AND estado = 'pendiente'"], ["\n            UPDATE chatbot_pago SET estado = 'procesando' WHERE id = ", " AND estado = 'pendiente'"])), pago.id)];
             case 5:
                 reclamado = _a.sent();
                 if (Number(reclamado) !== 1) {
@@ -270,7 +269,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
             case 9:
                 authError_1 = _a.sent();
                 // Niubiz no respondió (red/timeout): liberar el reclamo para permitir reintentar.
-                return [4 /*yield*/, prisma.$executeRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ", " AND estado = 'procesando'"])), pago.id)];
+                return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_7 || (templateObject_7 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ", " AND estado = 'procesando'"])), pago.id)];
             case 10:
                 // Niubiz no respondió (red/timeout): liberar el reclamo para permitir reintentar.
                 _a.sent();
@@ -281,7 +280,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
                 // Niubiz no dio un veredicto real, no hay ACTION_CODE. Se trata igual
                 // que "no respondió": se libera el reclamo, es reintentable. Marcar
                 // 'fallido' aquí perdería el intento sin que hubiera un rechazo real.
-                return [4 /*yield*/, prisma.$executeRaw(templateObject_8 || (templateObject_8 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ", " AND estado = 'procesando'"])), pago.id)];
+                return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_8 || (templateObject_8 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'pendiente' WHERE id = ", " AND estado = 'procesando'"])), pago.id)];
             case 12:
                 // Respuesta irreconocible (5xx, HTML, token de acceso expirado, etc.):
                 // Niubiz no dio un veredicto real, no hay ACTION_CODE. Se trata igual
@@ -293,7 +292,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
             case 13:
                 if (!!auth.ok) return [3 /*break*/, 15];
                 // Rechazo real: Niubiz contestó con un ACTION_CODE de rechazo. Terminal.
-                return [4 /*yield*/, prisma.$executeRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ", " AND estado = 'procesando'"])), pago.id)];
+                return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_9 || (templateObject_9 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'fallido' WHERE id = ", " AND estado = 'procesando'"])), pago.id)];
             case 14:
                 // Rechazo real: Niubiz contestó con un ACTION_CODE de rechazo. Terminal.
                 _a.sent();
@@ -305,7 +304,7 @@ router.post('/pago/confirmar', function (req, res) { return __awaiter(void 0, vo
                     })];
             case 15:
                 _a.trys.push([15, 18, , 19]);
-                return [4 /*yield*/, prisma.$executeRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ", "\n                WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ", "\n                WHERE id = ", " AND estado = 'procesando'"])), auth.transactionId, pago.id)];
+                return [4 /*yield*/, prisma_1["default"].$executeRaw(templateObject_10 || (templateObject_10 = __makeTemplateObject(["\n                UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ", "\n                WHERE id = ", " AND estado = 'procesando'"], ["\n                UPDATE chatbot_pago SET estado = 'pagado', niubiz_tx = ", "\n                WHERE id = ", " AND estado = 'procesando'"])), auth.transactionId, pago.id)];
             case 16:
                 _a.sent();
                 logger_1.logger.info('billing: pago aprobado', { purchaseNumber: pago.id, tx: auth.transactionId });

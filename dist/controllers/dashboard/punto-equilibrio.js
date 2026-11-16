@@ -63,13 +63,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
 var utils_1 = require("../../utils/utils");
 var logger_1 = require("../../utils/logger");
 dotenv_1["default"].config();
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
@@ -91,7 +90,7 @@ router.post("/get-datos", function (req, res) { return __awaiter(void 0, void 0,
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                return [4 /*yield*/, prisma_1["default"].$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
                         var result, error_2;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
@@ -149,7 +148,7 @@ router.post("/set-datos-punto-equilibrio", function (req, res) { return __awaite
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 7, , 8]);
-                return [4 /*yield*/, prisma.punto_equilibrio.findFirst({
+                return [4 /*yield*/, prisma_1["default"].punto_equilibrio.findFirst({
                         where: {
                             idsede: idsede,
                             mes: String(mes),
@@ -159,7 +158,7 @@ router.post("/set-datos-punto-equilibrio", function (req, res) { return __awaite
             case 2:
                 puntoEquilibrio = _b.sent();
                 if (!puntoEquilibrio) return [3 /*break*/, 4];
-                return [4 /*yield*/, prisma.punto_equilibrio.update({
+                return [4 /*yield*/, prisma_1["default"].punto_equilibrio.update({
                         where: {
                             id: puntoEquilibrio.id
                         },
@@ -170,7 +169,7 @@ router.post("/set-datos-punto-equilibrio", function (req, res) { return __awaite
             case 3:
                 _b.sent();
                 return [3 /*break*/, 6];
-            case 4: return [4 /*yield*/, prisma.punto_equilibrio.create({
+            case 4: return [4 /*yield*/, prisma_1["default"].punto_equilibrio.create({
                     data: {
                         idsede: idsede,
                         mes: String(mes),
@@ -203,7 +202,7 @@ router.post("/get-datos-punto-equilibrio", function (req, res) { return __awaite
         switch (_c.label) {
             case 0:
                 _a = req.body, idsede = _a.idsede, mes = _a.mes, anio = _a.anio;
-                return [4 /*yield*/, prisma.punto_equilibrio.findFirst({
+                return [4 /*yield*/, prisma_1["default"].punto_equilibrio.findFirst({
                         where: {
                             idsede: idsede,
                             mes: String(mes),
@@ -216,7 +215,7 @@ router.post("/get-datos-punto-equilibrio", function (req, res) { return __awaite
             case 1:
                 _b = (_c.sent());
                 if (_b) return [3 /*break*/, 3];
-                return [4 /*yield*/, prisma.punto_equilibrio.findFirst({
+                return [4 /*yield*/, prisma_1["default"].punto_equilibrio.findFirst({
                         where: {
                             idsede: idsede
                         },

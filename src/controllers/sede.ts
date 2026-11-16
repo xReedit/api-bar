@@ -1,7 +1,6 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get('/', function (req, res) {
@@ -18,7 +17,6 @@ router.post('/create', async (req: any, res) => {
 
     // res.json(rpt)    
     res.status(200).send(rpt);
-    prisma.$disconnect();
 });
 
 // Config del chatbot por sede (número de billetera Yape/Plin, métodos marcados)
@@ -66,7 +64,6 @@ router.get('/byIdorg/:id', async (req: any, res) => {
     })
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 })
 
 

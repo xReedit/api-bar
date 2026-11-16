@@ -1,9 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import { normalizeResponseDashProductos } from '../dash.util';
 import { limitarRangoFechasDashboard } from '../../utils/utils';
 import { ErrorValidacion } from './errores';
 
-const prisma = new PrismaClient();
 
 /**
  * Logica de dashboard de productos, extraida del route handler.

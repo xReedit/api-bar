@@ -74,7 +74,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 exports.__esModule = true;
 var express_1 = __importDefault(require("express"));
-var client_1 = require("@prisma/client");
 var axios_1 = __importDefault(require("axios"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dashVentas = __importStar(require("../../services/dash/ventas"));
@@ -84,7 +83,6 @@ dotenv_1["default"].config();
 var app = (0, express_1["default"])();
 app.use(express_1["default"].json({ limit: '50mb' }));
 app.use(express_1["default"].urlencoded({ limit: '50mb', extended: true }));
-var prisma = new client_1.PrismaClient();
 var router = express_1["default"].Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {

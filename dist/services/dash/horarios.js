@@ -35,11 +35,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.ventasPorHorario = exports.nombreDia = exports.DIAS = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var agregados_1 = require("./agregados");
-var prisma = new client_1.PrismaClient();
 exports.DIAS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
 function nombreDia(dia) {
     var _a;
@@ -55,7 +57,7 @@ function ventasPorHorario(idsedes, desde, hasta) {
                     ids = idsedes.filter(function (n) { return Number.isInteger(n) && n > 0; });
                     if (ids.length === 0)
                         return [2 /*return*/, { celdas: [], horaMin: 0, horaMax: 0, pico: null }];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT\n            IF(DAYOFWEEK(rp.fecha_hora) = 1, 7, DAYOFWEEK(rp.fecha_hora) - 1) AS dia,\n            HOUR(rp.fecha_hora) AS hora,\n            ROUND(SUM(rp.total), 2) AS total,\n            COUNT(*) AS transacciones\n         FROM registro_pago rp\n         WHERE rp.idsede IN (".concat(ids.join(','), ")\n           AND rp.estado = 0\n           AND DATE(rp.fecha_hora) BETWEEN '").concat(desde, "' AND '").concat(hasta, "'\n         GROUP BY dia, hora\n         ORDER BY dia, hora"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT\n            IF(DAYOFWEEK(rp.fecha_hora) = 1, 7, DAYOFWEEK(rp.fecha_hora) - 1) AS dia,\n            HOUR(rp.fecha_hora) AS hora,\n            ROUND(SUM(rp.total), 2) AS total,\n            COUNT(*) AS transacciones\n         FROM registro_pago rp\n         WHERE rp.idsede IN (".concat(ids.join(','), ")\n           AND rp.estado = 0\n           AND DATE(rp.fecha_hora) BETWEEN '").concat(desde, "' AND '").concat(hasta, "'\n         GROUP BY dia, hora\n         ORDER BY dia, hora"))];
                 case 1:
                     filas = _a.sent();
                     celdas = (filas !== null && filas !== void 0 ? filas : []).map(function (f) { return ({

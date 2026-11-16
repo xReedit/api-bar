@@ -78,13 +78,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
 var utils_1 = require("../../utils/utils");
 var logger_1 = require("../../utils/logger");
 dotenv_1["default"].config();
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
@@ -104,11 +103,11 @@ router.post("/get-iecaja", function (req, res) { return __awaiter(void 0, void 0
             case 1:
                 _b.trys.push([1, 4, , 5]);
                 ssql = "CALL procedure_module_dash_caja(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_caja(", ", ", ")"], ["CALL procedure_module_dash_caja(", ", ", ")"])), idsede, JSON.stringify(params))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_caja(", ", ", ")"], ["CALL procedure_module_dash_caja(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();
                 sqlExec = rpt[0].f0;
-                return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
                 rptExec = (0, dash_util_1.normalizeResponse)(rptExec);
@@ -134,11 +133,11 @@ router.post("/get-otros-ingresos", function (req, res) { return __awaiter(void 0
             case 1:
                 _b.trys.push([1, 4, , 5]);
                 ssql = "CALL procedure_module_dash_otros_ingresos(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["CALL procedure_module_dash_otros_ingresos(", ", ", ")"], ["CALL procedure_module_dash_otros_ingresos(", ", ", ")"])), idsede, JSON.stringify(params))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["CALL procedure_module_dash_otros_ingresos(", ", ", ")"], ["CALL procedure_module_dash_otros_ingresos(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();
                 sqlExec = rpt[0].f0;
-                return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
                 // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
@@ -165,11 +164,11 @@ router.post("/get-pedidos-borrados", function (req, res) { return __awaiter(void
             case 1:
                 _b.trys.push([1, 4, , 5]);
                 ssql = "CALL procedure_module_dash_pedidos_borrados(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["CALL procedure_module_dash_pedidos_borrados(", ", ", ")"], ["CALL procedure_module_dash_pedidos_borrados(", ", ", ")"])), idsede, JSON.stringify(params))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["CALL procedure_module_dash_pedidos_borrados(", ", ", ")"], ["CALL procedure_module_dash_pedidos_borrados(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();
                 sqlExec = rpt[0].f0;
-                return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
                 // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
@@ -196,11 +195,11 @@ router.post("/get-pedidos-sin-corbrar", function (req, res) { return __awaiter(v
             case 1:
                 _b.trys.push([1, 4, , 5]);
                 ssql = "CALL procedure_module_dash_pedidos_sin_cobrar(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["CALL procedure_module_dash_pedidos_sin_cobrar(", ", ", ")"], ["CALL procedure_module_dash_pedidos_sin_cobrar(", ", ", ")"])), idsede, JSON.stringify(params))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["CALL procedure_module_dash_pedidos_sin_cobrar(", ", ", ")"], ["CALL procedure_module_dash_pedidos_sin_cobrar(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();
                 sqlExec = rpt[0].f0;
-                return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
                 // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
@@ -226,11 +225,11 @@ router.post("/get-descuentos-aplicados", function (req, res) { return __awaiter(
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 4, , 5]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["CALL procedure_module_dash_descuentos(", ", ", ")"], ["CALL procedure_module_dash_descuentos(", ", ", ")"])), idsede, JSON.stringify(params))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_5 || (templateObject_5 = __makeTemplateObject(["CALL procedure_module_dash_descuentos(", ", ", ")"], ["CALL procedure_module_dash_descuentos(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();
                 sqlExec = rpt[0].f0;
-                return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
                 // Supongamos que 'rptExec' es el resultado de tu consulta a la base de datos
@@ -257,7 +256,7 @@ router.post("/get-dash-caja", function (req, res) { return __awaiter(void 0, voi
                 p_tipo_consulta_1 = params.tipo_consulta;
                 p_fecha_inicio_1 = params.rango_start_date;
                 p_fecha_fin_1 = params.rango_end_date;
-                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                return [4 /*yield*/, prisma_1["default"].$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
                         var result, error_7;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
@@ -321,7 +320,7 @@ router.post("/get-cierres", function (req, res) { return __awaiter(void 0, void 
                 _f.label = 1;
             case 1:
                 _f.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            SELECT b.idusuario_bitacora_cierre AS id, b.idusuario, u.nombres AS usuario_nombre,\n                   sup.nombres AS supervisor_nombre, b.numintentos, b.fecha,\n                   DATE_FORMAT(SUBTIME(b.fecha_hora, IFNULL(so.hora_cierre_dia, '00:00')), '%Y-%m-%d') AS dia,\n                   s.nombre AS sede_nombre, s.ciudad, b.detalle_cierre, b.detalle_titulo\n            FROM usuario_bitacora_cierre b\n            JOIN usuario u ON u.idusuario = b.idusuario\n            LEFT JOIN usuario sup ON sup.idusuario = NULLIF(b.idusuario_supervisor, 0)\n            JOIN sede s ON s.idsede = b.idsede\n            LEFT JOIN sede_opciones so ON so.idsede = b.idsede\n            WHERE b.idsede = ", " AND b.cierre = 1 AND b.detalle_cierre IS NOT NULL\n              -- ADDTIME y no CONCAT: hora_cierre_dia es latin1 y los parametros utf8mb4 (error 1270 al concatenar)\n              AND b.fecha_hora >= ADDTIME(CAST(", " AS DATETIME), IFNULL(so.hora_cierre_dia, '00:00'))\n              AND b.fecha_hora <  ADDTIME(CAST(", " AS DATETIME) + INTERVAL 1 DAY, IFNULL(so.hora_cierre_dia, '00:00'))\n            ORDER BY b.fecha_hora DESC"], ["\n            SELECT b.idusuario_bitacora_cierre AS id, b.idusuario, u.nombres AS usuario_nombre,\n                   sup.nombres AS supervisor_nombre, b.numintentos, b.fecha,\n                   DATE_FORMAT(SUBTIME(b.fecha_hora, IFNULL(so.hora_cierre_dia, '00:00')), '%Y-%m-%d') AS dia,\n                   s.nombre AS sede_nombre, s.ciudad, b.detalle_cierre, b.detalle_titulo\n            FROM usuario_bitacora_cierre b\n            JOIN usuario u ON u.idusuario = b.idusuario\n            LEFT JOIN usuario sup ON sup.idusuario = NULLIF(b.idusuario_supervisor, 0)\n            JOIN sede s ON s.idsede = b.idsede\n            LEFT JOIN sede_opciones so ON so.idsede = b.idsede\n            WHERE b.idsede = ", " AND b.cierre = 1 AND b.detalle_cierre IS NOT NULL\n              -- ADDTIME y no CONCAT: hora_cierre_dia es latin1 y los parametros utf8mb4 (error 1270 al concatenar)\n              AND b.fecha_hora >= ADDTIME(CAST(", " AS DATETIME), IFNULL(so.hora_cierre_dia, '00:00'))\n              AND b.fecha_hora <  ADDTIME(CAST(", " AS DATETIME) + INTERVAL 1 DAY, IFNULL(so.hora_cierre_dia, '00:00'))\n            ORDER BY b.fecha_hora DESC"])), idsede, inicio, fin)];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n            SELECT b.idusuario_bitacora_cierre AS id, b.idusuario, u.nombres AS usuario_nombre,\n                   sup.nombres AS supervisor_nombre, b.numintentos, b.fecha,\n                   DATE_FORMAT(SUBTIME(b.fecha_hora, IFNULL(so.hora_cierre_dia, '00:00')), '%Y-%m-%d') AS dia,\n                   s.nombre AS sede_nombre, s.ciudad, b.detalle_cierre, b.detalle_titulo\n            FROM usuario_bitacora_cierre b\n            JOIN usuario u ON u.idusuario = b.idusuario\n            LEFT JOIN usuario sup ON sup.idusuario = NULLIF(b.idusuario_supervisor, 0)\n            JOIN sede s ON s.idsede = b.idsede\n            LEFT JOIN sede_opciones so ON so.idsede = b.idsede\n            WHERE b.idsede = ", " AND b.cierre = 1 AND b.detalle_cierre IS NOT NULL\n              -- ADDTIME y no CONCAT: hora_cierre_dia es latin1 y los parametros utf8mb4 (error 1270 al concatenar)\n              AND b.fecha_hora >= ADDTIME(CAST(", " AS DATETIME), IFNULL(so.hora_cierre_dia, '00:00'))\n              AND b.fecha_hora <  ADDTIME(CAST(", " AS DATETIME) + INTERVAL 1 DAY, IFNULL(so.hora_cierre_dia, '00:00'))\n            ORDER BY b.fecha_hora DESC"], ["\n            SELECT b.idusuario_bitacora_cierre AS id, b.idusuario, u.nombres AS usuario_nombre,\n                   sup.nombres AS supervisor_nombre, b.numintentos, b.fecha,\n                   DATE_FORMAT(SUBTIME(b.fecha_hora, IFNULL(so.hora_cierre_dia, '00:00')), '%Y-%m-%d') AS dia,\n                   s.nombre AS sede_nombre, s.ciudad, b.detalle_cierre, b.detalle_titulo\n            FROM usuario_bitacora_cierre b\n            JOIN usuario u ON u.idusuario = b.idusuario\n            LEFT JOIN usuario sup ON sup.idusuario = NULLIF(b.idusuario_supervisor, 0)\n            JOIN sede s ON s.idsede = b.idsede\n            LEFT JOIN sede_opciones so ON so.idsede = b.idsede\n            WHERE b.idsede = ", " AND b.cierre = 1 AND b.detalle_cierre IS NOT NULL\n              -- ADDTIME y no CONCAT: hora_cierre_dia es latin1 y los parametros utf8mb4 (error 1270 al concatenar)\n              AND b.fecha_hora >= ADDTIME(CAST(", " AS DATETIME), IFNULL(so.hora_cierre_dia, '00:00'))\n              AND b.fecha_hora <  ADDTIME(CAST(", " AS DATETIME) + INTERVAL 1 DAY, IFNULL(so.hora_cierre_dia, '00:00'))\n            ORDER BY b.fecha_hora DESC"])), idsede, inicio, fin)];
             case 2:
                 rows = _f.sent();
                 res.status(200).json(rows.map(function (r) { var _a; return (__assign(__assign({}, r), { numintentos: Number((_a = r.numintentos) !== null && _a !== void 0 ? _a : 0) })); }));

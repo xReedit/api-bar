@@ -1,10 +1,9 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 import { fechaGuionASlash } from "../utils/utils";
 import { format } from "date-fns/format";
 import { parseISO } from "date-fns/parseISO";
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get("/", async (req, res) => {
@@ -101,7 +100,6 @@ router.get("/permisos/:link", async (req, res) => {
     // devolver los resultados
     // res.status(200).json({ success: true, data: registros });
     res.status(200).json({ success: true, data: formattedRegistros });
-    prisma.$disconnect();
 });
 
 router.put('/update/:id', async (req: any, res) => {

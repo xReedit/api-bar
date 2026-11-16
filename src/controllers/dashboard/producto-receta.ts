@@ -1,5 +1,5 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../../utils/prisma';
 import dotenv from 'dotenv';
 import { normalizeResponse, normalizeResponseDashProductos } from "../../services/dash.util";
 import { limitarRangoFechasDashboard } from "../../utils/utils";
@@ -8,7 +8,6 @@ import { mensajeError } from "../../services/dash/errores";
 import { logger } from '../../utils/logger';
 dotenv.config();
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get("/", async (req, res) => {

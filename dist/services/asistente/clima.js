@@ -45,9 +45,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 exports.__esModule = true;
 exports.pronostico = exports.ubicacionDeSede = void 0;
 var axios_1 = __importDefault(require("axios"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var errores_1 = require("../dash/errores");
-var prisma = new client_1.PrismaClient();
 /**
  * Clima por sede.
  *
@@ -123,7 +122,7 @@ function ubicacionDeSede(idsede) {
         var filas, sede, lat, lon, porCiudad, _b;
         return __generator(this, function (_c) {
             switch (_c.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT nombre, ciudad, latitude, longitude FROM sede WHERE idsede = ", " LIMIT 1"], ["\n        SELECT nombre, ciudad, latitude, longitude FROM sede WHERE idsede = ", " LIMIT 1"])), idsede)];
+                case 0: return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT nombre, ciudad, latitude, longitude FROM sede WHERE idsede = ", " LIMIT 1"], ["\n        SELECT nombre, ciudad, latitude, longitude FROM sede WHERE idsede = ", " LIMIT 1"])), idsede)];
                 case 1:
                     filas = _c.sent();
                     sede = filas === null || filas === void 0 ? void 0 : filas[0];

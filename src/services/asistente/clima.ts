@@ -1,8 +1,7 @@
 import axios from 'axios';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import { ErrorValidacion } from '../dash/errores';
 
-const prisma = new PrismaClient();
 
 /**
  * Clima por sede.

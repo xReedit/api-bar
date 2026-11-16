@@ -7,10 +7,9 @@ import { getErrorMessage } from '../utils/errors.util';
 import { loginRestobar, loginRestobarBot, loginDashboard } from './usuario'
 
 
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 // Freno a la enumeración: login-bot emite tokens a partir de ids numéricos
@@ -65,7 +64,6 @@ router.post('/login', limiteLogin, async (req: any, res: any) => {
         // }
 
         userRestobar = userRestobar[0]
-        prisma.$disconnect();
 
         // userRestobar.idsede_restobar = _data.sede.idsede_restobar
         //////logger.debug('0userRestobar', userRestobar);
@@ -116,10 +114,8 @@ router.post('/login-bot', limiteLogin, async (req: any, res: any) => {
                 }
 
                 userRestobar = await createUser(dataUser);
-                prisma.$disconnect();
             } else {
                 userRestobar = _userBot[0]
-                prisma.$disconnect();
             }
 
 

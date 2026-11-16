@@ -1,10 +1,9 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 import { fechaGuionASlash } from "../utils/utils";
 import SocketService from "../services/socket.services";
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get("/", async (req, res) => {

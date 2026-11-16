@@ -39,15 +39,17 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.enviarResumenDiario = exports.generarResumen = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var proveedor_1 = require("./proveedor");
 var herramientas_1 = require("./herramientas");
 var push_sender_1 = require("../push.sender");
 var reglas_1 = require("./reglas");
 var logger_1 = require("../../utils/logger");
-var prisma = new client_1.PrismaClient();
 /**
  * Resumen diario que LLEGA SIN QUE PREGUNTES.
  *
@@ -89,7 +91,7 @@ function contextoDeSede(idsede, fecha) {
         var filas, sede;
         return __generator(this, function (_b) {
             switch (_b.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT idsede, idorg, nombre FROM sede WHERE idsede = ", " LIMIT 1"], ["\n        SELECT idsede, idorg, nombre FROM sede WHERE idsede = ", " LIMIT 1"])), idsede)];
+                case 0: return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT idsede, idorg, nombre FROM sede WHERE idsede = ", " LIMIT 1"], ["\n        SELECT idsede, idorg, nombre FROM sede WHERE idsede = ", " LIMIT 1"])), idsede)];
                 case 1:
                     filas = _b.sent();
                     sede = filas === null || filas === void 0 ? void 0 : filas[0];
@@ -217,7 +219,7 @@ function enviarResumenDiario(fechaISO) {
             switch (_c.label) {
                 case 0:
                     fecha = fechaISO !== null && fechaISO !== void 0 ? fechaISO : new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
-                    return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n        SELECT DISTINCT rp.idsede\n        FROM registro_pago rp\n        WHERE DATE(rp.fecha_hora) = ", " AND rp.estado = 0\n        UNION\n        SELECT DISTINCT r.idsede FROM asistente_regla_alerta r WHERE r.activa = 1"], ["\n        SELECT DISTINCT rp.idsede\n        FROM registro_pago rp\n        WHERE DATE(rp.fecha_hora) = ", " AND rp.estado = 0\n        UNION\n        SELECT DISTINCT r.idsede FROM asistente_regla_alerta r WHERE r.activa = 1"])), fecha)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n        SELECT DISTINCT rp.idsede\n        FROM registro_pago rp\n        WHERE DATE(rp.fecha_hora) = ", " AND rp.estado = 0\n        UNION\n        SELECT DISTINCT r.idsede FROM asistente_regla_alerta r WHERE r.activa = 1"], ["\n        SELECT DISTINCT rp.idsede\n        FROM registro_pago rp\n        WHERE DATE(rp.fecha_hora) = ", " AND rp.estado = 0\n        UNION\n        SELECT DISTINCT r.idsede FROM asistente_regla_alerta r WHERE r.activa = 1"])), fecha)];
                 case 1:
                     sedes = _c.sent();
                     enviados = 0;

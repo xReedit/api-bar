@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import { obtenerProveedor } from './proveedor';
 import { ejecutarHerramienta } from './herramientas';
 import { ContextoAsistente, DefinicionHerramienta, MensajeChat } from './tipos';
@@ -6,7 +6,6 @@ import { sendPushToSede, shouldSendOncePerDay } from '../push.sender';
 import { evaluarSede, marcarDisparada } from './reglas';
 import { logger } from '../../utils/logger';
 
-const prisma = new PrismaClient();
 
 /**
  * Resumen diario que LLEGA SIN QUE PREGUNTES.

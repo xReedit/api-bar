@@ -69,11 +69,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var logger_1 = require("../utils/logger");
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get('/', function (req, res) {
     res.status(200).json({ message: 'Estás conectado a colaborador contrato' });
@@ -94,7 +96,7 @@ router.post('/create', function (req, res, next) { return __awaiter(void 0, void
                     fecha_empieza: dataBody.fecha_empieza,
                     fecha_registro: new Date().toJSON().slice(0, 10)
                 };
-                return [4 /*yield*/, prisma.colaborador_contrato.create({
+                return [4 /*yield*/, prisma_1["default"].colaborador_contrato.create({
                         data: _data
                     })
                     // guarda detalle de contrato
@@ -107,7 +109,7 @@ router.post('/create', function (req, res, next) { return __awaiter(void 0, void
                 // dataBody.idsede_trabajo = Number(dataBody.idsede_trabajo)
                 dataBody.idrrhh_rol = Number(dataBody.idrrhh_rol);
                 _dataDetalle = __assign(__assign({}, dataBody), { idcolaborador_contrato: contrato.idcolaborador_contrato });
-                return [4 /*yield*/, prisma.colaborador_contrato_detalle.create({
+                return [4 /*yield*/, prisma_1["default"].colaborador_contrato_detalle.create({
                         data: _dataDetalle
                     })
                     // res.json(rpt)    
@@ -121,9 +123,7 @@ router.post('/create', function (req, res, next) { return __awaiter(void 0, void
                 error_1 = _a.sent();
                 logger_1.logger.error(error_1);
                 return [2 /*return*/, res.status(400).send({ success: false, error: 'Error al procesar la solicitud' })];
-            case 5:
-                prisma.$disconnect();
-                return [2 /*return*/];
+            case 5: return [2 /*return*/];
         }
     });
 }); });
@@ -134,7 +134,7 @@ router.get('/byIdColaborador/:id', function (req, res) { return __awaiter(void 0
             case 0:
                 id = req.params.id;
                 idorg = req['token'].idorg;
-                return [4 /*yield*/, prisma.colaborador_contrato.findMany({
+                return [4 /*yield*/, prisma_1["default"].colaborador_contrato.findMany({
                         where: {
                             AND: [
                                 { idcolaborador: Number(id) },
@@ -145,7 +145,6 @@ router.get('/byIdColaborador/:id', function (req, res) { return __awaiter(void 0
             case 1:
                 rpt = _a.sent();
                 res.status(200).send(rpt);
-                prisma.$disconnect();
                 return [2 /*return*/];
         }
     });

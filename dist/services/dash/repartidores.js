@@ -35,11 +35,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.totalRepartidores = exports.repartidoresDeSede = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var agregados_1 = require("./agregados");
-var prisma = new client_1.PrismaClient();
 function listaSedes(idsedes) {
     return idsedes.filter(function (n) { return Number.isInteger(n) && n > 0; }).join(',');
 }
@@ -52,7 +54,7 @@ function repartidoresDeSede(idsedes, desde, hasta) {
                     sedes = listaSedes(idsedes);
                     if (!sedes)
                         return [2 /*return*/, []];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT TRIM(CONCAT(r.nombre, ' ', COALESCE(r.apellido, ''))) nombre,\n                COUNT(e.idrepartidor_pedido_entregado) entregas,\n                MAX(DATE_FORMAT(e.fecha, '%Y-%m-%d')) ultima,\n                r.online,\n                AVG(NULLIF(c.calificacion, 0)) nota,\n                COUNT(DISTINCT c.idrepartidor_calificacion) calificaciones\n         FROM repartidor r\n         INNER JOIN repartidor_pedido_entregado e\n                 ON e.idrepartidor = r.idrepartidor\n                AND e.idsede IN (".concat(sedes, ")\n                AND e.fecha >= '").concat(desde, " 00:00:00'\n                AND e.fecha <= '").concat(hasta, " 23:59:59'\n         LEFT JOIN repartidor_calificacion c ON c.idrepartidor = r.idrepartidor\n         GROUP BY r.idrepartidor, nombre, r.online\n         ORDER BY entregas DESC"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT TRIM(CONCAT(r.nombre, ' ', COALESCE(r.apellido, ''))) nombre,\n                COUNT(e.idrepartidor_pedido_entregado) entregas,\n                MAX(DATE_FORMAT(e.fecha, '%Y-%m-%d')) ultima,\n                r.online,\n                AVG(NULLIF(c.calificacion, 0)) nota,\n                COUNT(DISTINCT c.idrepartidor_calificacion) calificaciones\n         FROM repartidor r\n         INNER JOIN repartidor_pedido_entregado e\n                 ON e.idrepartidor = r.idrepartidor\n                AND e.idsede IN (".concat(sedes, ")\n                AND e.fecha >= '").concat(desde, " 00:00:00'\n                AND e.fecha <= '").concat(hasta, " 23:59:59'\n         LEFT JOIN repartidor_calificacion c ON c.idrepartidor = r.idrepartidor\n         GROUP BY r.idrepartidor, nombre, r.online\n         ORDER BY entregas DESC"))];
                 case 1:
                     filas = _a.sent();
                     return [2 /*return*/, (filas !== null && filas !== void 0 ? filas : []).map(function (f) { return ({
@@ -75,7 +77,7 @@ function totalRepartidores() {
         var filas, f;
         return __generator(this, function (_b) {
             switch (_b.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT COUNT(*) registrados, SUM(online = 1) conectados FROM repartidor")];
+                case 0: return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT COUNT(*) registrados, SUM(online = 1) conectados FROM repartidor")];
                 case 1:
                     filas = _b.sent();
                     f = (_a = filas === null || filas === void 0 ? void 0 : filas[0]) !== null && _a !== void 0 ? _a : {};

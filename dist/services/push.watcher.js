@@ -55,12 +55,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 var _a;
 exports.__esModule = true;
 exports.dispararCierreDia = exports.startPushWatcher = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var push_sender_1 = require("./push.sender");
 var logger_1 = require("../utils/logger");
 dotenv_1["default"].config();
-var prisma = new client_1.PrismaClient();
 // =============================================================================
 // Config
 // =============================================================================
@@ -98,7 +97,7 @@ function runAnulaciones() {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 7, , 8]);
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT rp.idregistro_pago, rp.idsede, CAST(rp.total AS DECIMAL(10,2)) AS total,\n                    rp.motivo_anular, rp.idusuario_permiso,\n                    u.nombres AS nom_usuario\n             FROM registro_pago rp\n             LEFT JOIN usuario u ON u.idusuario = rp.idusuario_permiso\n             WHERE rp.estado != 0\n               AND CAST(rp.total AS DECIMAL(10,2)) >= ?\n               AND DATE(rp.fecha_hora) = CURDATE()", UMBRAL_ANULACION)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT rp.idregistro_pago, rp.idsede, CAST(rp.total AS DECIMAL(10,2)) AS total,\n                    rp.motivo_anular, rp.idusuario_permiso,\n                    u.nombres AS nom_usuario\n             FROM registro_pago rp\n             LEFT JOIN usuario u ON u.idusuario = rp.idusuario_permiso\n             WHERE rp.estado != 0\n               AND CAST(rp.total AS DECIMAL(10,2)) >= ?\n               AND DATE(rp.fecha_hora) = CURDATE()", UMBRAL_ANULACION)];
                 case 1:
                     rows = _a.sent();
                     _i = 0, rows_1 = rows;
@@ -139,7 +138,7 @@ function runStock() {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 7, , 8]);
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT p.idsede, p.idproducto, p.descripcion,\n                    CAST(ps.stock AS DECIMAL(10,2)) AS stock,\n                    CAST(p.stock_minimo AS DECIMAL(10,2)) AS stock_minimo\n             FROM producto p\n             INNER JOIN producto_stock ps ON p.idproducto = ps.idproducto\n             WHERE p.estado = 0\n               AND (\n                   CAST(ps.stock AS DECIMAL(10,2)) = 0\n                   OR CAST(ps.stock AS DECIMAL(10,2)) <= CAST(p.stock_minimo AS DECIMAL(10,2)) * 0.5\n               )\n               AND CAST(p.stock_minimo AS DECIMAL(10,2)) > 0")];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT p.idsede, p.idproducto, p.descripcion,\n                    CAST(ps.stock AS DECIMAL(10,2)) AS stock,\n                    CAST(p.stock_minimo AS DECIMAL(10,2)) AS stock_minimo\n             FROM producto p\n             INNER JOIN producto_stock ps ON p.idproducto = ps.idproducto\n             WHERE p.estado = 0\n               AND (\n                   CAST(ps.stock AS DECIMAL(10,2)) = 0\n                   OR CAST(ps.stock AS DECIMAL(10,2)) <= CAST(p.stock_minimo AS DECIMAL(10,2)) * 0.5\n               )\n               AND CAST(p.stock_minimo AS DECIMAL(10,2)) > 0")];
                 case 1:
                     rows = _a.sent();
                     fecha = new Date().toISOString().slice(0, 10);
@@ -186,7 +185,7 @@ function runMeta() {
             switch (_c.label) {
                 case 0:
                     _c.trys.push([0, 7, , 8]);
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT sm.idsede, CAST(sm.diaria AS DECIMAL(10,2)) AS meta\n             FROM sede_meta sm\n             WHERE sm.estado = '0' AND CAST(sm.diaria AS DECIMAL(10,2)) > 0")];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT sm.idsede, CAST(sm.diaria AS DECIMAL(10,2)) AS meta\n             FROM sede_meta sm\n             WHERE sm.estado = '0' AND CAST(sm.diaria AS DECIMAL(10,2)) > 0")];
                 case 1:
                     sedes = _c.sent();
                     fecha = new Date().toISOString().slice(0, 10);
@@ -195,7 +194,7 @@ function runMeta() {
                 case 2:
                     if (!(_i < sedes_1.length)) return [3 /*break*/, 6];
                     s = sedes_1[_i];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) AS total\n                 FROM registro_pago rp\n                 WHERE rp.idsede = ?\n                   AND rp.estado = 0\n                   AND DATE(rp.fecha_hora) = CURDATE()", s.idsede)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) AS total\n                 FROM registro_pago rp\n                 WHERE rp.idsede = ?\n                   AND rp.estado = 0\n                   AND DATE(rp.fecha_hora) = CURDATE()", s.idsede)];
                 case 3:
                     ventas = _c.sent();
                     totalHoy = Number((_b = (_a = ventas[0]) === null || _a === void 0 ? void 0 : _a.total) !== null && _b !== void 0 ? _b : 0);
@@ -235,7 +234,7 @@ function dispararCierreDia(fechaISO) {
             switch (_c.label) {
                 case 0:
                     fecha = fechaISO !== null && fechaISO !== void 0 ? fechaISO : new Date().toISOString().slice(0, 10);
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT sm.idsede, CAST(sm.diaria AS DECIMAL(10,2)) AS meta\n         FROM sede_meta sm\n         WHERE sm.estado = '0'")];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT sm.idsede, CAST(sm.diaria AS DECIMAL(10,2)) AS meta\n         FROM sede_meta sm\n         WHERE sm.estado = '0'")];
                 case 1:
                     sedes = _c.sent();
                     _i = 0, sedes_2 = sedes;
@@ -243,7 +242,7 @@ function dispararCierreDia(fechaISO) {
                 case 2:
                     if (!(_i < sedes_2.length)) return [3 /*break*/, 6];
                     s = sedes_2[_i];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) AS total\n             FROM registro_pago rp\n             WHERE rp.idsede = ?\n               AND rp.estado = 0\n               AND DATE(rp.fecha_hora) = ?", s.idsede, fecha)];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) AS total\n             FROM registro_pago rp\n             WHERE rp.idsede = ?\n               AND rp.estado = 0\n               AND DATE(rp.fecha_hora) = ?", s.idsede, fecha)];
                 case 3:
                     ventas = _c.sent();
                     totalHoy = Number((_b = (_a = ventas[0]) === null || _a === void 0 ? void 0 : _a.total) !== null && _b !== void 0 ? _b : 0);

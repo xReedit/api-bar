@@ -63,13 +63,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var crypto_1 = __importDefault(require("crypto"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var push_sender_1 = require("../services/push.sender");
 var logger_1 = require("../utils/logger");
 dotenv_1["default"].config();
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 function hashEndpoint(endpoint) {
     return crypto_1["default"].createHash('sha256').update(endpoint).digest('hex');
@@ -107,7 +106,7 @@ router.post('/subscribe', function (req, res) { return __awaiter(void 0, void 0,
                 }
                 endpointHash = hashEndpoint(subscription.endpoint);
                 // Upsert manual: si existe el endpoint_hash, actualiza; si no, inserta
-                return [4 /*yield*/, prisma.$executeRawUnsafe("INSERT INTO push_subscriptions\n                (idusuario, idsede, endpoint, endpoint_hash, p256dh_key, auth_key, user_agent, enabled)\n             VALUES (?, ?, ?, ?, ?, ?, ?, 1)\n             ON DUPLICATE KEY UPDATE\n                idusuario = VALUES(idusuario),\n                idsede = VALUES(idsede),\n                endpoint = VALUES(endpoint),\n                p256dh_key = VALUES(p256dh_key),\n                auth_key = VALUES(auth_key),\n                user_agent = VALUES(user_agent),\n                enabled = 1,\n                last_error = NULL", idusuario, idsede, subscription.endpoint, endpointHash, subscription.keys.p256dh, subscription.keys.auth, userAgent !== null && userAgent !== void 0 ? userAgent : null)];
+                return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("INSERT INTO push_subscriptions\n                (idusuario, idsede, endpoint, endpoint_hash, p256dh_key, auth_key, user_agent, enabled)\n             VALUES (?, ?, ?, ?, ?, ?, ?, 1)\n             ON DUPLICATE KEY UPDATE\n                idusuario = VALUES(idusuario),\n                idsede = VALUES(idsede),\n                endpoint = VALUES(endpoint),\n                p256dh_key = VALUES(p256dh_key),\n                auth_key = VALUES(auth_key),\n                user_agent = VALUES(user_agent),\n                enabled = 1,\n                last_error = NULL", idusuario, idsede, subscription.endpoint, endpointHash, subscription.keys.p256dh, subscription.keys.auth, userAgent !== null && userAgent !== void 0 ? userAgent : null)];
             case 1:
                 // Upsert manual: si existe el endpoint_hash, actualiza; si no, inserta
                 _d.sent();
@@ -136,7 +135,7 @@ router.post('/unsubscribe', function (req, res) { return __awaiter(void 0, void 
                 if (!endpoint || typeof endpoint !== 'string') {
                     return [2 /*return*/, res.status(400).json({ error: 'endpoint requerido' })];
                 }
-                return [4 /*yield*/, prisma.$executeRawUnsafe("UPDATE push_subscriptions SET enabled = 0 WHERE endpoint_hash = ?", hashEndpoint(endpoint))];
+                return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("UPDATE push_subscriptions SET enabled = 0 WHERE endpoint_hash = ?", hashEndpoint(endpoint))];
             case 1:
                 _a.sent();
                 res.json({ ok: true });
@@ -171,7 +170,7 @@ router.post('/resubscribe', function (req, res) { return __awaiter(void 0, void 
                 newHash = hashEndpoint(subscription.endpoint);
                 if (!oldEndpoint) return [3 /*break*/, 2];
                 oldHash = hashEndpoint(oldEndpoint);
-                return [4 /*yield*/, prisma.$executeRawUnsafe("UPDATE push_subscriptions\n                 SET endpoint = ?, endpoint_hash = ?, p256dh_key = ?, auth_key = ?, enabled = 1, last_error = NULL\n                 WHERE endpoint_hash = ?", subscription.endpoint, newHash, subscription.keys.p256dh, subscription.keys.auth, oldHash)];
+                return [4 /*yield*/, prisma_1["default"].$executeRawUnsafe("UPDATE push_subscriptions\n                 SET endpoint = ?, endpoint_hash = ?, p256dh_key = ?, auth_key = ?, enabled = 1, last_error = NULL\n                 WHERE endpoint_hash = ?", subscription.endpoint, newHash, subscription.keys.p256dh, subscription.keys.auth, oldHash)];
             case 1:
                 updated = _d.sent();
                 if (Number(updated) > 0)

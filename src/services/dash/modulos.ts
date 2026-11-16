@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import {
     normalizeResponseDashClientes,
     normalizeResponseDashCompras,
@@ -9,7 +9,6 @@ import {
 import { limitarRangoFechasDashboard } from '../../utils/utils';
 import { ErrorValidacion } from './errores';
 
-const prisma = new PrismaClient();
 
 /**
  * Modulos del dashboard que comparten la misma forma de consulta:

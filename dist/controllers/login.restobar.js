@@ -69,14 +69,16 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 var express = __importStar(require("express"));
 var express_rate_limit_1 = require("express-rate-limit");
 var errors_util_1 = require("../utils/errors.util");
 var usuario_1 = require("./usuario");
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../utils/prisma"));
 var logger_1 = require("../utils/logger");
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 // Freno a la enumeración: login-bot emite tokens a partir de ids numéricos
 // pequeños (idusuario/idsede/idorg) y las claves se comparan sin hash, así que
@@ -142,7 +144,6 @@ router.post('/login', limiteLogin, function (req, res) { return __awaiter(void 0
                 //     prisma.$disconnect();
                 // }
                 userRestobar = userRestobar[0];
-                prisma.$disconnect();
                 // userRestobar.idsede_restobar = _data.sede.idsede_restobar
                 //////logger.debug('0userRestobar', userRestobar);
                 (0, usuario_1.loginRestobar)(req, res, userRestobar);
@@ -190,11 +191,9 @@ router.post('/login-bot', limiteLogin, function (req, res) { return __awaiter(vo
                 return [4 /*yield*/, createUser(dataUser)];
             case 4:
                 userRestobar = _a.sent();
-                prisma.$disconnect();
                 return [3 /*break*/, 6];
             case 5:
                 userRestobar = _userBot[0];
-                prisma.$disconnect();
                 _a.label = 6;
             case 6: return [3 /*break*/, 8];
             case 7: // login             
@@ -228,7 +227,7 @@ router.post('/login-dashboard', limiteLogin, function (req, res) { return __awai
 var getUserRestobar = function (idusuario, idsede, idorg) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, prisma.usuario.findMany({
+            case 0: return [4 /*yield*/, prisma_1["default"].usuario.findMany({
                     where: { AND: __assign({ idusuario: Number(idusuario), idsede: Number(idsede) }, (idorg !== undefined ? { idorg: Number(idorg) } : {})) }
                 })];
             case 1: return [2 /*return*/, _a.sent()];
@@ -238,7 +237,7 @@ var getUserRestobar = function (idusuario, idsede, idorg) { return __awaiter(voi
 var getUserBot = function (idsede) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, prisma.usuario.findMany({
+            case 0: return [4 /*yield*/, prisma_1["default"].usuario.findMany({
                     where: {
                         AND: {
                             idsede: Number(idsede),
@@ -277,7 +276,7 @@ var getUserBot = function (idsede) { return __awaiter(void 0, void 0, void 0, fu
 var createUser = function (dataUser) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, prisma.usuario.create({
+            case 0: return [4 /*yield*/, prisma_1["default"].usuario.create({
                     data: dataUser
                 })];
             case 1: return [2 /*return*/, _a.sent()];

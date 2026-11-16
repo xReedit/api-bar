@@ -1,5 +1,5 @@
 import * as express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 import { fechaGuionASlash } from "../utils/utils";
 import { getEstructuraPedido } from "../services/cocinar.pedido";
 import { validarReglas } from "../services/reglas-negocio";
@@ -11,7 +11,6 @@ import { auth, authSede } from "../middleware/auth";
 import { normalizarTelefono, variantesTelefono } from "../services/telefono";
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get("/", async (req, res) => {
@@ -465,7 +464,6 @@ router.get('/get-comprobante-electronico/:idsede/:dni/:serie/:numero/:fecha', as
             success: false
         }); 
     }
-    prisma.$disconnect();
 });
 
 
@@ -483,7 +481,6 @@ router.put('/update-carta/:id', async (req: any, res, next) => {
     )
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 
 })
 
@@ -501,7 +498,6 @@ router.put('/update-canal-consumo/:id', async (req: any, res, next) => {
     )
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 
 })
 
@@ -519,7 +515,6 @@ router.put('/update-tipo-pago-sede/:id', async (req: any, res, next) => {
     )
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 
 })
 
@@ -556,7 +551,6 @@ router.put('/update-config-delivery/:id', async (req: any, res, next) => {
     } catch (error) {
         res.status(500).send({ error: 'error al actualizar update-config-delivery.' });
     } finally {
-        prisma.$disconnect();
     }        
 
 })
@@ -570,7 +564,6 @@ router.post('/create-config-delivery', async (req: any, res, next) => {
     )
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 
 })
 
@@ -582,7 +575,6 @@ router.post('/create-history-chatbot-cliente', async (req: any, res, next) => {
     })
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 })
 
 router.get("/get-user-bot/:idsede", async (req, res) => {
@@ -600,7 +592,6 @@ router.get("/get-user-bot/:idsede", async (req, res) => {
 )
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 })
 
 // cambiar nombre del cliente
@@ -616,7 +607,6 @@ router.put('/change-name-cliente', async (req: any, res, next) => {
     })
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 })
 
 // cambiar nombre del cliente
@@ -632,7 +622,6 @@ router.put('/change-name-cliente', async (req: any, res, next) => {
     })
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 })
 
 
@@ -670,7 +659,6 @@ router.get("/get-carta/:idsede", async (req, res) => {
         where c.idsede = ${idsede} and (catt.estado = 0 AND catt.visible_cliente=1 and (catt.url_carta <> '' AND catt.url_carta IS NOT NULL)) and i.estado=0 and cll.is_visible_cliente = 0 and s.is_visible_cliente=0`;
     
     res.status(200).send(rpt);
-    prisma.$disconnect();
     
 })
 
@@ -703,7 +691,6 @@ router.get("/get-carta-by-seccion/:idsede/:idseccion", async (req, res) => {
         where (c.idsede = ${idsede} and s.idseccion= ${idseccion}) and catt.estado = 0 and i.estado=0 and cll.is_visible_cliente = 0`;
     
     res.status(200).send(rpt);
-    prisma.$disconnect();
     
 })
 
@@ -716,7 +703,6 @@ router.get("/get-stock-item/:idsede/:iditem", async (req, res) => {
         where c.idsede = ${idsede} and i.estado=0 and cl.iditem = ${iditem}`;
     
     res.status(200).send(rpt);
-    prisma.$disconnect();
     
 })
 
@@ -739,7 +725,6 @@ router.post("/get-seccion-items", async (req, res) => {
     } catch (error) {
         res.status(500).send(error);
     }
-    prisma.$disconnect();
 })
 
 // obtner informacion para el delivery de la sede
@@ -750,7 +735,6 @@ router.get("/get-info-delivery/:idsede", async (req, res) => {
         where s.idsede = ${idsede}`
 
     res.status(200).send(rpt); 
-    prisma.$disconnect();
 })
 
 // reducir tokens
@@ -799,7 +783,6 @@ router.get("/get-parametros-delivery/:idsede", async (req, res) => {
     
 
     res.status(200).send(dataRpt);
-    prisma.$disconnect();
 })
 
 
@@ -838,7 +821,6 @@ router.post("/create-cliente-from-bot", async (req, res, next) => {
     })   
 
     res.status(200).send(rpt);
-    prisma.$disconnect();
 })
 
 
@@ -854,7 +836,6 @@ router.post("/create-pedido-bot", async (req, res, next) => {
             }
         }).catch(next);
         res.status(200).send(rpt);    
-        await prisma.$disconnect();    
 })
 
 // cuenta los pedidos del bot
@@ -870,7 +851,6 @@ router.get("/count-pedidos-bot/:idsede", async (req, res, next) => {
         count: rpt    
     };
     res.status(200).send(rptCount)
-    prisma.$disconnect();    
 })
 
 // lista de productos disponibles para el bot
@@ -892,7 +872,6 @@ router.get("/get-list-productos-disponibles/:idsede", async (req, res, next) => 
     } catch (error) {
         next(error);
     } finally {
-        prisma.$disconnect();    
     }
 })
 
@@ -915,7 +894,6 @@ router.post("/create-direccion-cliente-pedido-bot", async (req, res, next) => {
     // si la direccion ya existe retornamos
     if (rptDireccion.length > 0) {
         res.status(200).send(rptDireccion);
-        prisma.$disconnect();
         return;
     }
 
@@ -935,7 +913,6 @@ router.post("/create-direccion-cliente-pedido-bot", async (req, res, next) => {
         }
     }).catch(next);
     res.status(200).send(rpt);
-    prisma.$disconnect();
 })
 
 // registra la cantidad de token utilizado por idsede
@@ -947,7 +924,6 @@ router.post("/register-used-gpt-sede", async (req, res, next) => {
     } catch (error) {
         res.status(500).send(error);
     }
-    prisma.$disconnect();
 })
 
 // consultar el estado del pedido

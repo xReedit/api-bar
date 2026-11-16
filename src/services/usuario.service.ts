@@ -2,11 +2,10 @@ import * as jwt from 'jsonwebtoken';
 import * as express from "express";
 import * as bcrypt from 'bcryptjs';
 import { secretKey } from '../middleware/auth';
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 
 
 // const _SECRET_KEY = SECRET_KEY;
-const prisma = new PrismaClient();
 const router = express.Router();
 
 export async function login(_usuario: any) {

@@ -35,11 +35,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.canalesEnElTiempo = exports.granularidadPara = exports.ventasPorCanal = void 0;
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var agregados_1 = require("./agregados");
-var prisma = new client_1.PrismaClient();
 function listaSedes(idsedes) {
     return idsedes.filter(function (n) { return Number.isInteger(n) && n > 0; }).join(',');
 }
@@ -52,7 +54,7 @@ function ventasPorCanal(idsedes, desde, hasta) {
                     sedes = listaSedes(idsedes);
                     if (!sedes)
                         return [2 /*return*/, []];
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT COALESCE(tc.descripcion, 'SIN CANAL') canal,\n                COUNT(*) ventas,\n                COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) total\n         FROM registro_pago rp\n         LEFT JOIN tipo_consumo tc ON tc.idtipo_consumo = rp.idtipo_consumo\n         WHERE rp.idsede IN (".concat(sedes, ") AND rp.estado = 0\n           AND rp.fecha_hora >= '").concat(desde, " 00:00:00'\n           AND rp.fecha_hora <= '").concat(hasta, " 23:59:59'\n         GROUP BY canal\n         ORDER BY total DESC"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT COALESCE(tc.descripcion, 'SIN CANAL') canal,\n                COUNT(*) ventas,\n                COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) total\n         FROM registro_pago rp\n         LEFT JOIN tipo_consumo tc ON tc.idtipo_consumo = rp.idtipo_consumo\n         WHERE rp.idsede IN (".concat(sedes, ") AND rp.estado = 0\n           AND rp.fecha_hora >= '").concat(desde, " 00:00:00'\n           AND rp.fecha_hora <= '").concat(hasta, " 23:59:59'\n         GROUP BY canal\n         ORDER BY total DESC"))];
                 case 1:
                     filas = _a.sent();
                     return [2 /*return*/, (filas !== null && filas !== void 0 ? filas : []).map(function (f) {
@@ -112,7 +114,7 @@ function canalesEnElTiempo(idsedes, desde, hasta, agrupar, canal) {
                     filtro = canal
                         ? "AND COALESCE(tc.descripcion, 'SIN CANAL') = '".concat(canal.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ ]/g, ''), "'")
                         : '';
-                    return [4 /*yield*/, prisma.$queryRawUnsafe("SELECT ".concat(FORMATO[agrupar], " periodo,\n                COALESCE(tc.descripcion, 'SIN CANAL') canal,\n                COUNT(*) transacciones,\n                COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) total\n         FROM registro_pago rp\n         LEFT JOIN tipo_consumo tc ON tc.idtipo_consumo = rp.idtipo_consumo\n         WHERE rp.idsede IN (").concat(sedes, ") AND rp.estado = 0\n           AND rp.fecha_hora >= '").concat(desde, " 00:00:00'\n           AND rp.fecha_hora <= '").concat(hasta, " 23:59:59'\n           ").concat(filtro, "\n         GROUP BY periodo, canal\n         ORDER BY periodo"))];
+                    return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe("SELECT ".concat(FORMATO[agrupar], " periodo,\n                COALESCE(tc.descripcion, 'SIN CANAL') canal,\n                COUNT(*) transacciones,\n                COALESCE(SUM(CAST(rp.total AS DECIMAL(10,2))), 0) total\n         FROM registro_pago rp\n         LEFT JOIN tipo_consumo tc ON tc.idtipo_consumo = rp.idtipo_consumo\n         WHERE rp.idsede IN (").concat(sedes, ") AND rp.estado = 0\n           AND rp.fecha_hora >= '").concat(desde, " 00:00:00'\n           AND rp.fecha_hora <= '").concat(hasta, " 23:59:59'\n           ").concat(filtro, "\n         GROUP BY periodo, canal\n         ORDER BY periodo"))];
                 case 1:
                     filas = _a.sent();
                     return [2 /*return*/, (filas !== null && filas !== void 0 ? filas : []).map(function (f) { return ({

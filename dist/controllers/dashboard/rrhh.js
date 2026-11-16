@@ -82,11 +82,10 @@ exports.__esModule = true;
 var express = __importStar(require("express"));
 var axios_1 = __importDefault(require("axios"));
 var jwt = __importStar(require("jsonwebtoken"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var logger_1 = require("../../utils/logger");
 dotenv_1["default"].config();
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 /**
  * La empresa a la que pertenece una sede.
@@ -100,7 +99,7 @@ function orgDeLaSede(idsede) {
         var filas;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRawUnsafe('SELECT idorg FROM sede WHERE idsede = ? LIMIT 1', idsede)];
+                case 0: return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe('SELECT idorg FROM sede WHERE idsede = ? LIMIT 1', idsede)];
                 case 1:
                     filas = _a.sent();
                     return [2 /*return*/, filas.length ? Number(filas[0].idorg) : null];

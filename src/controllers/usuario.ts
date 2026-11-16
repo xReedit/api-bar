@@ -5,9 +5,8 @@ import * as userServices from '../services/usuario.service';
 import { getErrorMessage } from '../utils/errors.util';
 
 
-import { PrismaClient } from "@prisma/client";
+import prisma from '../utils/prisma';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 

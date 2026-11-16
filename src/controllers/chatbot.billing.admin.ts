@@ -4,12 +4,11 @@
 // CHATBOT_API_KEY); el dueño del SaaS administra desde ahí, no desde Piter.
 // El panel Piter sigue leyendo únicamente los packs activos por
 // GET /chat-bot/billing/packs (JWT del restaurante).
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import express, { Request, Response } from 'express';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 /** Catálogo completo (incluye inactivos, para poder reactivarlos). */
 router.get('/packs', async (_req: Request, res: Response) => {

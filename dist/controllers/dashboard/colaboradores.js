@@ -67,12 +67,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 exports.__esModule = true;
 var express = __importStar(require("express"));
-var client_1 = require("@prisma/client");
+var prisma_1 = __importDefault(require("../../utils/prisma"));
 var dotenv_1 = __importDefault(require("dotenv"));
 var dash_util_1 = require("../../services/dash.util");
 var utils_1 = require("../../utils/utils");
 dotenv_1["default"].config();
-var prisma = new client_1.PrismaClient();
 var router = express.Router();
 router.get("/", function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
@@ -92,11 +91,11 @@ router.post("/get-pedidos", function (req, res) { return __awaiter(void 0, void 
             case 1:
                 _b.trys.push([1, 4, , 5]);
                 ssql = "CALL procedure_module_dash_pedidos(".concat(idsede, ", ").concat(JSON.stringify(params), ")");
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_pedidos(", ", ", ")"], ["CALL procedure_module_dash_pedidos(", ", ", ")"])), idsede, JSON.stringify(params))];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["CALL procedure_module_dash_pedidos(", ", ", ")"], ["CALL procedure_module_dash_pedidos(", ", ", ")"])), idsede, JSON.stringify(params))];
             case 2:
                 rpt = _b.sent();
                 sqlExec = rpt[0].f0;
-                return [4 /*yield*/, prisma.$queryRawUnsafe(sqlExec)];
+                return [4 /*yield*/, prisma_1["default"].$queryRawUnsafe(sqlExec)];
             case 3:
                 rptExec = _b.sent();
                 rptExec = (0, dash_util_1.normalizeResponse)(rptExec);

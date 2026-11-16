@@ -54,6 +54,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
 exports.guardarRespuesta = exports.validarVenta = exports.contarRespuestas = exports.buscarPreguntas = exports.buscarPublicacion = exports.horaLima = exports.calcularMetricas = exports.validarRespuestas = exports.normalizarPreguntas = exports.TOPE_DIARIO_QR = exports.VENTA_DIAS = exports.TOKEN_RE = exports.ErrorEncuesta = void 0;
 // Encuesta publica: resolver el link, validar la respuesta del cliente y guardarla.
@@ -61,7 +64,7 @@ exports.guardarRespuesta = exports.validarVenta = exports.contarRespuestas = exp
 // enc_pregunta, enc_respuesta, enc_respuesta_detalle. Solo $queryRaw parametrizado: estas tablas no
 // estan en schema.prisma y no hace falta `prisma db pull`.
 var client_1 = require("@prisma/client");
-var prisma = new client_1.PrismaClient();
+var prisma_1 = __importDefault(require("../utils/prisma"));
 /** Errores de negocio con codigo estable: la app muestra una pantalla por codigo. */
 var ErrorEncuesta = /** @class */ (function (_super) {
     __extends(ErrorEncuesta, _super);
@@ -190,7 +193,7 @@ var buscarPublicacion = function (token) { return __awaiter(void 0, void 0, void
     var _a, _b;
     return __generator(this, function (_c) {
         switch (_c.label) {
-            case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT cs.idsede, cs.canal, s.nombre AS local,\n               p.idenc_publicacion, p.idorg, e.idenc_encuesta, e.texto_inicio, e.texto_fin\n        FROM enc_canal_sede cs\n        JOIN sede s ON s.idsede = cs.idsede\n        LEFT JOIN enc_publicacion p ON p.idsede = cs.idsede AND p.canal = cs.canal AND p.activa = 1\n        LEFT JOIN enc_encuesta e ON e.idenc_encuesta = p.idenc_encuesta AND e.estado <> 'archivada'\n        WHERE cs.token = ", "\n        LIMIT 1"], ["\n        SELECT cs.idsede, cs.canal, s.nombre AS local,\n               p.idenc_publicacion, p.idorg, e.idenc_encuesta, e.texto_inicio, e.texto_fin\n        FROM enc_canal_sede cs\n        JOIN sede s ON s.idsede = cs.idsede\n        LEFT JOIN enc_publicacion p ON p.idsede = cs.idsede AND p.canal = cs.canal AND p.activa = 1\n        LEFT JOIN enc_encuesta e ON e.idenc_encuesta = p.idenc_encuesta AND e.estado <> 'archivada'\n        WHERE cs.token = ", "\n        LIMIT 1"])), token)];
+            case 0: return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n        SELECT cs.idsede, cs.canal, s.nombre AS local,\n               p.idenc_publicacion, p.idorg, e.idenc_encuesta, e.texto_inicio, e.texto_fin\n        FROM enc_canal_sede cs\n        JOIN sede s ON s.idsede = cs.idsede\n        LEFT JOIN enc_publicacion p ON p.idsede = cs.idsede AND p.canal = cs.canal AND p.activa = 1\n        LEFT JOIN enc_encuesta e ON e.idenc_encuesta = p.idenc_encuesta AND e.estado <> 'archivada'\n        WHERE cs.token = ", "\n        LIMIT 1"], ["\n        SELECT cs.idsede, cs.canal, s.nombre AS local,\n               p.idenc_publicacion, p.idorg, e.idenc_encuesta, e.texto_inicio, e.texto_fin\n        FROM enc_canal_sede cs\n        JOIN sede s ON s.idsede = cs.idsede\n        LEFT JOIN enc_publicacion p ON p.idsede = cs.idsede AND p.canal = cs.canal AND p.activa = 1\n        LEFT JOIN enc_encuesta e ON e.idenc_encuesta = p.idenc_encuesta AND e.estado <> 'archivada'\n        WHERE cs.token = ", "\n        LIMIT 1"])), token)];
             case 1:
                 filas = _c.sent();
                 f = filas[0];
@@ -219,7 +222,7 @@ var buscarPreguntas = function (idencuesta) { return __awaiter(void 0, void 0, v
         switch (_b.label) {
             case 0:
                 _a = exports.normalizarPreguntas;
-                return [4 /*yield*/, prisma.$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n        SELECT idenc_pregunta AS id, orden, tipo, texto, obligatorio, opciones\n        FROM enc_pregunta WHERE idenc_encuesta = ", " ORDER BY orden"], ["\n        SELECT idenc_pregunta AS id, orden, tipo, texto, obligatorio, opciones\n        FROM enc_pregunta WHERE idenc_encuesta = ", " ORDER BY orden"])), idencuesta)];
+                return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n        SELECT idenc_pregunta AS id, orden, tipo, texto, obligatorio, opciones\n        FROM enc_pregunta WHERE idenc_encuesta = ", " ORDER BY orden"], ["\n        SELECT idenc_pregunta AS id, orden, tipo, texto, obligatorio, opciones\n        FROM enc_pregunta WHERE idenc_encuesta = ", " ORDER BY orden"])), idencuesta)];
             case 1: return [2 /*return*/, _a.apply(void 0, [_b.sent()])];
         }
     });
@@ -231,7 +234,7 @@ var contarRespuestas = function (idsede) { return __awaiter(void 0, void 0, void
     var _a, _b, _c, _d;
     return __generator(this, function (_e) {
         switch (_e.label) {
-            case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n        SELECT COUNT(*) AS total, COALESCE(SUM(fecha_local = ", "), 0) AS hoy\n        FROM enc_respuesta WHERE idsede = ", ""], ["\n        SELECT COUNT(*) AS total, COALESCE(SUM(fecha_local = ", "), 0) AS hoy\n        FROM enc_respuesta WHERE idsede = ", ""])), (0, exports.horaLima)().fecha, idsede)];
+            case 0: return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n        SELECT COUNT(*) AS total, COALESCE(SUM(fecha_local = ", "), 0) AS hoy\n        FROM enc_respuesta WHERE idsede = ", ""], ["\n        SELECT COUNT(*) AS total, COALESCE(SUM(fecha_local = ", "), 0) AS hoy\n        FROM enc_respuesta WHERE idsede = ", ""])), (0, exports.horaLima)().fecha, idsede)];
             case 1:
                 filas = _e.sent();
                 return [2 /*return*/, { hoy: Number((_b = (_a = filas[0]) === null || _a === void 0 ? void 0 : _a.hoy) !== null && _b !== void 0 ? _b : 0), total: Number((_d = (_c = filas[0]) === null || _c === void 0 ? void 0 : _c.total) !== null && _d !== void 0 ? _d : 0) }];
@@ -249,7 +252,7 @@ var validarVenta = function (idpago, idsede, ahora) {
         var filas, f, fecha;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, prisma.$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n        SELECT rp.idregistro_pago, rp.idsede, rp.fecha_hora,\n               p.idpedido, p.idusuario, p.nummesa, p.total,\n               (SELECT COUNT(*) FROM enc_respuesta r WHERE r.idregistro_pago = rp.idregistro_pago) AS respondidas\n        FROM registro_pago rp\n        LEFT JOIN pedido p ON p.idpedido = (SELECT MIN(p2.idpedido) FROM pedido p2 WHERE p2.idregistro_pago = rp.idregistro_pago)\n        WHERE rp.idregistro_pago = ", "\n        LIMIT 1"], ["\n        SELECT rp.idregistro_pago, rp.idsede, rp.fecha_hora,\n               p.idpedido, p.idusuario, p.nummesa, p.total,\n               (SELECT COUNT(*) FROM enc_respuesta r WHERE r.idregistro_pago = rp.idregistro_pago) AS respondidas\n        FROM registro_pago rp\n        LEFT JOIN pedido p ON p.idpedido = (SELECT MIN(p2.idpedido) FROM pedido p2 WHERE p2.idregistro_pago = rp.idregistro_pago)\n        WHERE rp.idregistro_pago = ", "\n        LIMIT 1"])), idpago)];
+                case 0: return [4 /*yield*/, prisma_1["default"].$queryRaw(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n        SELECT rp.idregistro_pago, rp.idsede, rp.fecha_hora,\n               p.idpedido, p.idusuario, p.nummesa, p.total,\n               (SELECT COUNT(*) FROM enc_respuesta r WHERE r.idregistro_pago = rp.idregistro_pago) AS respondidas\n        FROM registro_pago rp\n        LEFT JOIN pedido p ON p.idpedido = (SELECT MIN(p2.idpedido) FROM pedido p2 WHERE p2.idregistro_pago = rp.idregistro_pago)\n        WHERE rp.idregistro_pago = ", "\n        LIMIT 1"], ["\n        SELECT rp.idregistro_pago, rp.idsede, rp.fecha_hora,\n               p.idpedido, p.idusuario, p.nummesa, p.total,\n               (SELECT COUNT(*) FROM enc_respuesta r WHERE r.idregistro_pago = rp.idregistro_pago) AS respondidas\n        FROM registro_pago rp\n        LEFT JOIN pedido p ON p.idpedido = (SELECT MIN(p2.idpedido) FROM pedido p2 WHERE p2.idregistro_pago = rp.idregistro_pago)\n        WHERE rp.idregistro_pago = ", "\n        LIMIT 1"])), idpago)];
                 case 1:
                     filas = _a.sent();
                     f = filas[0];
@@ -292,7 +295,7 @@ var guardarRespuesta = function (datos) { return __awaiter(void 0, void 0, void 
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                return [4 /*yield*/, prisma_1["default"].$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
                         var vigente, hoy, id, idrespuesta, _i, validas_1, v;
                         var _a, _b, _c, _d, _e, _f;
                         return __generator(this, function (_g) {

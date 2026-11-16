@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { sendPushToSede } from '../services/push.sender';
@@ -7,7 +7,6 @@ import { logger } from '../utils/logger';
 
 dotenv.config();
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 function hashEndpoint(endpoint: string): string {
